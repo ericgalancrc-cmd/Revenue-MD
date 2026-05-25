@@ -7,6 +7,7 @@ import {
   FileScan, Loader2, Sparkles, ArrowRight, CircleAlert, BookOpen, FileSearch,
   Activity, ArrowUpRight, Zap, Briefcase, Target, Rocket, Award, Users, Globe,
   Download, Plug, FileInput, Network, Building, Layers, CheckSquare, Square, ListChecks,
+  Menu, X,
 } from "lucide-react";
 
 // ============================================================================
@@ -306,9 +307,17 @@ export default function App() {
   const [batchReading, setBatchReading] = useState(false);
   const [batchQueue, setBatchQueue] = useState([]);
   const [mounted, setMounted] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [sideOpen, setSideOpen] = useState(false);
   const t = T[lang];
 
   useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const filtered = useMemo(() => CLAIMS.filter((c) => (filter === "all" || c.status === filter) && (!search || c.id.toLowerCase().includes(search.toLowerCase()) || c.codes.toLowerCase().includes(search.toLowerCase()))), [filter, search]);
   const needsCount = [...PAYERS.flatMap((p) => p.facts), ...BILLING_RULES, ...PRIVACY_RULES].filter((x) => x.v === "needs").length;
@@ -338,6 +347,24 @@ export default function App() {
       .chip { transition: all .15s ease; }
       .chip:hover { transform: translateY(-1px); }
       input::placeholder { color: ${C.txt3}; }
+      .app-sidebar { transition: transform .25s ease; }
+      .mob-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 199; cursor: pointer; }
+      .mob-ham { display: none; align-items: center; justify-content: center; width: 36px; height: 36px; border: none; background: transparent; cursor: pointer; border-radius: 8px; padding: 0; color: ${C.txt}; }
+      @media (max-width: 767px) {
+        .login-left { display: none !important; }
+        .login-right { width: 100% !important; padding: 32px 24px !important; min-height: 100vh !important; justify-content: center !important; }
+        .app-sidebar { position: fixed !important; top: 0 !important; left: 0 !important; height: 100vh !important; z-index: 200 !important; transform: translateX(-100%) !important; }
+        .app-sidebar.open { transform: translateX(0) !important; }
+        .mob-overlay { display: block !important; }
+        .mob-ham { display: flex !important; }
+        .content-pad { padding: 16px !important; }
+        .grid-auto-2 { grid-template-columns: repeat(2, 1fr) !important; }
+        .grid-auto-1 { grid-template-columns: 1fr !important; }
+        .grid-4col { grid-template-columns: repeat(2, 1fr) !important; }
+        .grid-claim-detail { grid-template-columns: 1fr !important; }
+        .header-role { display: none !important; }
+        .mob-full-btn { width: 100% !important; justify-content: center !important; }
+      }
     `}</style>
   );
 
@@ -347,7 +374,7 @@ export default function App() {
       <div style={{ minHeight: "100vh", display: "flex", fontFamily: FONT_SANS, background: C.ink }}>
         {FONTS}
         {/* left brand panel */}
-        <div style={{ flex: 1, background: `linear-gradient(155deg, ${C.ink} 0%, ${C.ink2} 100%)`, padding: "56px 56px", display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", overflow: "hidden" }}>
+        <div className="login-left" style={{ flex: 1, background: `linear-gradient(155deg, ${C.ink} 0%, ${C.ink2} 100%)`, padding: "56px 56px", display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", width: 520, height: 520, borderRadius: "50%", background: "radial-gradient(circle, rgba(14,140,107,.18), transparent 70%)", top: -120, right: -160 }} />
           <div style={{ position: "absolute", width: 360, height: 360, borderRadius: "50%", background: "radial-gradient(circle, rgba(201,162,75,.10), transparent 70%)", bottom: -80, left: -100 }} />
           <div className="rise" style={{ display: "flex", alignItems: "center", gap: 13, position: "relative" }}>
@@ -366,7 +393,7 @@ export default function App() {
           <div style={{ color: "rgba(255,255,255,.4)", fontSize: 12, position: "relative", display: "flex", alignItems: "center", gap: 7 }}><ShieldCheck size={14} /> {t.footer}</div>
         </div>
         {/* right form */}
-        <div style={{ width: 460, background: C.paper2, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 52px" }}>
+        <div className="login-right" style={{ width: 460, background: C.paper2, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 52px" }}>
           <div className="rise" style={{ animationDelay: ".12s" }}>
             <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 27, fontWeight: 500, margin: "0 0 6px", color: C.ink }}>{lang === "en" ? "Welcome back" : "Bienvenido"}</h2>
             <p style={{ color: C.txt2, fontSize: 14, margin: "0 0 30px" }}>{t.demoNote}</p>
@@ -411,16 +438,19 @@ export default function App() {
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: C.paper, fontFamily: FONT_SANS, color: C.txt }}>
       {FONTS}
+      {/* mobile overlay */}
+      <div className="mob-overlay" onClick={() => setSideOpen(false)} />
       {/* SIDEBAR */}
-      <aside style={{ width: 236, background: C.ink, padding: "22px 14px", display: "flex", flexDirection: "column", flexShrink: 0, position: "relative" }}>
+      <aside className={`app-sidebar${sideOpen ? " open" : ""}`} style={{ width: 236, background: C.ink, padding: "22px 14px", display: "flex", flexDirection: "column", flexShrink: 0, position: "relative" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "0 10px 22px" }}>
           <div style={{ width: 34, height: 34, borderRadius: 10, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 6px 18px -6px rgba(14,140,107,.7)" }}><Stethoscope size={19} color="#fff" /></div>
-          <div><div style={{ color: "#fff", fontSize: 16, fontWeight: 600, fontFamily: FONT_DISPLAY }}>Revenue<span style={{ color: C.teal }}>MD</span></div></div>
+          <div style={{ flex: 1 }}><div style={{ color: "#fff", fontSize: 16, fontWeight: 600, fontFamily: FONT_DISPLAY }}>Revenue<span style={{ color: C.teal }}>MD</span></div></div>
+          <button className="mob-ham" onClick={() => setSideOpen(false)} style={{ color: "rgba(255,255,255,.6)", marginLeft: "auto" }}><X size={20} /></button>
         </div>
         <nav style={{ flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
           {nav.map((n, i) => {
             const a = tab === n.id;
-            return <button key={n.id} className="navi rise" onClick={() => { setTab(n.id); setOpenClaim(null); }} style={{ animationDelay: `${i * 0.03}s`, display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13.5, textAlign: "left", width: "100%", background: a ? C.teal : "transparent", color: a ? "#fff" : "rgba(255,255,255,.62)", fontWeight: a ? 500 : 400, boxShadow: a ? "0 6px 16px -8px rgba(14,140,107,.8)" : "none" }}><n.icon size={17} /> {n.label}</button>;
+            return <button key={n.id} className="navi rise" onClick={() => { setTab(n.id); setOpenClaim(null); setSideOpen(false); }} style={{ animationDelay: `${i * 0.03}s`, display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13.5, textAlign: "left", width: "100%", background: a ? C.teal : "transparent", color: a ? "#fff" : "rgba(255,255,255,.62)", fontWeight: a ? 500 : 400, boxShadow: a ? "0 6px 16px -8px rgba(14,140,107,.8)" : "none" }}><n.icon size={17} /> {n.label}</button>;
           })}
         </nav>
         <div style={{ borderTop: "1px solid rgba(255,255,255,.08)", paddingTop: 12, marginTop: 12 }}>
@@ -431,18 +461,21 @@ export default function App() {
 
       {/* MAIN */}
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <header style={{ background: C.paper2, borderBottom: `1px solid ${C.line}`, padding: "15px 30px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ fontSize: 17, fontWeight: 500, fontFamily: FONT_DISPLAY }}>{nav.find((n) => n.id === tab)?.label}</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <header style={{ background: C.paper2, borderBottom: `1px solid ${C.line}`, padding: "13px 20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+            <button className="mob-ham" onClick={() => setSideOpen(true)}><Menu size={20} /></button>
+            <div style={{ fontSize: 16, fontWeight: 500, fontFamily: FONT_DISPLAY, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{nav.find((n) => n.id === tab)?.label}</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
             <div className="pill" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.teal, background: C.tealSoft, padding: "5px 11px", borderRadius: 20, fontWeight: 500 }}><span className="pdot" style={{ width: 7, height: 7, borderRadius: "50%", background: C.teal }} /> Live</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.txt2 }}>
+            <div className="header-role" style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.txt2 }}>
               <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.ink, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 500, fontSize: 11.5 }}>{role === "manager" ? "MG" : role === "biller" ? "BL" : "CD"}</div>
               {t[role]}
             </div>
           </div>
         </header>
 
-        <div key={key} style={{ padding: 30, flex: 1, overflow: "auto" }}>
+        <div key={key} className="content-pad" style={{ padding: 30, flex: 1, overflow: "auto" }}>
           {/* DASHBOARD */}
           {tab === "dash" && (
             <div>
@@ -450,17 +483,17 @@ export default function App() {
                 <h2 style={{ fontSize: 26, fontWeight: 500, margin: "0 0 4px", fontFamily: FONT_DISPLAY, color: C.ink }}>{t.greeting}, {t[role]}.</h2>
                 <p style={{ color: C.txt2, fontSize: 15, margin: 0 }}>{t.today}</p>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(195px,1fr))", gap: 14, marginBottom: 20 }}>
+              <div className="grid-auto-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(195px,1fr))", gap: 14, marginBottom: 20 }}>
                 <Metric i={0} label={t.m_revenue} value={fmt(18200)} sub={t.thisMonth} trend="+14%" up />
                 <Metric i={1} label={t.m_denial} value="12.4%" sub={t.thisMonth} trend="-3.1%" up />
                 <Metric i={2} label={t.m_approval} value="87.6%" sub={t.target} />
                 <Metric i={3} label={t.m_under} value={fmt(4750)} sub={t.opportunity} accent={C.amber} />
               </div>
-              <div className="rise" style={{ animationDelay: ".15s", background: `linear-gradient(120deg, ${C.ink} 0%, ${C.ink2} 100%)`, borderRadius: 18, padding: "20px 24px", display: "flex", gap: 16, alignItems: "center", marginBottom: 20, position: "relative", overflow: "hidden" }}>
+              <div className="rise" style={{ animationDelay: ".15s", background: `linear-gradient(120deg, ${C.ink} 0%, ${C.ink2} 100%)`, borderRadius: 18, padding: "18px 20px", display: "flex", gap: 14, alignItems: "center", marginBottom: 20, position: "relative", overflow: "hidden", flexWrap: "wrap" }}>
                 <div style={{ position: "absolute", width: 240, height: 240, borderRadius: "50%", background: "radial-gradient(circle,rgba(201,162,75,.14),transparent 70%)", right: -60, top: -90 }} />
                 <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(201,162,75,.16)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Zap size={21} color={C.gold} /></div>
                 <div style={{ flex: 1, position: "relative" }}><div style={{ fontWeight: 500, fontSize: 15, color: "#fff" }}>{t.priorityTitle}</div><div style={{ fontSize: 13.5, color: "rgba(255,255,255,.66)", marginTop: 3 }}>{t.priorityBody}</div></div>
-                <button className="btnp" onClick={() => { setTab("claims"); setFilter("high"); }} style={{ ...btnP, flexShrink: 0, background: C.gold, color: C.ink }}>{t.reviewNow} <ArrowRight size={15} /></button>
+                <button className="btnp mob-full-btn" onClick={() => { setTab("claims"); setFilter("high"); }} style={{ ...btnP, flexShrink: 0, background: C.gold, color: C.ink }}>{t.reviewNow} <ArrowRight size={15} /></button>
               </div>
               <div className="rise" style={{ animationDelay: ".22s", background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 22 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}><div style={{ fontSize: 15, fontWeight: 500, fontFamily: FONT_DISPLAY, display: "flex", alignItems: "center", gap: 8 }}><Activity size={17} color={C.teal} /> {t.recent}</div><button onClick={() => setTab("claims")} style={btnG}>{t.viewAll} <ChevronRight size={14} /></button></div>
@@ -491,7 +524,7 @@ export default function App() {
                 <div>
                   <p className="rise" style={{ color: C.txt2, fontSize: 13.5, margin: "0 0 16px", maxWidth: 600, lineHeight: 1.5 }}>{t.importSub}</p>
                   <div className="rise" style={{ fontSize: 12.5, fontWeight: 500, color: C.teal, display: "flex", alignItems: "center", gap: 7, marginBottom: 11, fontFamily: FONT_DISPLAY }}><CheckCircle2 size={15} /> {t.available} — {t.fileImport}</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(165px,1fr))", gap: 11, marginBottom: 18 }}>
+                  <div className="grid-auto-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(165px,1fr))", gap: 11, marginBottom: 18 }}>
                     {IMPORT_SOURCES.map((s, i) => (
                       <div key={s.id} className="rise lift" style={{ animationDelay: `${i * 0.05}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 13, padding: 15 }} onClick={() => { setImporting(s.name); setImported(null); setTimeout(() => { setImporting(null); setImported(s.name); }, 1300); }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
@@ -525,7 +558,7 @@ export default function App() {
                   )}
 
                   <div className="rise" style={{ fontSize: 12.5, fontWeight: 500, color: C.txt3, display: "flex", alignItems: "center", gap: 7, marginBottom: 11, fontFamily: FONT_DISPLAY }}><Plug size={15} /> {t.roadmap} — {t.apiConnect}</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(165px,1fr))", gap: 11, marginBottom: 18 }}>
+                  <div className="grid-auto-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(165px,1fr))", gap: 11, marginBottom: 18 }}>
                     {API_SOURCES.map((s, i) => (
                       <div key={i} style={{ background: C.paper2, border: `1px dashed ${C.line}`, borderRadius: 13, padding: 13, display: "flex", alignItems: "center", gap: 10, opacity: 0.85 }}>
                         <div style={{ width: 30, height: 30, borderRadius: 8, background: C.lineSoft, display: "flex", alignItems: "center", justifyContent: "center" }}><Network size={15} color={C.txt3} /></div>
@@ -539,7 +572,7 @@ export default function App() {
               )}
 
               {intakeTab === "scan" && (
-              <div style={{ display: "grid", gridTemplateColumns: sel ? "1fr 1fr" : "1fr", gap: 18, alignItems: "start" }}>
+              <div className="grid-auto-1" style={{ display: "grid", gridTemplateColumns: sel ? "1fr 1fr" : "1fr", gap: 18, alignItems: "start" }}>
                 <div className="rise">
                   <div onClick={addSample} style={{ border: `2px dashed ${C.tealMute}`, background: C.paper2, borderRadius: 18, padding: "44px 24px", textAlign: "center", cursor: "pointer", transition: "all .2s" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.tealMute; e.currentTarget.style.background = C.paper2; }}>
                     <div style={{ width: 60, height: 60, borderRadius: 16, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}><FileScan size={30} color={C.teal} /></div>
@@ -607,13 +640,13 @@ export default function App() {
             return (
               <div>
                 <button onClick={() => setOpenClaim(null)} style={{ ...btnG, marginBottom: 16 }}><ChevronRight size={15} style={{ transform: "rotate(180deg)" }} /> {t.back}</button>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 290px", gap: 18, alignItems: "start" }}>
+                <div className="grid-claim-detail" style={{ display: "grid", gridTemplateColumns: "1fr 290px", gap: 18, alignItems: "start" }}>
                   <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 24 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
                       <div><h2 style={{ fontSize: 21, fontWeight: 500, margin: 0, fontFamily: FONT_DISPLAY }}>#{c.id}</h2><div style={{ fontSize: 13, color: C.txt2, marginTop: 3 }}>{c.patient} · {c.provider}</div></div>
                       <RiskPill r={c.risk} big label />
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20, padding: "14px 0", borderTop: `1px solid ${C.lineSoft}`, borderBottom: `1px solid ${C.lineSoft}` }}>
+                    <div className="grid-4col" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20, padding: "14px 0", borderTop: `1px solid ${C.lineSoft}`, borderBottom: `1px solid ${C.lineSoft}` }}>
                       <Field label={t.cpt} value={c.codes} /><Field label="Payer" value={c.payer} /><Field label={t.dos} value={c.dos} /><Field label="Billed" value={fmt(c.billed)} />
                     </div>
                     {!A ? (
@@ -652,7 +685,7 @@ export default function App() {
           {/* DENIALS */}
           {tab === "denials" && (
             <div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(175px,1fr))", gap: 14, marginBottom: 22 }}>
+              <div className="grid-auto-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(175px,1fr))", gap: 14, marginBottom: 22 }}>
                 <Metric i={0} label={lang === "en" ? "Open denials" : "Denegaciones abiertas"} value="3" />
                 <Metric i={1} label={t.lostRevenue} value={fmt(1410)} accent={C.red} />
                 <Metric i={2} label={lang === "en" ? "Recovered YTD" : "Recuperado año"} value={fmt(6820)} accent={C.teal} />
@@ -673,7 +706,7 @@ export default function App() {
           {/* REVENUE */}
           {tab === "revenue" && (
             <div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(175px,1fr))", gap: 14, marginBottom: 22 }}>
+              <div className="grid-auto-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(175px,1fr))", gap: 14, marginBottom: 22 }}>
                 <Metric i={0} label={t.m_revenue} value={fmt(18200)} sub={t.thisMonth} trend="+14%" up />
                 <Metric i={1} label={lang === "en" ? "Denials prevented" : "Denegaciones evitadas"} value="34" sub={t.thisMonth} />
                 <Metric i={2} label={lang === "en" ? "Coding accuracy" : "Precisión"} value="91%" trend="+6%" up />
@@ -756,7 +789,7 @@ export default function App() {
 
               {/* revenue model */}
               <SectionLabel icon={Target} text={t.bizModelT} />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 12, marginBottom: 10 }}>
+              <div className="grid-auto-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 12, marginBottom: 10 }}>
                 {[[t.bizSubRev, t.bizSubRevD, C.teal, C.tealSoft], [t.bizUsage, t.bizUsageD, C.blue, C.blueSoft], [t.bizEnt, t.bizEntD, C.purple, C.purpleSoft], [t.bizPerf, t.bizPerfD, C.amber, C.amberSoft]].map(([ti, d, c, bg], i) => (
                   <div key={i} className="rise lift" style={{ animationDelay: `${i * 0.05}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16 }}>
                     <div style={{ width: 8, height: 8, borderRadius: "50%", background: c, marginBottom: 10 }} />
@@ -771,7 +804,7 @@ export default function App() {
 
               {/* moat */}
               <SectionLabel icon={Award} text={t.bizMoatT} />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 12, marginBottom: 22 }}>
+              <div className="grid-auto-1" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 12, marginBottom: 22 }}>
                 {[[Rocket, t.moat1, t.moat1D], [ShieldCheck, t.moat2, t.moat2D], [Globe, t.moat3, t.moat3D], [Lock, t.moat4, t.moat4D]].map(([Ic, ti, d], i) => (
                   <div key={i} className="rise lift" style={{ animationDelay: `${i * 0.05}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 14, padding: 17, display: "flex", gap: 12 }}>
                     <div style={{ width: 36, height: 36, borderRadius: 10, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Ic size={18} color={C.teal} /></div>
@@ -797,7 +830,7 @@ export default function App() {
               <div style={{ fontSize: 11.5, color: C.txt3, fontStyle: "italic", marginBottom: 22 }}>{t.projNote}</div>
 
               {/* margins + raise + exit */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
+              <div className="grid-auto-1" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
                 <div className="rise lift" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20 }}>
                   <div style={{ fontSize: 12, color: C.txt2, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><BarChart3 size={14} color={C.teal} /> {t.bizMargT}</div>
                   <Row k={t.bizGross} v={t.bizGrossV} />
@@ -855,7 +888,7 @@ export default function App() {
                   </div>
                 ) : (
                   <div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(125px,1fr))", gap: 11, marginBottom: 16 }}>
+                    <div className="grid-auto-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(125px,1fr))", gap: 11, marginBottom: 16 }}>
                       <Metric i={0} label={t.bImported} value="42" /><Metric i={1} label={t.bAutoClear} value="31" accent={C.teal} /><Metric i={2} label={t.bNeedAtt} value="11" accent={C.red} /><Metric i={3} label={t.bAtRisk} value="$3.4K" accent={C.amber} />
                     </div>
                     <div className="rise" style={{ background: selCount ? C.ink : C.paper2, border: `1px solid ${selCount ? C.ink : C.line}`, borderRadius: 13, padding: "11px 15px", display: "flex", alignItems: "center", gap: 12, marginBottom: 16, transition: "all .2s", flexWrap: "wrap" }}>
