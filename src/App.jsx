@@ -30,7 +30,7 @@ const FONT_SANS = "'Outfit', ui-sans-serif, system-ui, sans-serif";
 
 const T = {
   en: {
-    tagline: "Catch denials before they happen. Code with confidence. Get paid faster.",
+    tagline: "Identify denials before they happen. Code with confidence. Get paid faster.",
     email: "Work email", password: "Password", role: "Your role", signIn: "Enter platform",
     demoNote: "Demo — any credentials work", coder: "Coder", biller: "Biller", manager: "Manager",
     nav_dash: "Overview", nav_intake: "Intake", nav_claims: "Claims", nav_analysis: "AI Analysis",
