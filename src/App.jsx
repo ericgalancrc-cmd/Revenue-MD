@@ -7,6 +7,7 @@ import {
   FileScan, Loader2, Sparkles, ArrowRight, CircleAlert, BookOpen, FileSearch,
   Activity, ArrowUpRight, Zap, Briefcase, Target, Rocket, Award, Users, Globe,
   Download, Plug, FileInput, Network, Building, Layers, CheckSquare, Square, ListChecks,
+  GraduationCap, BookMarked, ExternalLink, Hash, Info,
 } from "lucide-react";
 
 // ============================================================================
@@ -36,6 +37,15 @@ const T = {
     nav_dash: "Overview", nav_intake: "Intake", nav_claims: "Claims", nav_analysis: "AI Analysis",
     nav_denials: "Denials", nav_revenue: "Revenue", nav_payers: "Payers", nav_compliance: "Compliance",
     nav_settings: "Settings", logout: "Sign out", nav_business: "Business", nav_batch: "Batch queue",
+    nav_learn: "Learning Center",
+    learnTitle: "Learning Center", learnSub: "ICD-10 codes, CPT/HCPCS, modifiers, and CMS guidelines — everything your team needs to code with confidence.",
+    learnSearch: "Search codes, modifiers, or keywords…",
+    learnTabCodes: "Code lookup", learnTabMods: "Modifiers", learnTabGuides: "Guidelines",
+    learnCode: "Code", learnDesc: "Description", learnNotes: "Billing notes", learnUnits: "Units",
+    learnMod: "Modifier", learnModDesc: "Description", learnModPayer: "Payer", learnModRule: "Rule",
+    learnNoResults: "No codes found. Try a different keyword or code number.",
+    learnCmsTitle: "CMS & Federal references", learnPrTitle: "Puerto Rico — payer & ASES resources",
+    learnOpen: "Open", learnVerify: "Verify before production use",
     batchTitle: "Batch queue", batchSub: "Import one file, work many claims. We scrub and triage every claim so your attention goes where it matters.",
     batchDrop: "Import a batch file", batchDropSub: "EDI 837 (hundreds of claims) or CSV — try a sample of 42", batchLoad: "Load sample batch", batchReading: "Reading 837 · scrubbing 42 claims · triaging…",
     bImported: "Imported", bAutoClear: "Auto-clear", bNeedAtt: "Need attention", bAtRisk: "$ at risk",
@@ -100,6 +110,15 @@ const T = {
     nav_dash: "Resumen", nav_intake: "Recepción", nav_claims: "Reclamos", nav_analysis: "Análisis IA",
     nav_denials: "Denegaciones", nav_revenue: "Ingresos", nav_payers: "Pagadores", nav_compliance: "Cumplimiento",
     nav_settings: "Ajustes", logout: "Salir", nav_business: "Negocio", nav_batch: "Cola por lote",
+    nav_learn: "Centro de aprendizaje",
+    learnTitle: "Centro de aprendizaje", learnSub: "Códigos ICD-10, CPT/HCPCS, modificadores y guías CMS — todo lo que tu equipo necesita para codificar con confianza.",
+    learnSearch: "Buscar códigos, modificadores o palabras clave…",
+    learnTabCodes: "Búsqueda de códigos", learnTabMods: "Modificadores", learnTabGuides: "Guías",
+    learnCode: "Código", learnDesc: "Descripción", learnNotes: "Notas de facturación", learnUnits: "Unidades",
+    learnMod: "Modificador", learnModDesc: "Descripción", learnModPayer: "Pagador", learnModRule: "Regla",
+    learnNoResults: "No se encontraron códigos. Intente con otra palabra clave o número de código.",
+    learnCmsTitle: "CMS y referencias federales", learnPrTitle: "Puerto Rico — recursos de pagadores y ASES",
+    learnOpen: "Abrir", learnVerify: "Verificar antes de uso en producción",
     batchTitle: "Cola por lote", batchSub: "Importa un archivo, trabaja muchos reclamos. Revisamos y clasificamos cada uno para que tu atención vaya donde importa.",
     batchDrop: "Importar un archivo de lote", batchDropSub: "EDI 837 (cientos de reclamos) o CSV — prueba una muestra de 42", batchLoad: "Cargar lote de muestra", batchReading: "Leyendo 837 · revisando 42 reclamos · clasificando…",
     bImported: "Importados", bAutoClear: "Auto-aprobables", bNeedAtt: "Requieren atención", bAtRisk: "$ en riesgo",
@@ -276,6 +295,89 @@ const BATCH_SEED = [
   { id: "PV-2024-0862", payer: "Plan Vital", codes: "90834 GT", prov: "Dr. Colón", risk: 13, lane: "auto_clear", val: 195, sel: true, st: "pending", iEn: "", iEs: "" },
 ];
 
+// ── Learning Center data ─────────────────────────────────────────────────────
+const LEARN_CODES = [
+  // ICD-10 — Behavioral Health (F-codes)
+  { type:"ICD-10", code:"F32.0", desc:"Major depressive disorder, single episode, mild", units:"—", notes:"" },
+  { type:"ICD-10", code:"F32.1", desc:"Major depressive disorder, single episode, moderate", units:"—", notes:"" },
+  { type:"ICD-10", code:"F32.2", desc:"Major depressive disorder, single episode, severe without psychotic features", units:"—", notes:"" },
+  { type:"ICD-10", code:"F33.0", desc:"Major depressive disorder, recurrent, mild", units:"—", notes:"" },
+  { type:"ICD-10", code:"F33.1", desc:"Major depressive disorder, recurrent, moderate", units:"—", notes:"" },
+  { type:"ICD-10", code:"F41.0", desc:"Panic disorder without agoraphobia", units:"—", notes:"" },
+  { type:"ICD-10", code:"F41.1", desc:"Generalized anxiety disorder", units:"—", notes:"" },
+  { type:"ICD-10", code:"F41.9", desc:"Anxiety disorder, unspecified", units:"—", notes:"" },
+  { type:"ICD-10", code:"F43.10", desc:"Post-traumatic stress disorder, unspecified", units:"—", notes:"" },
+  { type:"ICD-10", code:"F43.11", desc:"Post-traumatic stress disorder, acute", units:"—", notes:"" },
+  { type:"ICD-10", code:"F43.12", desc:"Post-traumatic stress disorder, chronic", units:"—", notes:"" },
+  { type:"ICD-10", code:"F31.9", desc:"Bipolar disorder, unspecified", units:"—", notes:"" },
+  { type:"ICD-10", code:"F20.9", desc:"Schizophrenia, unspecified", units:"—", notes:"" },
+  { type:"ICD-10", code:"F84.0", desc:"Autistic disorder", units:"—", notes:"" },
+  { type:"ICD-10", code:"F90.0", desc:"ADHD, predominantly inattentive type", units:"—", notes:"" },
+  { type:"ICD-10", code:"F90.1", desc:"ADHD, predominantly hyperactive-impulsive type", units:"—", notes:"" },
+  { type:"ICD-10", code:"F10.10", desc:"Alcohol abuse, uncomplicated", units:"—", notes:"" },
+  { type:"ICD-10", code:"F11.10", desc:"Opioid abuse, uncomplicated", units:"—", notes:"" },
+  { type:"ICD-10", code:"F50.00", desc:"Anorexia nervosa, unspecified", units:"—", notes:"" },
+  { type:"ICD-10", code:"F60.3", desc:"Borderline personality disorder", units:"—", notes:"" },
+  { type:"ICD-10", code:"Z63.0", desc:"Problems in relationship with spouse or partner", units:"—", notes:"" },
+  { type:"ICD-10", code:"Z03.89", desc:"Encounter for observation, suspected condition ruled out", units:"—", notes:"" },
+  // CPT — Psychotherapy
+  { type:"CPT", code:"90832", desc:"Psychotherapy, 30 minutes (16–37 min)", units:"1/day", notes:"Plan Vital: treatment-plan date required in note. Modifier GT for telehealth." },
+  { type:"CPT", code:"90834", desc:"Psychotherapy, 45 minutes (38–52 min)", units:"1/day", notes:"Plan Vital: treatment-plan date required in note. Modifier GT for telehealth." },
+  { type:"CPT", code:"90837", desc:"Psychotherapy, 60 minutes (53+ min)", units:"1/day", notes:"Plan Vital: treatment-plan date required in note. Modifier GT for telehealth." },
+  { type:"CPT", code:"90785", desc:"Interactive complexity — add-on", units:"1/day", notes:"Add-on only with 90832/90834/90837. Documents caregiver involvement or other complexity." },
+  { type:"CPT", code:"90833", desc:"Psychotherapy add-on, 30 min (with E&M)", units:"1/day", notes:"Add-on to E&M (99202–99215). Use modifier 25 on the E&M." },
+  { type:"CPT", code:"90839", desc:"Psychotherapy for crisis, first 60 minutes", units:"1/day", notes:"Crisis intervention. Not billable same day as 90832/90834/90837." },
+  { type:"CPT", code:"90840", desc:"Psychotherapy for crisis, each add'l 30 min", units:"Add-on", notes:"Add-on to 90839 only." },
+  { type:"CPT", code:"90791", desc:"Psychiatric diagnostic evaluation", units:"1", notes:"Initial evaluation, no medical services. One per year typical." },
+  { type:"CPT", code:"90792", desc:"Psychiatric diagnostic evaluation with medical services", units:"1", notes:"Must be performed by an MD/DO/NP/PA." },
+  { type:"CPT", code:"90853", desc:"Group psychotherapy", units:"1/session", notes:"Typically 45–90 minutes; document number of participants." },
+  // HCPCS — Behavioral Health
+  { type:"HCPCS", code:"H0004", desc:"Behavioral health counseling and therapy, per 15 minutes", units:"8/day max (Plan Vital)", notes:"Plan Vital caps at 8 units/day. Prior auth required for extended series. Modifier GT for telehealth." },
+  { type:"HCPCS", code:"H0019", desc:"Behavioral health day treatment program, per hour", units:"Up to 24/day", notes:"Partial hospitalization / day treatment. Prior auth typically required." },
+  { type:"HCPCS", code:"H2019", desc:"Therapeutic behavioral services, per 15 minutes", units:"Per auth", notes:"ABA-related; verify payer coverage." },
+  // CPT — E&M
+  { type:"CPT", code:"99202", desc:"Office visit, new patient, 15–29 min", units:"1", notes:"" },
+  { type:"CPT", code:"99203", desc:"Office visit, new patient, 30–44 min", units:"1", notes:"" },
+  { type:"CPT", code:"99204", desc:"Office visit, new patient, 45–59 min", units:"1", notes:"" },
+  { type:"CPT", code:"99205", desc:"Office visit, new patient, 60–74 min", units:"1", notes:"" },
+  { type:"CPT", code:"99212", desc:"Office visit, established patient, 10–19 min", units:"1", notes:"" },
+  { type:"CPT", code:"99213", desc:"Office visit, established patient, 20–29 min", units:"1", notes:"" },
+  { type:"CPT", code:"99214", desc:"Office visit, established patient, 30–39 min", units:"1", notes:"" },
+  { type:"CPT", code:"99215", desc:"Office visit, established patient, 40–54 min", units:"1", notes:"" },
+];
+
+const LEARN_MODS = [
+  { mod:"GT", desc:"Via interactive audio and video telecommunications", payer:"Plan Vital / ASES / Medicaid", rule:"Required for all ASES/Plan Vital telehealth services. Replaces POS 02 in many ASES contracts." },
+  { mod:"95", desc:"Synchronous telemedicine via real-time audio and video", payer:"Commercial / Medicare", rule:"Use instead of GT for commercial payers and Medicare Advantage. Check individual payer policy." },
+  { mod:"25", desc:"Significant, separately identifiable E&M service, same day as procedure", payer:"All", rule:"Required when billing E&M + add-on psychotherapy (90833) on the same date." },
+  { mod:"59", desc:"Distinct procedural service", payer:"All", rule:"Indicates service is distinct from other procedures on the same date. Use to override CCI edits when clinically appropriate." },
+  { mod:"HO", desc:"Master's degree level", payer:"Plan Vital / Medicaid", rule:"Identifies provider credential for ASES/Medicaid BH services. Required by many PR payers." },
+  { mod:"HN", desc:"Bachelor's degree level", payer:"Plan Vital / Medicaid", rule:"Identifies provider credential. Reimbursement rate may differ from HO." },
+  { mod:"HP", desc:"Doctoral level", payer:"Plan Vital / Medicaid", rule:"PhD, PsyD, or MD/DO. Highest BH credential tier." },
+  { mod:"HQ", desc:"Group setting", payer:"Medicaid", rule:"Indicates service was provided in a group. Use with group therapy codes." },
+  { mod:"U1", desc:"Medicaid level of care 1", payer:"Medicaid", rule:"Level-of-care indicator; required by some state Medicaid programs." },
+  { mod:"TF", desc:"Intermediate level of care", payer:"Medicaid", rule:"Used for intermediate-level BH services (step-down from inpatient)." },
+  { mod:"52", desc:"Reduced services", payer:"All", rule:"Service was partially reduced at the clinician's discretion. Bill a proportional charge." },
+  { mod:"76", desc:"Repeat procedure by same physician on same day", payer:"All", rule:"Use when the same procedure is medically necessary more than once on the same date." },
+  { mod:"GY", desc:"Item or service statutorily excluded from Medicare", payer:"Medicare", rule:"Use when billing non-covered services to generate a proper denial for secondary billing." },
+  { mod:"KX", desc:"Requirements specified in the medical policy have been met", payer:"Medicare", rule:"Required for certain Medicare therapy services once the KX threshold is met." },
+];
+
+const LEARN_GUIDES = [
+  { cat:"cms", title:"CMS ICD-10-CM Official Guidelines", desc:"Diagnosis coding guidelines updated annually by CMS and NCHS.", url:"https://www.cms.gov/medicare/coding-billing/icd-10-codes" },
+  { cat:"cms", title:"CMS CPT / HCPCS Code Lookup", desc:"Search CPT and HCPCS codes with descriptions and fee schedule information.", url:"https://www.cms.gov/medicare/coding-billing/hcpcs-release-code-sets" },
+  { cat:"cms", title:"NCCI (CCI) Policy Manual", desc:"Correct Coding Initiative edits — bundling rules applied to Medicare and Medicaid claims.", url:"https://www.cms.gov/medicare/coding-billing/national-correct-coding-initiative-edits" },
+  { cat:"cms", title:"CMS Telehealth Services List", desc:"Official list of services eligible for telehealth billing under Medicare.", url:"https://www.cms.gov/medicare/coverage/telehealth" },
+  { cat:"cms", title:"MLN Behavioral Health Integration", desc:"CMS guide for billing collaborative care and BH integration services.", url:"https://www.cms.gov/outreach-and-education/medicare-learning-network-mln/mlnproducts" },
+  { cat:"cms", title:"AMA CPT Code Book (Annual)", desc:"Official CPT codes published by the American Medical Association. Required for clinical accuracy.", url:"https://www.ama-assn.org/practice-management/cpt" },
+  { cat:"pr", title:"ASES — Puerto Rico Health Insurance Administration", desc:"Gobierno de PR. Portal de proveedores, manuales de Plan Vital, autorizaciones.", url:"https://www.ases.pr.gov" },
+  { cat:"pr", title:"Plan Vital Provider Manual", desc:"Reglas de facturación, códigos cubiertos, topes de unidades y requisitos de autorización para el plan del gobierno de PR.", url:"https://www.ases.pr.gov" },
+  { cat:"pr", title:"Triple-S Salud — Providers", desc:"Portal de proveedores de Triple-S (BCBS de PR). Políticas, formularios y verificación de elegibilidad.", url:"https://www.ssspr.com/en/providers" },
+  { cat:"pr", title:"MMM Healthcare — Provider Resources", desc:"Manual del proveedor y recursos de facturación para MMM Medicaid y Medicare Advantage.", url:"https://www.mmmhealthcare.com" },
+  { cat:"pr", title:"MCS Healthcare — Provider Portal", desc:"Guías de facturación, autorizaciones y formularios para MCS Classicare y MCS Salud.", url:"https://www.mcssalud.com/providers" },
+  { cat:"pr", title:"Inmediata Health Group (Clearinghouse)", desc:"Cámara de compensación primaria de PR. EDI 837/835, verificación de elegibilidad, estado de reclamos.", url:"https://www.inmediatahealth.com" },
+];
+
 const fmt = (n) => "$" + n.toLocaleString("en-US");
 const SEV = { error: { c: C.red, bg: C.redSoft, icon: AlertTriangle }, warning: { c: C.amber, bg: C.amberSoft, icon: FileWarning }, info: { c: C.blue, bg: C.blueSoft, icon: Lightbulb } };
 const VB = { statutory: { c: C.teal, bg: C.tealSoft, icon: Scale }, published: { c: C.blue, bg: C.blueSoft, icon: BookOpen }, needs: { c: C.amber, bg: C.amberSoft, icon: CircleAlert } };
@@ -306,6 +408,8 @@ export default function App() {
   const [batchReading, setBatchReading] = useState(false);
   const [batchQueue, setBatchQueue] = useState([]);
   const [mounted, setMounted] = useState(false);
+  const [learnTab, setLearnTab] = useState("codes");
+  const [learnSearch, setLearnSearch] = useState("");
   const t = T[lang];
 
   useEffect(() => { setMounted(true); }, []);
@@ -395,6 +499,7 @@ export default function App() {
     { id: "compliance", icon: ShieldCheck, label: t.nav_compliance },
     { id: "business", icon: Briefcase, label: t.nav_business },
     { id: "batch", icon: Layers, label: t.nav_batch },
+    { id: "learn", icon: GraduationCap, label: t.nav_learn },
   ];
 
   const runAnalysis = (id) => { setAnalyzing(true); setTimeout(() => { setAnalyzing(false); setAnalyzed((p) => ({ ...p, [id]: true })); }, 1300); };
@@ -894,6 +999,151 @@ export default function App() {
                       <div style={{ textAlign: "center", padding: 14, fontSize: 12, color: C.txt3 }}>{t.bMore}</div>
                     </div>
                     <div style={{ marginTop: 14, background: C.amberSoft, border: `1px solid #f0dcb0`, borderRadius: 12, padding: "11px 15px", display: "flex", gap: 9, alignItems: "center" }}><CircleAlert size={15} color={C.amber} style={{ flexShrink: 0 }} /><span style={{ fontSize: 12.5, color: "#7a4e10", lineHeight: 1.5 }}>{t.bTuneNote}</span></div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* LEARNING CENTER */}
+          {tab === "learn" && (() => {
+            const q = learnSearch.toLowerCase();
+            const filteredCodes = LEARN_CODES.filter(c =>
+              !q || c.code.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q) || c.notes.toLowerCase().includes(q) || c.type.toLowerCase().includes(q)
+            );
+            const filteredMods = LEARN_MODS.filter(m =>
+              !q || m.mod.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q) || m.rule.toLowerCase().includes(q) || m.payer.toLowerCase().includes(q)
+            );
+            const typeColor = { "ICD-10": [C.purple, C.purpleSoft], "CPT": [C.blue, C.blueSoft], "HCPCS": [C.teal, C.tealSoft] };
+            return (
+              <div>
+                <Head title={t.learnTitle} sub={t.learnSub} />
+
+                {/* Search bar */}
+                <div className="rise" style={{ position: "relative", marginBottom: 20 }}>
+                  <Search size={16} color={C.txt3} style={{ position: "absolute", left: 14, top: 13 }} />
+                  <input
+                    value={learnSearch}
+                    onChange={e => { setLearnSearch(e.target.value); setLearnTab(e.target.value ? (filteredMods.length > filteredCodes.length ? "mods" : "codes") : learnTab); }}
+                    placeholder={t.learnSearch}
+                    style={{ width: "100%", paddingLeft: 42, paddingRight: 16, paddingTop: 11, paddingBottom: 11, fontSize: 14, border: `1.5px solid ${C.line}`, borderRadius: 12, background: C.paper2, outline: "none", color: C.txt, fontFamily: FONT_SANS }}
+                  />
+                </div>
+
+                {/* Tabs */}
+                <div className="rise" style={{ display: "flex", gap: 6, marginBottom: 20 }}>
+                  {[["codes", t.learnTabCodes, Hash], ["mods", t.learnTabMods, BookMarked], ["guides", t.learnTabGuides, BookOpen]].map(([k, l, Ic]) => (
+                    <button key={k} onClick={() => setLearnTab(k)} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13, padding: "8px 16px", borderRadius: 20, cursor: "pointer", border: `1px solid ${learnTab === k ? C.ink : C.line}`, background: learnTab === k ? C.ink : C.paper2, color: learnTab === k ? "#fff" : C.txt2, fontFamily: FONT_SANS }}>
+                      <Ic size={14} /> {l}
+                    </button>
+                  ))}
+                </div>
+
+                {/* CODE LOOKUP TAB */}
+                {learnTab === "codes" && (
+                  <div className="rise">
+                    {filteredCodes.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "40px 20px", color: C.txt3, fontSize: 14 }}>{t.learnNoResults}</div>
+                    ) : (
+                      <div style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, overflow: "hidden" }}>
+                        {/* Table header */}
+                        <div style={{ display: "grid", gridTemplateColumns: "100px 110px 1fr 100px", gap: 0, background: C.lineSoft, padding: "10px 18px", borderBottom: `1px solid ${C.line}` }}>
+                          {[t.learnCode, "Type", t.learnDesc, t.learnUnits].map(h => (
+                            <div key={h} style={{ fontSize: 11.5, fontWeight: 600, color: C.txt2, textTransform: "uppercase", letterSpacing: ".06em" }}>{h}</div>
+                          ))}
+                        </div>
+                        {filteredCodes.map((c, i) => {
+                          const [tc, tbg] = typeColor[c.type] || [C.txt2, C.lineSoft];
+                          return (
+                            <div key={c.code} style={{ display: "grid", gridTemplateColumns: "100px 110px 1fr 100px", gap: 0, padding: "13px 18px", borderBottom: i < filteredCodes.length - 1 ? `1px solid ${C.lineSoft}` : "none", alignItems: "start" }}>
+                              <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 13.5, color: C.ink }}>{c.code}</div>
+                              <div>
+                                <span style={{ fontSize: 10.5, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: tbg, color: tc }}>{c.type}</span>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: 13.5, color: C.txt, lineHeight: 1.45 }}>{c.desc}</div>
+                                {c.notes && <div style={{ fontSize: 11.5, color: C.txt2, marginTop: 4, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 5 }}><Info size={11} color={C.amber} style={{ flexShrink: 0, marginTop: 2 }} />{c.notes}</div>}
+                              </div>
+                              <div style={{ fontSize: 12.5, color: C.txt2 }}>{c.units}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* MODIFIERS TAB */}
+                {learnTab === "mods" && (
+                  <div className="rise">
+                    {filteredMods.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "40px 20px", color: C.txt3, fontSize: 14 }}>{t.learnNoResults}</div>
+                    ) : (
+                      <div style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, overflow: "hidden" }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "70px 1fr 160px", gap: 0, background: C.lineSoft, padding: "10px 18px", borderBottom: `1px solid ${C.line}` }}>
+                          {[t.learnMod, t.learnModDesc + " & " + t.learnModRule, t.learnModPayer].map(h => (
+                            <div key={h} style={{ fontSize: 11.5, fontWeight: 600, color: C.txt2, textTransform: "uppercase", letterSpacing: ".06em" }}>{h}</div>
+                          ))}
+                        </div>
+                        {filteredMods.map((m, i) => (
+                          <div key={m.mod} style={{ display: "grid", gridTemplateColumns: "70px 1fr 160px", gap: 0, padding: "13px 18px", borderBottom: i < filteredMods.length - 1 ? `1px solid ${C.lineSoft}` : "none", alignItems: "start" }}>
+                            <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 700, fontSize: 16, color: C.tealDk }}>{m.mod}</div>
+                            <div>
+                              <div style={{ fontSize: 13.5, color: C.txt, lineHeight: 1.4 }}>{m.desc}</div>
+                              {m.rule && <div style={{ fontSize: 12, color: C.txt2, marginTop: 5, lineHeight: 1.45, display: "flex", alignItems: "flex-start", gap: 5 }}><Info size={11} color={C.blue} style={{ flexShrink: 0, marginTop: 2 }} />{m.rule}</div>}
+                            </div>
+                            <div style={{ fontSize: 12, color: C.txt2, lineHeight: 1.4 }}>{m.payer}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* GUIDELINES TAB */}
+                {learnTab === "guides" && (
+                  <div className="rise">
+                    {/* Verify banner */}
+                    <div style={{ background: C.amberSoft, border: `1px solid #f0dcb0`, borderRadius: 12, padding: "11px 15px", display: "flex", gap: 9, alignItems: "center", marginBottom: 20 }}>
+                      <CircleAlert size={15} color={C.amber} style={{ flexShrink: 0 }} />
+                      <span style={{ fontSize: 12.5, color: "#7a4e10", lineHeight: 1.5 }}>{t.learnVerify}</span>
+                    </div>
+
+                    {/* CMS resources */}
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: C.txt2, textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                      <BookOpen size={14} color={C.blue} /> {t.learnCmsTitle}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 11, marginBottom: 24 }}>
+                      {LEARN_GUIDES.filter(g => g.cat === "cms").map((g, i) => (
+                        <div key={i} className="lift" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16 }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 500, color: C.ink, lineHeight: 1.35 }}>{g.title}</div>
+                            <a href={g.url} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: C.tealDk, textDecoration: "none", padding: "4px 10px", borderRadius: 8, border: `1px solid ${C.tealMute}`, background: C.tealSoft }}>
+                              {t.learnOpen} <ExternalLink size={11} />
+                            </a>
+                          </div>
+                          <div style={{ fontSize: 12.5, color: C.txt2, lineHeight: 1.5 }}>{g.desc}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* PR resources */}
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: C.txt2, textTransform: "uppercase", letterSpacing: ".07em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                      <Globe size={14} color={C.teal} /> {t.learnPrTitle}
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 11 }}>
+                      {LEARN_GUIDES.filter(g => g.cat === "pr").map((g, i) => (
+                        <div key={i} className="lift" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 14, padding: 16 }}>
+                          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10, marginBottom: 6 }}>
+                            <div style={{ fontSize: 13.5, fontWeight: 500, color: C.ink, lineHeight: 1.35 }}>{g.title}</div>
+                            <a href={g.url} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: C.tealDk, textDecoration: "none", padding: "4px 10px", borderRadius: 8, border: `1px solid ${C.tealMute}`, background: C.tealSoft }}>
+                              {t.learnOpen} <ExternalLink size={11} />
+                            </a>
+                          </div>
+                          <div style={{ fontSize: 12.5, color: C.txt2, lineHeight: 1.5 }}>{g.desc}</div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
