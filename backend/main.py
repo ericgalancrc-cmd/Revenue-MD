@@ -40,7 +40,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db, init_db
 from db_models import AuditLog, Batch, Claim
-from models import BatchResponse, BatchSummary, ParsedClaim, ScrubResult
+from models import BatchResponse, BatchSummary, ClaimUpdate, Issue, ParsedClaim, ScrubResult, Suggestion
 from parser import parse_837
 from rules.engine import scrub_many
 
@@ -227,6 +227,15 @@ async def batch(
             doc         = r.doc,
             issues_json = json.dumps([i.model_dump() for i in r.issues]),
             fix_json    = json.dumps([f.model_dump() for f in r.fix]),
+            iEn         = r.iEn,
+            iEs         = r.iEs,
+            sEn         = r.sEn,
+            sEs         = r.sEs,
+            cpt_json    = json.dumps(r.cpt),
+            icd_json    = json.dumps(r.icd),
+            mods_json   = json.dumps(r.mods),
+            units_json  = json.dumps(r.units),
+            auth        = r.auth,
         ))
 
     db.add(AuditLog(event="batch_upload", batch_id=batch_id, detail=file.filename))
@@ -245,6 +254,75 @@ async def batch(
         at_risk         = at_risk,
         claims          = results,
     )
+
+
+@app.get("/api/batches/{batch_id}", response_model=BatchResponse)
+def get_batch(batch_id: str, db: Session = Depends(get_db)):
+    """Return a single batch with all its claims — used to restore session state."""
+    b = db.query(Batch).filter(Batch.id == batch_id).first()
+    if not b:
+        raise HTTPException(status_code=404, detail="Batch not found.")
+    claims = []
+    for c in b.claims:
+        claims.append(ScrubResult(
+            id       = c.id,
+            payer    = c.payer or "",
+            codes    = c.codes or "",
+            prov     = c.prov or "",
+            risk     = c.risk or 0,
+            lane     = c.lane or "auto_clear",
+            val      = c.val or 0.0,
+            sel      = c.lane == "auto_clear" and c.st == "pending",
+            st       = c.st or "pending",
+            iEn      = c.iEn or "",
+            iEs      = c.iEs or "",
+            pat      = c.pat or "",
+            dos      = c.dos or "",
+            cpt      = json.loads(c.cpt_json or "[]"),
+            icd      = json.loads(c.icd_json or "[]"),
+            mods     = json.loads(c.mods_json or "[]"),
+            units    = json.loads(c.units_json or "[]"),
+            auth     = c.auth,
+            charge   = c.charge or 0.0,
+            npi      = c.npi or "",
+            comp     = c.comp or 0,
+            doc      = c.doc or 0,
+            issues   = [Issue(**i) for i in json.loads(c.issues_json or "[]")],
+            fix      = [Suggestion(**s) for s in json.loads(c.fix_json or "[]")],
+            reviewed = c.reviewed or False,
+            sEn      = c.sEn or "",
+            sEs      = c.sEs or "",
+        ))
+    return BatchResponse(
+        id              = b.id,
+        total           = b.total,
+        auto_clear      = b.auto_clear,
+        needs_attention = b.needs_attention,
+        at_risk         = b.at_risk,
+        claims          = claims,
+    )
+
+
+@app.patch("/api/claims/{claim_id}")
+def update_claim(
+    claim_id: str,
+    update: ClaimUpdate,
+    x_api_key: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    """Persist claim review status and approval state."""
+    _check_api_key(x_api_key)
+    claim = db.query(Claim).filter(Claim.id == claim_id).first()
+    if not claim:
+        raise HTTPException(status_code=404, detail="Claim not found.")
+    if update.reviewed is not None:
+        claim.reviewed = update.reviewed
+    if update.st is not None:
+        claim.st = update.st
+    db.add(AuditLog(event="claim_approve", claim_id=claim_id, detail=f"reviewed={claim.reviewed} st={claim.st}"))
+    db.commit()
+    log.info("claim updated: id=%s reviewed=%s st=%s", claim_id, claim.reviewed, claim.st)
+    return {"id": claim_id, "reviewed": claim.reviewed, "st": claim.st}
 
 
 # ── Global error handler ──────────────────────────────────────────────────────

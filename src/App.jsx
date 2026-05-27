@@ -475,16 +475,16 @@ const rbg = (r) => (r >= 60 ? C.redSoft : r >= 30 ? C.amberSoft : C.tealSoft);
 const SCAN = ["Reading document", "Detecting language", "Parsing codes"];
 
 export default function App({ auth0 = null }) {
-  const [lang, setLang] = useState("en");
+  const [lang, setLang] = useState(() => localStorage.getItem("rmd_lang") || "en");
   const [authed, setAuthed] = useState(false);
-  const [role, setRole] = useState("manager");
+  const [role, setRole] = useState(() => localStorage.getItem("rmd_role") || "manager");
   const [tab, setTab] = useState("dash");
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [openClaim, setOpenClaim] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzed, setAnalyzed] = useState({});
-  const [reviewed, setReviewed] = useState([]);
+  const [reviewed, setReviewed] = useState(() => { try { return JSON.parse(localStorage.getItem("rmd_reviewed") || "[]"); } catch { return []; } });
   const [appeal, setAppeal] = useState(null);
   const [compTab, setCompTab] = useState("billing");
   const [files, setFiles] = useState([]);
@@ -506,6 +506,34 @@ export default function App({ auth0 = null }) {
   const t = T[lang];
 
   useEffect(() => { setMounted(true); }, []);
+
+  // Persist user preferences across sessions
+  useEffect(() => { localStorage.setItem("rmd_lang", lang); }, [lang]);
+  useEffect(() => { localStorage.setItem("rmd_role", role); }, [role]);
+  useEffect(() => { localStorage.setItem("rmd_reviewed", JSON.stringify(reviewed)); }, [reviewed]);
+
+  // applyBatchResults at component level so it can be called from the restore effect
+  const applyBatchResults = useCallback((data, preserveState = false) => {
+    setBatchMeta({ total: data.total, auto_clear: data.auto_clear, needs_attention: data.needs_attention, at_risk: data.at_risk });
+    setBatchQueue(data.claims.map((c) => ({
+      ...c,
+      sel: c.lane === "auto_clear" && (!preserveState || c.st === "pending"),
+      st: preserveState ? (c.st || "pending") : "pending",
+    })));
+    setBatchLoaded(true);
+    if (data.id && API_URL) localStorage.setItem("rmd_last_batch_id", data.id);
+  }, []);
+
+  // Restore the last batch when the user logs in
+  useEffect(() => {
+    if (!authed || !API_URL) return;
+    const lastId = localStorage.getItem("rmd_last_batch_id");
+    if (!lastId) return;
+    fetch(`${API_URL}/api/batches/${lastId}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) applyBatchResults(data, true); })
+      .catch(() => {});
+  }, [authed, applyBatchResults]);
 
   // Auto-authenticate when Auth0 confirms the user is logged in
   useEffect(() => {
@@ -710,9 +738,7 @@ export default function App({ auth0 = null }) {
                         if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
                         const data = await res.json();
                         setImporting(null); setImported(src);
-                        setBatchMeta({ total: data.total, auto_clear: data.auto_clear, needs_attention: data.needs_attention, at_risk: data.at_risk });
-                        setBatchQueue(data.claims.map((c) => ({ ...c, sel: c.lane === "auto_clear", st: "pending" })));
-                        setBatchLoaded(true);
+                        applyBatchResults(data);
                       } catch (err) { setImporting(null); setImportError(err.message); }
                     } else {
                       setTimeout(() => { setImporting(null); setImported(src); }, 1300);
@@ -854,7 +880,11 @@ export default function App({ auth0 = null }) {
                         <div style={{ fontSize: 13.5, fontWeight: 500, marginBottom: 10, fontFamily: FONT_DISPLAY }}>{t.issues}</div>
                         {c.issues.map((iss, i) => { const s = SEV[iss.sev]; return <div key={i} className="rise" style={{ animationDelay: `${i * 0.06}s`, display: "flex", gap: 11, padding: 13, borderRadius: 12, background: s.bg, marginBottom: 8 }}><s.icon size={17} color={s.c} style={{ flexShrink: 0, marginTop: 1 }} /><div><div style={{ fontSize: 13, fontWeight: 500, color: s.c }}>{lang === "en" ? iss.tEn : iss.tEs}</div><div style={{ fontSize: 12.5, color: s.c, opacity: 0.82, marginTop: 2, lineHeight: 1.5 }}>{lang === "en" ? iss.dEn : iss.dEs}</div></div></div>; })}
                         {c.fix.length > 0 && <><div style={{ fontSize: 13.5, fontWeight: 500, margin: "18px 0 10px", fontFamily: FONT_DISPLAY }}>{t.sugg}</div>{c.fix.map((f, i) => <div key={i} style={{ border: `1px solid ${C.tealMute}`, background: C.tealSoft, borderRadius: 12, padding: 13 }}><div style={{ fontSize: 13, fontWeight: 500, color: C.tealDk }}>{lang === "en" ? f.tEn : f.tEs}</div><div style={{ fontSize: 12.5, color: "#0a5c47", marginTop: 3, lineHeight: 1.5 }}>{lang === "en" ? f.wEn : f.wEs}</div><div style={{ display: "flex", gap: 8, marginTop: 11 }}><button className="btnp" style={{ ...btnP, padding: "7px 15px", fontSize: 12.5 }}>{t.apply}</button><button style={{ ...btnG, fontSize: 12.5 }}>{t.dismiss}</button></div></div>)}</>}
-                        <button className="btnp" onClick={() => { setReviewed((p) => [...new Set([...p, c.id])]); setOpenClaim(null); }} style={{ ...btnP, width: "100%", justifyContent: "center", padding: 13, marginTop: 18 }}><CheckCircle2 size={16} /> {t.markReviewed}</button>
+                        <button className="btnp" onClick={() => {
+                          setReviewed((p) => [...new Set([...p, c.id])]);
+                          setOpenClaim(null);
+                          if (API_URL) fetch(`${API_URL}/api/claims/${c.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reviewed: true, st: "approved" }) }).catch(() => {});
+                        }} style={{ ...btnP, width: "100%", justifyContent: "center", padding: 13, marginTop: 18 }}><CheckCircle2 size={16} /> {t.markReviewed}</button>
                       </div>
                     )}
                   </div>
@@ -1065,14 +1095,14 @@ export default function App({ auth0 = null }) {
             const toggle = (id) => setBatchQueue((p) => p.map((q) => q.id === id && q.st === "pending" ? { ...q, sel: !q.sel } : q));
             const toggleAll = () => setBatchQueue((p) => p.map((q) => q.st === "pending" ? { ...q, sel: !allSel } : q));
             const selectLane = (k) => setBatchQueue((p) => p.map((q) => q.lane === k && q.st === "pending" ? { ...q, sel: true } : q));
-            const bulkApprove = () => { const n = selCount; setBatchQueue((p) => p.map((q) => q.sel && q.st === "pending" ? { ...q, st: "approved", sel: false } : q)); };
-            // ── Batch helpers ──────────────────────────────────────────────
-            const applyBatchResults = (data) => {
-              setBatchMeta({ total: data.total, auto_clear: data.auto_clear, needs_attention: data.needs_attention, at_risk: data.at_risk });
-              setBatchQueue(data.claims.map((c) => ({ ...c, sel: c.lane === "auto_clear", st: "pending" })));
-              setBatchLoaded(true);
+            const bulkApprove = () => {
+              const toApprove = batchQueue.filter((q) => q.sel && q.st === "pending").map((q) => q.id);
+              setBatchQueue((p) => p.map((q) => q.sel && q.st === "pending" ? { ...q, st: "approved", sel: false } : q));
+              if (API_URL && toApprove.length > 0) toApprove.forEach((id) => fetch(`${API_URL}/api/claims/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ st: "approved" }) }).catch(() => {}));
             };
-            const loadMockBatch = () => { setBatchReading(true); setTimeout(() => { setBatchReading(false); setBatchMeta({ total: 42, auto_clear: 31, needs_attention: 11, at_risk: 3400 }); setBatchLoaded(true); setBatchQueue(BATCH_SEED.map((x) => ({ ...x }))); }, 1400); };
+            // ── Batch helpers ──────────────────────────────────────────────
+            // applyBatchResults is defined at component level (also handles localStorage + session restore)
+            const loadMockBatch = () => { setBatchReading(true); setTimeout(() => { setBatchReading(false); applyBatchResults({ id: "", total: 42, auto_clear: 31, needs_attention: 11, at_risk: 3400, claims: BATCH_SEED.map((x) => ({ ...x })) }); }, 1400); };
             const uploadBatchFile = async (file) => {
               if (!file) return;
               setBatchReading(true);

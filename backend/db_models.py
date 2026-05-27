@@ -45,6 +45,16 @@ class Claim(Base):
     reviewed    = Column(Boolean, default=False)
     st          = Column(String, default="pending")
     created_at  = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    # Extended fields for full ScrubResult restoration
+    iEn        = Column(Text, nullable=True)   # summary issue EN
+    iEs        = Column(Text, nullable=True)   # summary issue ES
+    sEn        = Column(Text, nullable=True)   # AI summary EN
+    sEs        = Column(Text, nullable=True)   # AI summary ES
+    cpt_json   = Column(Text, nullable=True)   # JSON list of CPT codes
+    icd_json   = Column(Text, nullable=True)   # JSON list of ICD codes
+    mods_json  = Column(Text, nullable=True)   # JSON list of modifiers
+    units_json = Column(Text, nullable=True)   # JSON list of unit counts
+    auth       = Column(String, nullable=True) # authorization number
 
     batch = relationship("Batch", back_populates="claims")
 

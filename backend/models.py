@@ -95,6 +95,11 @@ class BatchResponse(BaseModel):
     claims: List[ScrubResult]
 
 
+class ClaimUpdate(BaseModel):
+    reviewed: Optional[bool] = None
+    st: Optional[str] = None
+
+
 class BatchSummary(BaseModel):
     """Lightweight batch record for the history list (no claim detail)."""
     id: str
