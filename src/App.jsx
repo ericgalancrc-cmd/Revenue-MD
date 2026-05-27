@@ -9,6 +9,7 @@ import {
   Download, Plug, FileInput, Network, Building, Layers, CheckSquare, Square, ListChecks,
   GraduationCap, BookMarked, ExternalLink, Hash, Info,
 } from "lucide-react";
+import { Analytics } from "@vercel/analytics/react";
 
 // ============================================================================
 // RevenueMD — Refined UI ("Clinical Precision" aesthetic)
@@ -1600,6 +1601,7 @@ export default function App({ auth0 = null }) {
 
         <footer style={{ borderTop: `1px solid ${C.line}`, padding: "12px 30px", fontSize: 11.5, color: C.txt3, display: "flex", alignItems: "center", gap: 7, background: C.paper2 }}><ShieldCheck size={14} /> {t.footer}</footer>
       </main>
+      <Analytics />
     </div>
   );
 }
