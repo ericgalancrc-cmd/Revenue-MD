@@ -97,11 +97,11 @@ const T = {
     cpt: "CPT / HCPCS", icd: "ICD-10", mods: "Modifiers", units: "Units", dos: "Service date", npi: "Provider NPI", auth: "Authorization", none: "Not found",
     payersTitle: "Payer intelligence", payersSub: "Billing behavior and rules for every Puerto Rico payer you bill.",
     lob: "Lines of business", facts: "Key billing facts",
-    compTitle: "Compliance center", compSub: "PR Medicaid billing + HIPAA privacy rules, each with its source.",
-    tab_billing: "Billing rules", tab_privacy: "Privacy & HIPAA",
+    compTitle: "Compliance center", compSub: "CMS, ASES, Medicare, PR Medicaid billing rules · HIPAA Privacy & Security Rule · PR Act 194 · cybersecurity & PHI safeguards — each with its regulatory source.",
+    tab_billing: "Billing rules", tab_privacy: "HIPAA & Privacy", tab_security: "Cybersecurity & PHI",
     v_statutory: "Statutory", v_published: "Published", v_needs: "Verify first",
     verifyBanner: "rules need verification against current manuals before production use",
-    disclaimerT: "Not legal advice", disclaimer: "Items marked “verify first” are placeholders modeled on common patterns and must be confirmed against current ASES and payer manuals by a certified PR coder.",
+    disclaimerT: "Not legal advice", disclaimer: "Items marked 'verify first' are placeholders modeled on common patterns and must be confirmed against current ASES and payer manuals by a certified PR coder. Nothing here constitutes legal or compliance advice.",
   },
   es: {
     tagline: "Detecta denegaciones antes de que ocurran. Codifica con confianza. Cobra más rápido.",
@@ -171,11 +171,11 @@ const T = {
     cpt: "CPT / HCPCS", icd: "ICD-10", mods: "Modificadores", units: "Unidades", dos: "Fecha de servicio", npi: "NPI proveedor", auth: "Autorización", none: "No encontrado",
     payersTitle: "Inteligencia de pagadores", payersSub: "Comportamiento y reglas de facturación de cada pagador de Puerto Rico.",
     lob: "Líneas de negocio", facts: "Datos clave",
-    compTitle: "Centro de cumplimiento", compSub: "Reglas de facturación Medicaid PR + privacidad HIPAA, cada una con su fuente.",
-    tab_billing: "Reglas de facturación", tab_privacy: "Privacidad y HIPAA",
+    compTitle: "Centro de cumplimiento", compSub: "Reglas CMS, ASES, Medicare, Medicaid PR · HIPAA Privacidad y Seguridad · Ley 194 PR · ciberseguridad y PHI — cada una con su fuente regulatoria.",
+    tab_billing: "Reglas de facturación", tab_privacy: "HIPAA y privacidad", tab_security: "Ciberseguridad y PHI",
     v_statutory: "Estatutario", v_published: "Publicado", v_needs: "Verificar",
     verifyBanner: "reglas necesitan verificación contra manuales vigentes antes de producción",
-    disclaimerT: "No es asesoría legal", disclaimer: "Los elementos “verificar” son marcadores basados en patrones comunes y deben confirmarse contra los manuales vigentes de ASES y pagadores por un codificador certificado de PR.",
+    disclaimerT: "No es asesoría legal", disclaimer: "Los elementos 'verificar' son marcadores basados en patrones comunes y deben confirmarse contra los manuales vigentes de ASES y pagadores por un codificador certificado de PR. Nada aquí constituye asesoría legal o de cumplimiento.",
   },
 };
 
@@ -223,43 +223,128 @@ const DENIALS = [
 ];
 
 const PAYERS = [
-  { id: "PLANVITAL", name: "Plan Vital", sub: "ASES · Medicaid", color: C.teal, soft: C.tealSoft, lob: ["Medicaid"],
-    facts: [{ lEn: "Government Health Plan for ~1.6M residents", lEs: "Plan de Salud del Gobierno para ~1.6M", v: "published" },
-            { lEn: "Behavioral-health co-location rules apply", lEs: "Aplican reglas de co-localización de salud conductual", v: "published" },
-            { lEn: "Exact unit caps & auth thresholds — verify", lEs: "Topes y umbrales exactos — verificar", v: "needs" }] },
-  { id: "TRIPLES", name: "Triple-S Salud", sub: "BCBS · GHP · commercial", color: C.blue, soft: C.blueSoft, lob: ["Medicaid", "MA", "Commercial"],
-    facts: [{ lEn: "BCBS licensee for PR & USVI — submit Blue claims to Triple-S", lEs: "Licenciatario BCBS para PR y USVI", v: "published" },
-            { lEn: "3-character prefix routes BlueCard claims", lEs: "Prefijo de 3 caracteres enruta reclamos BlueCard", v: "published" },
-            { lEn: "Non-par reconsideration within 60 days", lEs: "Reconsideración no-par en 60 días", v: "published" }] },
-  { id: "MCS", name: "MCS", sub: "Medicare Advantage", color: C.purple, soft: C.purpleSoft, lob: ["MA", "Platino"],
-    facts: [{ lEn: "MCS Classicare — Medicare rules apply", lEs: "MCS Classicare — aplican reglas Medicare", v: "published" },
-            { lEn: "Platino wrap-around for dual-eligibles", lEs: "Platino para duales", v: "published" },
-            { lEn: "MA filing often 90–180 days — verify", lEs: "Presentación MA usualmente 90–180 días — verificar", v: "needs" }] },
-  { id: "HUMANA", name: "Humana PR", sub: "MA · Platino · commercial", color: C.blue, soft: C.blueSoft, lob: ["MA", "Platino", "Commercial"],
-    facts: [{ lEn: "MA claims within 1 year of date of service", lEs: "Reclamos MA dentro de 1 año de la fecha", v: "published" },
-            { lEn: "Commercial filing per provider contract", lEs: "Presentación comercial por contrato", v: "published" },
-            { lEn: "PR Prompt Payment Law protections", lEs: "Protecciones de la Ley de Pago Puntual PR", v: "statutory" }] },
-  { id: "MMM", name: "MMM", sub: "Medicaid · MA · Platino", color: C.purple, soft: C.purpleSoft, lob: ["Medicaid", "MA", "Platino"],
-    facts: [{ lEn: "MMM Multi Health is a Vital/Medicaid plan", lEs: "MMM Multi Health es plan Vital/Medicaid", v: "published" },
-            { lEn: "Platino pays claims including outside PR", lEs: "Platino paga reclamos incluso fuera de PR", v: "published" },
-            { lEn: "MA filing often 90–180 days — verify", lEs: "Presentación MA usualmente 90–180 días — verificar", v: "needs" }] },
+  { id: "PLANVITAL", name: "Plan Vital", sub: "ASES · Medicaid · GHP", color: C.teal, soft: C.tealSoft, lob: ["Medicaid", "GHP"],
+    facts: [
+      { lEn: "Government Health Plan (GHP) covering ~1.6M Puerto Rico residents — administered by ASES", lEs: "Plan de Salud del Gobierno (GHP) para ~1.6M residentes — administrado por ASES", v: "published" },
+      { lEn: "Timely filing: 90 days from date of service (ASES Provider Manual 2024 §6.3)", lEs: "Presentación oportuna: 90 días desde la fecha de servicio (Manual ASES 2024 §6.3)", v: "published" },
+      { lEn: "Electronic claims required when submitting ≥10 claims/month (ASES EDI Companion Guide)", lEs: "Reclamos electrónicos requeridos al someter ≥10 reclamos/mes", v: "published" },
+      { lEn: "Rendering NPI + Group NPI both required on 837P", lEs: "NPI del proveedor y NPI del grupo requeridos en el 837P", v: "published" },
+      { lEn: "H0004 daily unit cap: 8 units/day; prior auth required — verify current fee schedule", lEs: "Tope diario H0004: 8 unidades/día; autorización previa requerida — verificar", v: "needs" },
+      { lEn: "Prior authorization required for behavioral health series >12 sessions/year (ASES BH Grid)", lEs: "Autorización previa para series de salud conductual >12 sesiones/año (Grid ASES)", v: "published" },
+      { lEn: "Behavioral-health co-location rules and modifier requirements apply (GT for telehealth)", lEs: "Aplican reglas de co-localización y modificadores de salud conductual (GT para telesalud)", v: "published" },
+      { lEn: "Member ID format: 2 alpha + 8 digits (e.g., PV90012345)", lEs: "Formato ID miembro: 2 letras + 8 dígitos (ej. PV90012345)", v: "published" },
+    ]},
+  { id: "TRIPLES", name: "Triple-S Salud", sub: "BCBS · GHP · Commercial", color: C.blue, soft: C.blueSoft, lob: ["Medicaid", "MA", "Commercial"],
+    facts: [
+      { lEn: "BCBS licensee for Puerto Rico & USVI — submit all BCBS Blue claims to Triple-S", lEs: "Licenciatario BCBS para PR y USVI — todos los reclamos Blue se someten a Triple-S", v: "published" },
+      { lEn: "BlueCard claims: member ID must start with 3 uppercase alpha prefix (e.g., XYZ123456789)", lEs: "Reclamos BlueCard: ID debe comenzar con 3 letras mayúsculas (ej. XYZ123456789)", v: "published" },
+      { lEn: "Commercial timely filing: 180 days; BlueCard out-of-state: up to 365 days", lEs: "Presentación comercial: 180 días; BlueCard fuera del estado: hasta 365 días", v: "published" },
+      { lEn: "Non-par reconsideration must be filed within 60 days of EOB", lEs: "Reconsideración no-par debe presentarse en 60 días del EOB", v: "published" },
+      { lEn: "GHP (Medicaid) product follows ASES timely filing rules (90 days)", lEs: "Producto GHP (Medicaid) sigue reglas ASES de presentación (90 días)", v: "published" },
+      { lEn: "Coordination of benefits required when Medicare is primary payer", lEs: "Coordinación de beneficios requerida cuando Medicare es pagador primario", v: "published" },
+      { lEn: "PA requirements for specialist referrals and high-cost imaging — verify by LOB", lEs: "Requisitos de PA para especialistas e imágenes de alto costo — verificar por LOB", v: "needs" },
+    ]},
+  { id: "MCS", name: "MCS / Humana", sub: "Medicare Advantage · Platino", color: C.purple, soft: C.purpleSoft, lob: ["MA", "Platino"],
+    facts: [
+      { lEn: "MCS Classicare is a Medicare Advantage plan — all Medicare rules (42 CFR Part 422) apply", lEs: "MCS Classicare es un plan Medicare Advantage — aplican reglas Medicare (42 CFR Parte 422)", v: "statutory" },
+      { lEn: "MCS Platino: wrap-around benefit for dual-eligible (Medicare + Medicaid) members", lEs: "MCS Platino: beneficio adicional para miembros duales (Medicare + Medicaid)", v: "published" },
+      { lEn: "MA timely filing: up to 12 months from date of service (42 CFR §424.44)", lEs: "Presentación MA: hasta 12 meses desde la fecha de servicio (42 CFR §424.44)", v: "statutory" },
+      { lEn: "Rendering provider must have valid PTAN and Medicare enrollment for Puerto Rico", lEs: "Proveedor debe tener PTAN válido y matrícula Medicare para Puerto Rico", v: "statutory" },
+      { lEn: "Medicare secondary payer (MSP) rules apply when another payer is primary", lEs: "Reglas MSP aplican cuando otro pagador es primario", v: "statutory" },
+      { lEn: "Prior auth schedule may differ from FFS Medicare — verify with MCS provider portal", lEs: "Lista de autorizaciones previas puede diferir de Medicare FFS — verificar con portal MCS", v: "needs" },
+    ]},
+  { id: "HUMANA", name: "Humana PR", sub: "MA · Platino · Commercial", color: C.blue, soft: C.blueSoft, lob: ["MA", "Platino", "Commercial"],
+    facts: [
+      { lEn: "Humana Medicare Advantage: timely filing within 12 months of date of service", lEs: "Medicare Advantage Humana: presentación dentro de 12 meses desde la fecha de servicio", v: "published" },
+      { lEn: "Commercial filing deadline per individual provider contract (typically 90–180 days)", lEs: "Presentación comercial según contrato del proveedor (usualmente 90–180 días)", v: "published" },
+      { lEn: "PR Prompt Payment Law (Act 194-2000; 26 LPRA §3348a): insurer must pay clean claims within 30 days (electronic) or 45 days (paper)", lEs: "Ley de Pago Puntual PR (Ley 194-2000; 26 LPRA §3348a): pago en 30 días (electrónico) o 45 días (papel)", v: "statutory" },
+      { lEn: "Platino dual-eligible members: Medicare Part A/B primary; ASES Medicaid secondary", lEs: "Miembros duales Platino: Medicare Parte A/B primario; Medicaid ASES secundario", v: "published" },
+      { lEn: "FCSO (First Coast Service Options) processes underlying Medicare claims for PR", lEs: "FCSO (First Coast Service Options) procesa reclamos Medicare subyacentes en PR", v: "published" },
+    ]},
+  { id: "MMM", name: "MMM Healthcare", sub: "Medicaid · MA · Platino", color: C.purple, soft: C.purpleSoft, lob: ["Medicaid", "MA", "Platino"],
+    facts: [
+      { lEn: "MMM Multi Health: ASES-contracted Vital/Medicaid plan — ASES rules and 90-day timely filing apply", lEs: "MMM Multi Health: plan Vital/Medicaid contratado por ASES — aplican reglas ASES y 90 días", v: "published" },
+      { lEn: "MMM Platino: Medicare Advantage plan covering dual-eligible members, including services outside PR", lEs: "MMM Platino: plan MA para miembros duales, incluye servicios fuera de PR", v: "published" },
+      { lEn: "MA product: 42 CFR Part 422 applies; timely filing up to 12 months from DOS", lEs: "Producto MA: aplica 42 CFR Parte 422; presentación hasta 12 meses desde DOS", v: "statutory" },
+      { lEn: "Behavioral health prior authorization required — verify current MMM auth grid", lEs: "Autorización previa para salud conductual — verificar grid de autorización MMM vigente", v: "needs" },
+      { lEn: "Electronic claims (837P HIPAA 5010) required; NPI mandatory on all submissions", lEs: "Reclamos electrónicos (837P HIPAA 5010) requeridos; NPI obligatorio en todas las someter", v: "published" },
+    ]},
   { id: "MENONITA", name: "Plan Menonita", sub: "GHP · Medicaid", color: C.teal, soft: C.tealSoft, lob: ["Medicaid"],
-    facts: [{ lEn: "Vital/Medicaid plan — ASES rules apply", lEs: "Plan Vital/Medicaid — aplican reglas ASES", v: "published" },
-            { lEn: "Affiliated with the Mennonite health system", lEs: "Afiliado al sistema de salud Menonita", v: "published" },
-            { lEn: "Plan-specific overlays — verify", lEs: "Reglas específicas del plan — verificar", v: "needs" }] },
+    facts: [
+      { lEn: "Vital/Medicaid plan contracted by ASES — all ASES Provider Manual rules apply", lEs: "Plan Vital/Medicaid contratado por ASES — aplican todas las reglas del Manual de Proveedores ASES", v: "published" },
+      { lEn: "Timely filing: 90 days from date of service (ASES contract requirement)", lEs: "Presentación oportuna: 90 días desde la fecha de servicio (contrato ASES)", v: "published" },
+      { lEn: "Affiliated with the Mennonite health system — primarily serves central and western Puerto Rico", lEs: "Afiliado al sistema de salud Menonita — principalmente centro y oeste de Puerto Rico", v: "published" },
+      { lEn: "Plan-specific coverage overlays may differ from base ASES policy — verify current Plan Menonita bulletin", lEs: "Coberturas específicas del plan pueden diferir de la política base ASES — verificar boletín vigente", v: "needs" },
+    ]},
+  { id: "MEDICARE", name: "Medicare (FCSO)", sub: "Part A · Part B · FCSO", color: C.amber, soft: C.amberSoft, lob: ["Medicare", "Part A", "Part B"],
+    facts: [
+      { lEn: "First Coast Service Options (FCSO) is the Medicare Administrative Contractor (MAC) for Puerto Rico — Jurisdiction N", lEs: "First Coast Service Options (FCSO) es el contratista MAC de Medicare para PR — Jurisdicción N", v: "published" },
+      { lEn: "Timely filing: claims must be received within 12 months of date of service (42 CFR §424.44)", lEs: "Presentación oportuna: 12 meses desde la fecha de servicio (42 CFR §424.44)", v: "statutory" },
+      { lEn: "ABN (Advance Beneficiary Notice) required before delivering non-covered services to Medicare beneficiaries", lEs: "ABN requerido antes de servicios no cubiertos a beneficiarios Medicare (42 CFR §411.408)", v: "statutory" },
+      { lEn: "Telehealth: modifier GT (Medicare) required; services must be on the Medicare telehealth services list", lEs: "Telesalud: modificador GT (Medicare) requerido; servicio debe estar en la lista de telesalud Medicare", v: "statutory" },
+      { lEn: "E/M documentation: 2021 AMA guidelines — total time or medical decision making (MDM) basis", lEs: "E/M: guías AMA 2021 — tiempo total o toma de decisiones médicas (MDM)", v: "statutory" },
+      { lEn: "Medicare secondary payer (MSP): verify primary payer before submitting — MSP violations carry civil penalties", lEs: "MSP: verificar pagador primario antes de someter — violaciones MSP conllevan multas civiles", v: "statutory" },
+    ]},
 ];
 
 const BILLING_RULES = [
-  { code: "PR-MED-001", sev: "error", v: "published", en: "Medical necessity required for all covered services", es: "Necesidad médica requerida para servicios cubiertos", src: "ASES Plan Vital Provider Guideline 2024" },
-  { code: "PR-MED-011", sev: "error", v: "needs", en: "Daily unit caps on HCPCS behavioral-health services", es: "Topes diarios de unidades HCPCS de salud conductual", src: "Placeholder — current ASES fee schedule" },
-  { code: "PR-MED-012", sev: "error", v: "needs", en: "Prior authorization for extended BH series", es: "Autorización previa para series extendidas", src: "Placeholder — ASES authorization grid" },
-  { code: "PR-MED-014", sev: "warning", v: "published", en: "CCI / bundling edits apply to same-day services", es: "Ediciones CCI / agrupación aplican el mismo día", src: "CMS NCCI Policy Manual" },
+  // ASES / PR Medicaid
+  { code: "ASES-001", sev: "error", v: "published", en: "Medical necessity required for all covered services — must be documented in the clinical note", es: "Necesidad medica requerida para todos los servicios — debe estar documentada en la nota clinica", src: "ASES Provider Manual 2024, §4.1" },
+  { code: "ASES-002", sev: "error", v: "published", en: "Timely filing limit: 90 days from date of service for all ASES/Medicaid GHP products", es: "Limite de presentacion: 90 dias desde la fecha de servicio para todos los productos ASES/Medicaid GHP", src: "ASES Provider Manual 2024, §6.3" },
+  { code: "ASES-003", sev: "error", v: "published", en: "Electronic claims (837P HIPAA 5010) required for providers submitting 10 or more claims/month", es: "Reclamos electronicos (837P HIPAA 5010) requeridos para proveedores con 10 o mas reclamos/mes", src: "ASES EDI Companion Guide 2024, §2.1" },
+  { code: "ASES-004", sev: "error", v: "published", en: "Rendering provider NPI and billing group NPI both required on 837P loop 2310B / 2010BB", es: "NPI del proveedor y NPI del grupo requeridos en el 837P (loops 2310B / 2010BB)", src: "ASES EDI 837P Companion Guide 2024" },
+  { code: "ASES-005", sev: "error", v: "published", en: "Prior authorization required for behavioral health series exceeding 12 sessions per benefit year", es: "Autorizacion previa para series de salud conductual que excedan 12 sesiones por ano de beneficio", src: "ASES BH Authorization Grid 2024" },
+  { code: "ASES-006", sev: "error", v: "needs", en: "H0004 daily unit cap: 8 units/day under Plan Vital — verify current ASES fee schedule before billing", es: "Tope diario H0004: 8 unidades/dia bajo Plan Vital — verificar fee schedule ASES vigente", src: "Plan Vital BH Bulletin 2023 [verify against current schedule]" },
+  { code: "ASES-007", sev: "warning", v: "published", en: "Coordination of benefits (COB) required when member holds dual Medicaid + commercial coverage", es: "Coordinacion de beneficios requerida cuando el miembro tiene cobertura doble Medicaid + comercial", src: "ASES COB Policy 2024" },
+  { code: "ASES-008", sev: "warning", v: "published", en: "ICD-10 diagnosis must be coded to highest specificity — avoid unspecified when a specific code is available", es: "ICD-10 debe codificarse al nivel mas especifico — evitar no especificado cuando hay codigo especifico", src: "CMS ICD-10-CM Official Guidelines FY2024, §I.B.5" },
+  { code: "ASES-009", sev: "warning", v: "published", en: "Place of service (POS) code must match the actual care setting; telehealth = POS 02 or 10 + modifier GT", es: "Codigo POS debe corresponder al lugar real; telesalud = POS 02 o 10 + modificador GT", src: "ASES Telehealth Policy 2023; CMS POS Code Set" },
+  // Medicare / CMS
+  { code: "CMS-001", sev: "error", v: "statutory", en: "Medicare timely filing: claims must be received within 12 months of date of service (42 CFR §424.44)", es: "Presentacion oportuna Medicare: 12 meses desde la fecha de servicio (42 CFR §424.44)", src: "42 CFR §424.44(a)" },
+  { code: "CMS-002", sev: "error", v: "statutory", en: "Advance Beneficiary Notice (ABN) required before delivering non-covered services to Medicare beneficiaries", es: "ABN requerido antes de servicios no cubiertos a beneficiarios Medicare", src: "42 CFR §411.408; CMS Pub 100-04, Ch. 30, §50" },
+  { code: "CMS-003", sev: "error", v: "published", en: "FCSO (First Coast Service Options) is the Medicare Administrative Contractor for Puerto Rico — Jurisdiction N", es: "FCSO es el contratista MAC de Medicare para PR (Jurisdiccion N)", src: "CMS MAC Jurisdictions; FCSO Provider Resources" },
+  { code: "CMS-004", sev: "error", v: "statutory", en: "Telehealth claims require modifier GT (Medicare/ASES) or 95 (commercial) — confirm payer policy before billing", es: "Reclamos de telesalud requieren modificador GT (Medicare/ASES) o 95 (comercial)", src: "42 CFR §410.78; CMS MLN SE20011; ASES Telehealth Policy 2023" },
+  { code: "CMS-005", sev: "warning", v: "statutory", en: "E/M documentation (2021 AMA guidelines): basis is total time on date of service or medical decision making (MDM)", es: "E/M (guias AMA 2021): base es tiempo total en la fecha de servicio o toma de decisiones medicas (MDM)", src: "CMS Transmittal 10901; AMA CPT Guidelines 2021" },
+  { code: "CMS-006", sev: "error", v: "statutory", en: "Medicare secondary payer (MSP): verify primary payer before submitting to Medicare — MSP violations carry civil money penalties", es: "MSP: verificar pagador primario antes de someter a Medicare — violaciones MSP conllevan penalidades civiles", src: "42 CFR §489.20(g); CMS Pub 100-05" },
+  // NCCI / Correct Coding
+  { code: "NCCI-001", sev: "error", v: "statutory", en: "NCCI (National Correct Coding Initiative) edits apply to all Medicare and Medicaid claims nationwide", es: "Ediciones NCCI aplican a todos los reclamos Medicare y Medicaid", src: "CMS NCCI Policy Manual, Ch. 1, §A; 42 CFR §447.82" },
+  { code: "NCCI-002", sev: "error", v: "statutory", en: "Mutually exclusive procedure code pairs cannot be billed on the same date of service for the same patient", es: "Pares de codigos mutuamente excluyentes no pueden facturarse el mismo dia para el mismo paciente", src: "CMS NCCI Policy Manual, Ch. 1, §D" },
+  { code: "NCCI-003", sev: "warning", v: "statutory", en: "Add-on codes (90833, 90785, 99354 etc.) must appear with their required primary procedure code on the same claim", es: "Codigos adicionales (90833, 90785, 99354, etc.) deben acompanar al codigo primario en el mismo reclamo", src: "CMS NCCI Policy Manual, Ch. 1, §E; AMA CPT 2024" },
+  // HIPAA Transactions
+  { code: "HIPAA-TX-001", sev: "error", v: "statutory", en: "EDI 837P (HIPAA 5010, ASC X12 005010X222A1) is the only accepted format for electronic professional claims", es: "EDI 837P (HIPAA 5010) es el unico formato aceptado para reclamos profesionales electronicos", src: "45 CFR §162.1102; ASC X12 005010X222A1" },
+  { code: "HIPAA-TX-002", sev: "error", v: "statutory", en: "National Provider Identifier (NPI) is mandatory on all HIPAA electronic transactions", es: "NPI es obligatorio en todas las transacciones electronicas HIPAA", src: "45 CFR §162.406; 45 CFR §162.1102(b)(6)" },
+  { code: "HIPAA-TX-003", sev: "warning", v: "statutory", en: "835 ERA (Electronic Remittance Advice) is the HIPAA-mandated standard for payment posting", es: "835 ERA es el estandar HIPAA para registro de pagos", src: "45 CFR §162.1601; ASC X12 005010X221A1" },
+  // PR Prompt Payment Law
+  { code: "PR-PPL-001", sev: "warning", v: "statutory", en: "PR Prompt Payment Law (Act 194-2000): insurer must pay clean claims within 30 days (electronic) or 45 days (paper)", es: "Ley de Pago Puntual PR (Ley 194-2000): pago en 30 dias (electronico) o 45 dias (papel)", src: "PR Act 194-2000; 26 LPRA §3348a; OCS Circular Letter 2023-003" },
 ];
 const PRIVACY_RULES = [
-  { code: "PR-PRIV-001", sev: "error", v: "statutory", en: "Stricter standard controls (HIPAA + PR Act 194)", es: "Controla el estándar más estricto (HIPAA + Ley 194)", src: "HIPAA + PR Act 194, 24 LPRA §3049" },
-  { code: "PR-PRIV-002", sev: "error", v: "statutory", en: "Confidentiality of medical records (Act 194 §3049)", es: "Confidencialidad de expedientes (Ley 194 §3049)", src: "24 LPRA §3049" },
-  { code: "PR-PRIV-005", sev: "error", v: "statutory", en: "Psychotherapy notes need explicit authorization", es: "Notas de psicoterapia requieren autorización explícita", src: "HIPAA 45 CFR §164.508(a)(2)" },
-  { code: "PR-PRIV-009", sev: "error", v: "statutory", en: "Business Associate Agreements required for vendors", es: "Acuerdos de Asociado Comercial requeridos", src: "HIPAA 45 CFR §164.504(e)" },
+  { code: "PRIV-001", sev: "error", v: "statutory", en: "PHI may only be used/disclosed for Treatment, Payment, or Healthcare Operations (TPO) without explicit patient authorization", es: "La PHI solo puede usarse para Tratamiento, Pago u Operaciones de Salud (TPO) sin autorizacion explicita del paciente", src: "HIPAA 45 CFR §164.502(a)" },
+  { code: "PRIV-002", sev: "error", v: "statutory", en: "Minimum Necessary Standard: limit PHI access and disclosure to the minimum reasonably necessary to accomplish the purpose", es: "Estandar de Minimo Necesario: limitar acceso y divulgacion de PHI al minimo razonablemente necesario", src: "HIPAA 45 CFR §164.502(b); §164.514(d)" },
+  { code: "PRIV-003", sev: "error", v: "statutory", en: "Patient right to access and receive a copy of their PHI within 30 days of request (15-day extension available with notice)", es: "Derecho del paciente a acceder y recibir copia de su PHI en 30 dias (extension de 15 dias con aviso)", src: "HIPAA 45 CFR §164.524; HHS Final Rule 2024" },
+  { code: "PRIV-004", sev: "error", v: "statutory", en: "Notice of Privacy Practices (NPP) must be provided at first service, posted in office/website, and made available on request", es: "Aviso de Practicas de Privacidad (NPP) requerido en el primer servicio y disponible a peticion", src: "HIPAA 45 CFR §164.520" },
+  { code: "PRIV-005", sev: "error", v: "statutory", en: "Psychotherapy notes require explicit patient authorization and cannot be released under standard TPO purposes", es: "Notas de psicoterapia requieren autorizacion explicita del paciente y no pueden divulgarse bajo TPO", src: "HIPAA 45 CFR §164.508(a)(2)" },
+  { code: "PRIV-006", sev: "error", v: "statutory", en: "Business Associate Agreement (BAA) required for every vendor, contractor, or software provider who creates, receives, or transmits PHI on your behalf", es: "Acuerdo de Asociado Comercial (BAA) requerido para todo proveedor o contratista que crea, recibe o transmite PHI", src: "HIPAA 45 CFR §164.504(e)" },
+  { code: "PRIV-007", sev: "error", v: "statutory", en: "Breach Notification Rule: notify affected individuals and HHS within 60 days of discovery; media notice required if >500 individuals in a state/territory", es: "Notificacion de Brechas: notificar individuos y HHS en 60 dias; aviso en medios si mas de 500 personas", src: "HIPAA 45 CFR §164.404; §164.406; §164.408; HITECH §13402" },
+  { code: "PRIV-008", sev: "warning", v: "statutory", en: "PHI records must be retained for a minimum of 6 years from date of creation or last effective date, whichever is later", es: "Expedientes PHI deben retenerse por minimo 6 anos desde la creacion o la ultima fecha efectiva", src: "HIPAA 45 CFR §164.530(j)" },
+  { code: "PRIV-009", sev: "error", v: "statutory", en: "PR Act 194-2000 (24 LPRA §3049) governs confidentiality of medical records — applies the stricter of HIPAA or PR law", es: "Ley 194-2000 PR (24 LPRA §3049) rige la confidencialidad de expedientes medicos — aplica lo mas estricto", src: "PR Act 194-2000; 24 LPRA §3049; §3052" },
+  { code: "PRIV-010", sev: "warning", v: "statutory", en: "PR law provides a private right of action for HIPAA and Act 194 violations — patients may sue for damages in PR courts", es: "La ley PR otorga accion privada por violaciones HIPAA y Ley 194 — pacientes pueden demandar en cortes de PR", src: "24 LPRA §3052; PR Supreme Court precedent" },
+  { code: "PRIV-011", sev: "warning", v: "published", en: "HIV/AIDS information subject to heightened confidentiality under PR Act 56-1994 — requires separate written consent for disclosure", es: "Informacion de VIH/SIDA sujeta a confidencialidad reforzada bajo Ley 56-1994 PR — requiere consentimiento escrito separado", src: "PR Act 56-1994; 24 LPRA §§3101-3113" },
+  { code: "PRIV-012", sev: "warning", v: "statutory", en: "Substance use disorder records (42 CFR Part 2) have stricter protections than HIPAA — do not re-disclose without patient consent", es: "Expedientes de trastornos por uso de sustancias (42 CFR Parte 2) tienen protecciones mas estrictas que HIPAA", src: "42 CFR Part 2; SAMHSA Guidance 2020" },
+];
+const SECURITY_RULES = [
+  { code: "SEC-001", sev: "error", v: "statutory", en: "Annual security risk analysis required — identify and document all vulnerabilities to ePHI confidentiality, integrity, and availability", es: "Analisis de riesgos de seguridad anual requerido — identificar y documentar vulnerabilidades a la ePHI", src: "HIPAA 45 CFR §164.308(a)(1)(ii)(A); HHS Guidance 2022" },
+  { code: "SEC-002", sev: "error", v: "statutory", en: "Unique user IDs required for all workforce members accessing ePHI — shared credentials are a HIPAA Security Rule violation", es: "IDs de usuario unicos requeridos para todo el personal con acceso a ePHI — credenciales compartidas son violacion HIPAA", src: "HIPAA 45 CFR §164.312(a)(2)(i)" },
+  { code: "SEC-003", sev: "error", v: "statutory", en: "Automatic logoff required on workstations and applications after a defined period of inactivity when ePHI is accessible", es: "Cierre automatico de sesion requerido en estaciones de trabajo y apps con acceso a ePHI", src: "HIPAA 45 CFR §164.312(a)(2)(iii)" },
+  { code: "SEC-004", sev: "error", v: "statutory", en: "Encryption required for ePHI transmitted over open networks — email, internet, and SMS containing ePHI must use TLS 1.2+ or equivalent", es: "Encriptacion requerida para ePHI en redes abiertas — correo, internet y SMS con ePHI deben usar TLS 1.2+", src: "HIPAA 45 CFR §164.312(e)(2)(ii); NIST SP 800-111; OCR Guidance 2022" },
+  { code: "SEC-005", sev: "error", v: "statutory", en: "ePHI encryption at rest required on laptops, mobile devices, external drives, and portable media (AES-256 or equivalent)", es: "Encriptacion en reposo de ePHI requerida en laptops, moviles, unidades externas y medios portatiles (AES-256)", src: "HIPAA 45 CFR §164.312(a)(2)(iv); NIST SP 800-111" },
+  { code: "SEC-006", sev: "error", v: "statutory", en: "Audit controls: implement hardware, software, and procedural mechanisms to record and examine ePHI system access and activity", es: "Controles de auditoria: implementar mecanismos para registrar y examinar el acceso y actividad en sistemas con ePHI", src: "HIPAA 45 CFR §164.312(b)" },
+  { code: "SEC-007", sev: "error", v: "published", en: "Multi-factor authentication (MFA) required for remote access to any system containing ePHI — password alone is insufficient", es: "Autenticacion multifactor (MFA) requerida para acceso remoto a sistemas con ePHI", src: "HHS OCR Cybersecurity Newsletter 2023; NIST SP 800-63B §4.2" },
+  { code: "SEC-008", sev: "error", v: "statutory", en: "Ransomware and malware attacks on ePHI are presumed HIPAA breaches and must be reported unless low probability of PHI compromise can be demonstrated", es: "Ataques de ransomware a ePHI se presumen brechas HIPAA y deben reportarse salvo que se demuestre baja probabilidad de compromiso", src: "HHS OCR Ransomware Guidance 2016; HIPAA 45 CFR §164.402" },
+  { code: "SEC-009", sev: "warning", v: "statutory", en: "Business Continuity and Disaster Recovery plan required — include data backup, restore testing, and emergency access procedures for ePHI", es: "Plan de Continuidad de Negocio y Recuperacion de Desastres requerido — incluir copias de seguridad y acceso de emergencia", src: "HIPAA 45 CFR §164.308(a)(7); NIST SP 800-34" },
+  { code: "SEC-010", sev: "warning", v: "statutory", en: "Physical access controls required for server rooms, workstations, and all locations where ePHI is stored or processed", es: "Controles de acceso fisico requeridos en cuartos de servidores y lugares donde se almacena o procesa ePHI", src: "HIPAA 45 CFR §164.310(a)(2)(ii); §164.310(b)" },
+  { code: "SEC-011", sev: "warning", v: "statutory", en: "Security awareness training required at hire and at least annually — must cover phishing, password hygiene, and PHI handling", es: "Capacitacion en seguridad requerida al contratar y al menos anualmente — incluir phishing, contrasenas y manejo de PHI", src: "HIPAA 45 CFR §164.308(a)(5); HHS OCR Phase 2 Audit Protocol" },
+  { code: "SEC-012", sev: "warning", v: "published", en: "Password policy: NIST SP 800-63B recommends minimum 8 characters, no mandatory periodic rotation, block known-compromised passwords", es: "Politica de contrasenas: NIST SP 800-63B recomienda minimo 8 caracteres, sin rotacion periodica obligatoria", src: "NIST SP 800-63B §5.1.1; HHS OCR Cybersecurity Newsletter 2023" },
+  { code: "SEC-013", sev: "warning", v: "statutory", en: "Device and media disposal: ePHI must be permanently destroyed (DoD wipe, degaussing, or physical destruction) before discarding hardware", es: "Eliminacion de dispositivos: la ePHI debe destruirse permanentemente antes de desechar hardware", src: "HIPAA 45 CFR §164.310(d)(2)(i); NIST SP 800-88" },
+  { code: "SEC-014", sev: "error", v: "published", en: "Workforce termination procedures: revoke all ePHI system access within 24 hours of employee separation — include cloud accounts and VPN", es: "Terminacion de empleados: revocar todo acceso a ePHI en 24 horas de la separacion — incluir cuentas en la nube y VPN", src: "HIPAA 45 CFR §164.308(a)(3)(ii)(C); NIST SP 800-53 AC-2" },
 ];
 
 const SAMPLE = { lang: "es", confidence: 94, cpt: ["90837", "90785"], icd: ["F32.1", "F41.1"], mods: ["GT"], units: "90837·1  90785·1", dos: "Apr 22, 2024", npi: "1457382910", auth: null };
@@ -415,7 +500,7 @@ export default function App() {
   useEffect(() => { setMounted(true); }, []);
 
   const filtered = useMemo(() => CLAIMS.filter((c) => (filter === "all" || c.status === filter) && (!search || c.id.toLowerCase().includes(search.toLowerCase()) || c.codes.toLowerCase().includes(search.toLowerCase()))), [filter, search]);
-  const needsCount = [...PAYERS.flatMap((p) => p.facts), ...BILLING_RULES, ...PRIVACY_RULES].filter((x) => x.v === "needs").length;
+  const needsCount = [...PAYERS.flatMap((p) => p.facts), ...BILLING_RULES, ...PRIVACY_RULES, ...SECURITY_RULES].filter((x) => x.v === "needs").length;
 
   const FONTS = (
     <style>{`
@@ -834,9 +919,9 @@ export default function App() {
               <Head title={t.compTitle} sub={t.compSub} />
               <div className="rise" style={{ background: C.amberSoft, border: `1px solid #f0dcb0`, borderRadius: 14, padding: "13px 16px", marginBottom: 16, display: "flex", gap: 10, alignItems: "center" }}><CircleAlert size={18} color={C.amber} /><div style={{ fontSize: 13, color: "#7a4e10" }}><strong>{needsCount}</strong> {t.verifyBanner}</div></div>
               <div className="rise" style={{ display: "flex", gap: 6, marginBottom: 16, animationDelay: ".05s" }}>
-                {[["billing", t.tab_billing, Scale], ["privacy", t.tab_privacy, Lock]].map(([k, l, Ic]) => <button key={k} className="chip" onClick={() => setCompTab(k)} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, padding: "9px 16px", borderRadius: 20, cursor: "pointer", border: `1px solid ${compTab === k ? C.ink : C.line}`, background: compTab === k ? C.ink : C.paper2, color: compTab === k ? "#fff" : C.txt2 }}><Ic size={15} /> {l}</button>)}
+                {[["billing", t.tab_billing, Scale], ["privacy", t.tab_privacy, Lock], ["security", t.tab_security, ShieldCheck]].map(([k, l, Ic]) => <button key={k} className="chip" onClick={() => setCompTab(k)} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, padding: "9px 16px", borderRadius: 20, cursor: "pointer", border: `1px solid ${compTab === k ? C.ink : C.line}`, background: compTab === k ? C.ink : C.paper2, color: compTab === k ? "#fff" : C.txt2 }}><Ic size={15} /> {l}</button>)}
               </div>
-              {(compTab === "billing" ? BILLING_RULES : PRIVACY_RULES).map((r, i) => { const b = VB[r.v]; const s = SEV[r.sev]; return (
+              {(compTab === "billing" ? BILLING_RULES : compTab === "privacy" ? PRIVACY_RULES : SECURITY_RULES).map((r, i) => { const b = VB[r.v]; const s = SEV[r.sev]; return (
                 <div key={r.code} className="lift rise" style={{ animationDelay: `${i * 0.05}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 14, padding: "15px 17px", marginBottom: 10, display: "flex", gap: 13, alignItems: "flex-start" }}>
                   <div style={{ width: 36, height: 36, borderRadius: 9, background: s.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><s.icon size={17} color={s.c} /></div>
                   <div style={{ flex: 1 }}>
@@ -859,7 +944,7 @@ export default function App() {
                 <div style={{ position: "absolute", width: 280, height: 280, borderRadius: "50%", background: "radial-gradient(circle,rgba(201,162,75,.14),transparent 70%)", right: -70, top: -110 }} />
                 <div style={{ position: "relative" }}>
                   <div style={{ color: C.gold, fontSize: 11.5, letterSpacing: 2, textTransform: "uppercase", fontWeight: 500, marginBottom: 10 }}>The concept</div>
-                  <div style={{ color: "#fff", fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 500, lineHeight: 1.3, maxWidth: 560 }}>“{t.bizConcept}”</div>
+                  <div style={{ color: "#fff", fontFamily: FONT_DISPLAY, fontSize: 24, fontWeight: 500, lineHeight: 1.3, maxWidth: 560 }}>"{t.bizConcept}"</div>
                 </div>
               </div>
 

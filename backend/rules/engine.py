@@ -6,7 +6,7 @@ scores denial risk, assigns a triage lane, and produces the final ScrubResult.
 from __future__ import annotations
 from typing import List
 from models import ParsedClaim, ScrubResult, Issue, Suggestion, Lane, Severity
-from rules import general, plan_vital, triple_s
+from rules import general, plan_vital, triple_s, ases, mmm, medicare
 
 
 # Risk points per issue severity
@@ -32,6 +32,21 @@ def scrub(claim: ParsedClaim) -> ScrubResult:
         ti, tf = triple_s.check(claim)
         issues.extend(ti)
         fixes.extend(tf)
+
+    if ases.is_ases(claim.payer):
+        ai, af = ases.check(claim)
+        issues.extend(ai)
+        fixes.extend(af)
+
+    if mmm.is_mmm(claim.payer):
+        mi, mf = mmm.check(claim)
+        issues.extend(mi)
+        fixes.extend(mf)
+
+    if medicare.is_medicare(claim.payer):
+        ri, rf = medicare.check(claim)
+        issues.extend(ri)
+        fixes.extend(rf)
 
     # Scores
     risk = _risk_score(issues)
