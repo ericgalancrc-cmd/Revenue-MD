@@ -161,7 +161,7 @@ const T = {
   },
 };
 
-const CLAIMS = [
+const CLAIMS_DEMO = [
   { id: "PV-2024-0851", patient: "Patient #4471", codes: "H0004 ×10", payer: "Plan Vital", provider: "Dr. Rivera, LCSW", dos: "Apr 21", risk: 78, status: "high", billed: 1850,
     sEn: "High denial risk. Billed 10 units of H0004 — Plan Vital caps this at 8/day. Missing prior authorization for the extended counseling series.",
     sEs: "Alto riesgo. Se facturaron 10 unidades de H0004 — Plan Vital limita a 8/día. Falta autorización previa para la serie extendida.",
@@ -309,7 +309,59 @@ export default function App() {
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [sideOpen, setSideOpen] = useState(false);
+  const [claims, setClaims] = useState(CLAIMS_DEMO);
+  const [csvDrag, setCsvDrag] = useState(false);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvResult, setCsvResult] = useState(null);
   const t = T[lang];
+
+  const parseCSV = (text) => {
+    const lines = text.trim().split("\n").filter(Boolean);
+    if (lines.length < 2) return [];
+    const headers = lines[0].split(",").map((h) => h.trim().toLowerCase().replace(/\s+/g, "_"));
+    return lines.slice(1).map((line, i) => {
+      const vals = line.split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
+      const row = {};
+      headers.forEach((h, idx) => { row[h] = vals[idx] || ""; });
+      return {
+        id: row.id || `CSV-${Date.now()}-${i}`,
+        patient: row.patient || row.patient_name || `Patient #${1000 + i}`,
+        codes: row.codes || row.cpt || row.procedure_code || "—",
+        payer: row.payer || row.insurance || "Unknown",
+        provider: row.provider || row.rendering_provider || "—",
+        dos: row.dos || row.date_of_service || row.service_date || "—",
+        risk: parseInt(row.risk) || 50,
+        status: row.status || "pending",
+        billed: parseFloat(row.billed || row.billed_amount || 0),
+        comp: parseInt(row.compliance) || 70,
+        doc: parseInt(row.documentation) || 70,
+        sEn: "Imported claim — run AI analysis for a full risk assessment.",
+        sEs: "Reclamo importado — ejecuta el análisis IA para una evaluación completa.",
+        issues: [],
+        fix: [],
+      };
+    }).filter((c) => c.id);
+  };
+
+  const handleCSVFile = (file) => {
+    if (!file) return;
+    setCsvImporting(true);
+    setCsvResult(null);
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setTimeout(() => {
+        const parsed = parseCSV(e.target.result);
+        if (parsed.length) {
+          setClaims((prev) => [...parsed, ...prev]);
+          setCsvResult({ count: parsed.length, name: file.name });
+        } else {
+          setCsvResult({ error: true, name: file.name });
+        }
+        setCsvImporting(false);
+      }, 900);
+    };
+    reader.readAsText(file);
+  };
 
   useEffect(() => { setMounted(true); }, []);
   useEffect(() => {
@@ -319,7 +371,7 @@ export default function App() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  const filtered = useMemo(() => CLAIMS.filter((c) => (filter === "all" || c.status === filter) && (!search || c.id.toLowerCase().includes(search.toLowerCase()) || c.codes.toLowerCase().includes(search.toLowerCase()))), [filter, search]);
+  const filtered = useMemo(() => claims.filter((c) => (filter === "all" || c.status === filter) && (!search || c.id.toLowerCase().includes(search.toLowerCase()) || c.codes.toLowerCase().includes(search.toLowerCase()))), [filter, search, claims]);
   const needsCount = [...PAYERS.flatMap((p) => p.facts), ...BILLING_RULES, ...PRIVACY_RULES].filter((x) => x.v === "needs").length;
 
   const FONTS = (
@@ -426,10 +478,20 @@ export default function App() {
 
   const runAnalysis = (id) => { setAnalyzing(true); setTimeout(() => { setAnalyzing(false); setAnalyzed((p) => ({ ...p, [id]: true })); }, 1300); };
   const addSample = () => {
-    const f = { id: Date.now() + "", name: "expediente_PV_4452.pdf", status: "scanning", stage: 0 };
+    const f = { id: Date.now() + "", name: "expediente_PV_4452.pdf", status: "scanning", stage: 0, preview: null };
     setFiles((p) => [f, ...p]);
     let st = 0;
     const tick = () => { st++; if (st < SCAN.length) { setFiles((p) => p.map((x) => x.id === f.id ? { ...x, stage: st } : x)); setTimeout(tick, 700); } else { setFiles((p) => p.map((x) => x.id === f.id ? { ...x, status: "done", ex: SAMPLE } : x)); setSelFile((s) => s ?? f.id); } };
+    setTimeout(tick, 700);
+  };
+
+  const addRealFile = (file) => {
+    const isImage = file.type.startsWith("image/");
+    const previewUrl = isImage ? URL.createObjectURL(file) : null;
+    const f = { id: Date.now() + "", name: file.name, status: "scanning", stage: 0, preview: previewUrl, isReal: true };
+    setFiles((p) => [f, ...p]);
+    let st = 0;
+    const tick = () => { st++; if (st < SCAN.length) { setFiles((p) => p.map((x) => x.id === f.id ? { ...x, stage: st } : x)); setTimeout(tick, 700); } else { setFiles((p) => p.map((x) => x.id === f.id ? { ...x, status: "done", ex: { ...SAMPLE, confidence: 0, cpt: [], icd: [], mods: [], units: "", dos: "", npi: "", auth: null } } : x)); setSelFile((s) => s ?? f.id); } };
     setTimeout(tick, 700);
   };
   const sel = files.find((f) => f.id === selFile && f.status === "done");
@@ -497,7 +559,7 @@ export default function App() {
               </div>
               <div className="rise" style={{ animationDelay: ".22s", background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 22 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}><div style={{ fontSize: 15, fontWeight: 500, fontFamily: FONT_DISPLAY, display: "flex", alignItems: "center", gap: 8 }}><Activity size={17} color={C.teal} /> {t.recent}</div><button onClick={() => setTab("claims")} style={btnG}>{t.viewAll} <ChevronRight size={14} /></button></div>
-                {CLAIMS.slice(0, 4).map((c, i) => (
+                {claims.slice(0, 4).map((c, i) => (
                   <div key={c.id} className="lift" onClick={() => { setTab("claims"); setOpenClaim(c.id); }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: 12, cursor: "pointer", border: "1px solid transparent", marginBottom: i < 3 ? 4 : 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       <div style={{ width: 36, height: 36, borderRadius: 9, background: rbg(c.risk), display: "flex", alignItems: "center", justifyContent: "center" }}><FileText size={16} color={rc(c.risk)} /></div>
@@ -522,40 +584,52 @@ export default function App() {
 
               {intakeTab === "import" && (
                 <div>
-                  <p className="rise" style={{ color: C.txt2, fontSize: 13.5, margin: "0 0 16px", maxWidth: 600, lineHeight: 1.5 }}>{t.importSub}</p>
-                  <div className="rise" style={{ fontSize: 12.5, fontWeight: 500, color: C.teal, display: "flex", alignItems: "center", gap: 7, marginBottom: 11, fontFamily: FONT_DISPLAY }}><CheckCircle2 size={15} /> {t.available} — {t.fileImport}</div>
-                  <div className="grid-auto-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(165px,1fr))", gap: 11, marginBottom: 18 }}>
-                    {IMPORT_SOURCES.map((s, i) => (
-                      <div key={s.id} className="rise lift" style={{ animationDelay: `${i * 0.05}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 13, padding: 15 }} onClick={() => { setImporting(s.name); setImported(null); setTimeout(() => { setImporting(null); setImported(s.name); }, 1300); }}>
-                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-                          <div style={{ width: 34, height: 34, borderRadius: 9, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center" }}><s.icon size={17} color={C.teal} /></div>
-                          <span style={{ fontSize: 9.5, fontWeight: 500, padding: "2px 7px", borderRadius: 10, background: C.tealSoft, color: C.tealDk }}>837 · CSV</span>
-                        </div>
-                        <div style={{ fontSize: 13.5, fontWeight: 500 }}>{s.name}</div>
-                        <div style={{ fontSize: 11.5, color: C.txt2, marginTop: 2 }}>{s.sub}</div>
-                      </div>
-                    ))}
+                  {/* Real file upload drop zone */}
+                  <div
+                    className="rise"
+                    onDragOver={(e) => { e.preventDefault(); setCsvDrag(true); }}
+                    onDragLeave={() => setCsvDrag(false)}
+                    onDrop={(e) => { e.preventDefault(); setCsvDrag(false); const f = e.dataTransfer.files[0]; if (f) handleCSVFile(f); }}
+                    onClick={() => document.getElementById("csv-input").click()}
+                    style={{ border: `2px dashed ${csvDrag ? C.teal : C.tealMute}`, background: csvDrag ? C.tealSoft : C.paper2, borderRadius: 18, padding: "36px 24px", textAlign: "center", cursor: "pointer", transition: "all .2s", marginBottom: 16 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft; }}
+                    onMouseLeave={(e) => { if (!csvDrag) { e.currentTarget.style.borderColor = C.tealMute; e.currentTarget.style.background = C.paper2; } }}
+                  >
+                    <input id="csv-input" type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={(e) => handleCSVFile(e.target.files[0])} />
+                    <div style={{ width: 56, height: 56, borderRadius: 15, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}><Upload size={26} color={C.teal} /></div>
+                    <div style={{ fontSize: 15, fontWeight: 500 }}>{lang === "en" ? "Drop your claims file here" : "Suelta tu archivo de reclamos aquí"}</div>
+                    <div style={{ fontSize: 13, color: C.txt2, marginTop: 5 }}>{lang === "en" ? "CSV with columns: id, patient, codes, payer, provider, dos, billed, status, risk" : "CSV con columnas: id, patient, codes, payer, provider, dos, billed, status, risk"}</div>
+                    <button className="btnp" style={{ ...btnP, marginTop: 16 }} onClick={(e) => { e.stopPropagation(); document.getElementById("csv-input").click(); }}><Upload size={15} /> {lang === "en" ? "Browse file" : "Buscar archivo"}</button>
                   </div>
 
-                  {importing && (
-                    <div className="rise" style={{ marginBottom: 18, fontSize: 13, color: C.amber, display: "flex", alignItems: "center", gap: 7 }}><Loader2 size={14} className="spin" /> {lang === "en" ? `Reading EDI 837 from ${importing}…` : `Leyendo EDI 837 desde ${importing}…`}</div>
+                  {csvImporting && (
+                    <div className="rise" style={{ marginBottom: 16, fontSize: 13, color: C.amber, display: "flex", alignItems: "center", gap: 7 }}><Loader2 size={14} className="spin" /> {lang === "en" ? "Reading and parsing claims…" : "Leyendo y procesando reclamos…"}</div>
                   )}
-                  {imported && (
-                    <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, overflow: "hidden", marginBottom: 18 }}>
-                      <div style={{ background: `linear-gradient(120deg,${C.tealDk},${C.teal})`, padding: "13px 18px", display: "flex", alignItems: "center", gap: 9 }}><CheckCircle2 size={16} color="#fff" /><span style={{ fontWeight: 500, fontSize: 13.5, color: "#fff", fontFamily: FONT_DISPLAY }}>{t.importedOk}</span><span style={{ marginLeft: "auto", fontSize: 11.5, color: "rgba(255,255,255,.85)" }}>{t.importedFrom} {imported}</span></div>
-                      <div style={{ padding: 18 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
-                          <div><div style={{ fontSize: 15, fontWeight: 500 }}>Claim #PV20240847</div><div style={{ fontSize: 12, color: C.txt2, marginTop: 2 }}>Plan Vital · NPI 1982736450 · Apr 22, 2024</div></div>
-                          <span style={{ fontSize: 14, fontWeight: 500, fontFamily: FONT_DISPLAY }}>$245</span>
-                        </div>
-                        {[["90837", "1 unit · F32.1, F41.1", "$200"], ["90785", "1 unit · F32.1", "$45"]].map(([code, d, amt], i) => (
-                          <div key={i} style={{ borderTop: `1px solid ${C.lineSoft}`, padding: "9px 0", display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 12.5 }}><span style={{ fontWeight: 500 }}>{code}</span> <span style={{ color: C.txt2 }}>· {d}</span></span><span style={{ fontSize: 12.5, fontWeight: 500 }}>{amt}</span></div>
-                        ))}
-                        <div style={{ borderTop: `1px solid ${C.lineSoft}`, padding: "9px 0", display: "flex", justifyContent: "space-between" }}><span style={{ fontSize: 12.5, color: C.txt2 }}>{t.auth}</span><span style={{ fontSize: 12.5, fontWeight: 500, color: C.teal }}>AUTH998877 ✓</span></div>
-                        <button className="btnp" onClick={() => { setTab("claims"); setOpenClaim("PV-2024-0847"); }} style={{ ...btnP, width: "100%", justifyContent: "center", padding: 13, marginTop: 14 }}>{t.viewImported} <ArrowRight size={16} /></button>
+                  {csvResult && !csvResult.error && (
+                    <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, overflow: "hidden", marginBottom: 16 }}>
+                      <div style={{ background: `linear-gradient(120deg,${C.tealDk},${C.teal})`, padding: "13px 18px", display: "flex", alignItems: "center", gap: 9 }}>
+                        <CheckCircle2 size={16} color="#fff" />
+                        <span style={{ fontWeight: 500, fontSize: 13.5, color: "#fff", fontFamily: FONT_DISPLAY }}>{lang === "en" ? `${csvResult.count} claims imported` : `${csvResult.count} reclamos importados`}</span>
+                        <span style={{ marginLeft: "auto", fontSize: 11.5, color: "rgba(255,255,255,.85)" }}>{csvResult.name}</span>
+                      </div>
+                      <div style={{ padding: "14px 18px", display: "flex", gap: 10 }}>
+                        <button className="btnp" onClick={() => { setTab("claims"); setCsvResult(null); }} style={{ ...btnP, flex: 1, justifyContent: "center" }}>{lang === "en" ? "View in Claims" : "Ver en Reclamos"} <ArrowRight size={15} /></button>
+                        <button onClick={() => setCsvResult(null)} style={{ ...btnG }}>{t.dismiss}</button>
                       </div>
                     </div>
                   )}
+                  {csvResult?.error && (
+                    <div className="rise" style={{ background: C.redSoft, border: `1px solid #f0c5c0`, borderRadius: 12, padding: "12px 15px", marginBottom: 16, display: "flex", gap: 9, alignItems: "center" }}>
+                      <AlertTriangle size={15} color={C.red} />
+                      <span style={{ fontSize: 12.5, color: C.red }}>{lang === "en" ? `Could not parse "${csvResult.name}". Check it has a header row with: id, patient, codes, payer, dos, billed` : `No se pudo leer "${csvResult.name}". Verifica que tenga una fila de encabezado.`}</span>
+                    </div>
+                  )}
+
+                  {/* CSV format helper */}
+                  <div className="rise" style={{ background: C.ink, borderRadius: 14, padding: "14px 18px", marginBottom: 16 }}>
+                    <div style={{ fontSize: 11.5, color: C.gold, fontWeight: 500, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><FileText size={13} /> {lang === "en" ? "Expected CSV format" : "Formato CSV esperado"}</div>
+                    <code style={{ fontSize: 11, color: "rgba(255,255,255,.75)", lineHeight: 1.7, display: "block", whiteSpace: "pre-wrap", fontFamily: "ui-monospace,monospace" }}>{`id,patient,codes,payer,provider,dos,billed,status,risk\nPV-2024-0901,Patient #5001,90837,Plan Vital,Dr. Rodriguez,May 15,195,pending,50\nTS-2024-0610,Patient #5002,99214,Triple-S,Dr. Méndez,May 16,320,high,72`}</code>
+                  </div>
 
                   <div className="rise" style={{ fontSize: 12.5, fontWeight: 500, color: C.txt3, display: "flex", alignItems: "center", gap: 7, marginBottom: 11, fontFamily: FONT_DISPLAY }}><Plug size={15} /> {t.roadmap} — {t.apiConnect}</div>
                   <div className="grid-auto-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(165px,1fr))", gap: 11, marginBottom: 18 }}>
@@ -566,7 +640,6 @@ export default function App() {
                       </div>
                     ))}
                   </div>
-
                   <div className="rise" style={{ background: C.blueSoft, border: `1px solid #cbe0f5`, borderRadius: 12, padding: "12px 15px", display: "flex", gap: 9, alignItems: "center" }}><CircleAlert size={16} color={C.blue} style={{ flexShrink: 0 }} /><span style={{ fontSize: 12.5, color: "#1d5a96", lineHeight: 1.5 }}>{t.importNote}</span></div>
                 </div>
               )}
@@ -574,11 +647,23 @@ export default function App() {
               {intakeTab === "scan" && (
               <div className="grid-auto-1" style={{ display: "grid", gridTemplateColumns: sel ? "1fr 1fr" : "1fr", gap: 18, alignItems: "start" }}>
                 <div className="rise">
-                  <div onClick={addSample} style={{ border: `2px dashed ${C.tealMute}`, background: C.paper2, borderRadius: 18, padding: "44px 24px", textAlign: "center", cursor: "pointer", transition: "all .2s" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.tealMute; e.currentTarget.style.background = C.paper2; }}>
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft; }}
+                    onDragLeave={(e) => { e.currentTarget.style.borderColor = C.tealMute; e.currentTarget.style.background = C.paper2; }}
+                    onDrop={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = C.tealMute; e.currentTarget.style.background = C.paper2; const file = e.dataTransfer.files[0]; if (file) addRealFile(file); }}
+                    onClick={() => document.getElementById("scan-input").click()}
+                    style={{ border: `2px dashed ${C.tealMute}`, background: C.paper2, borderRadius: 18, padding: "44px 24px", textAlign: "center", cursor: "pointer", transition: "all .2s" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.tealMute; e.currentTarget.style.background = C.paper2; }}
+                  >
+                    <input id="scan-input" type="file" accept=".pdf,image/*" style={{ display: "none" }} onChange={(e) => { if (e.target.files[0]) addRealFile(e.target.files[0]); }} />
                     <div style={{ width: 60, height: 60, borderRadius: 16, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}><FileScan size={30} color={C.teal} /></div>
                     <div style={{ fontSize: 16, fontWeight: 500 }}>{t.drop}</div>
                     <div style={{ fontSize: 13, color: C.txt2, marginTop: 5 }}>{t.dropSub}</div>
-                    <button className="btnp" style={{ ...btnP, marginTop: 18 }}><Upload size={15} /> {t.loadSample}</button>
+                    <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 18 }}>
+                      <button className="btnp" style={btnP} onClick={(e) => { e.stopPropagation(); document.getElementById("scan-input").click(); }}><Upload size={15} /> {lang === "en" ? "Upload record" : "Subir expediente"}</button>
+                      <button style={btnS} onClick={(e) => { e.stopPropagation(); addSample(); }}>{lang === "en" ? "Try sample" : "Ver muestra"}</button>
+                    </div>
                   </div>
                   {files.map((f) => (
                     <div key={f.id} onClick={() => f.status === "done" && setSelFile(f.id)} className="lift" style={{ background: C.paper2, border: `1px solid ${selFile === f.id ? C.teal : C.line}`, borderRadius: 14, padding: "13px 15px", marginTop: 11, display: "flex", alignItems: "center", gap: 12, cursor: f.status === "done" ? "pointer" : "default" }}>
@@ -590,19 +675,7 @@ export default function App() {
                     </div>
                   ))}
                 </div>
-                {sel && (
-                  <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, overflow: "hidden" }}>
-                    <div style={{ background: `linear-gradient(120deg,${C.tealDk},${C.teal})`, padding: "15px 20px", display: "flex", alignItems: "center", gap: 10 }}><Sparkles size={18} color="#fff" /><div style={{ fontSize: 14, fontWeight: 500, color: "#fff", fontFamily: FONT_DISPLAY }}>{t.extracted}</div><span style={{ marginLeft: "auto", fontSize: 12, color: "rgba(255,255,255,.8)" }}>{sel.ex.confidence}% {t.confidence}</span></div>
-                    <div style={{ padding: 20 }}>
-                      <Chips label={t.cpt} arr={sel.ex.cpt} c={C.blue} bg={C.blueSoft} />
-                      <Chips label={t.icd} arr={sel.ex.icd} c={C.purple} bg={C.purpleSoft} />
-                      <Chips label={t.mods} arr={sel.ex.mods} c={C.amber} bg={C.amberSoft} />
-                      <KV label={t.units} value={sel.ex.units} /><KV label={t.dos} value={sel.ex.dos} /><KV label={t.npi} value={sel.ex.npi} /><KV label={t.auth} value={sel.ex.auth} missing t={t} />
-                      <div style={{ background: C.amberSoft, borderRadius: 11, padding: "11px 13px", marginTop: 14, display: "flex", gap: 9 }}><CircleAlert size={15} color={C.amber} style={{ flexShrink: 0, marginTop: 1 }} /><div style={{ fontSize: 12.5, color: "#7a4e10", lineHeight: 1.5 }}>{t.reviewNote}</div></div>
-                      <button className="btnp" onClick={() => { setTab("claims"); setOpenClaim("PV-2024-0847"); }} style={{ ...btnP, width: "100%", justifyContent: "center", padding: 13, marginTop: 14 }}>{t.createClaim} <ArrowRight size={16} /></button>
-                    </div>
-                  </div>
-                )}
+                {sel && <ScanResult sel={sel} t={t} lang={lang} claims={claims} setClaims={setClaims} setTab={setTab} setOpenClaim={setOpenClaim} />}
               </div>
               )}
             </div>
@@ -636,7 +709,7 @@ export default function App() {
 
           {/* CLAIM DETAIL */}
           {tab === "claims" && openClaim && (() => {
-            const c = CLAIMS.find((x) => x.id === openClaim); const A = analyzed[c.id];
+            const c = claims.find((x) => x.id === openClaim); const A = analyzed[c.id];
             return (
               <div>
                 <button onClick={() => setOpenClaim(null)} style={{ ...btnG, marginBottom: 16 }}><ChevronRight size={15} style={{ transform: "rotate(180deg)" }} /> {t.back}</button>
@@ -673,7 +746,7 @@ export default function App() {
           {tab === "analysis" && (
             <div>
               <Head title={t.nav_analysis} sub={lang === "en" ? "Every claim, ranked by AI-assessed denial risk." : "Cada reclamo, ordenado por riesgo de denegación evaluado por IA."} />
-              {[...CLAIMS].sort((a, b) => b.risk - a.risk).map((c, i) => (
+              {[...claims].sort((a, b) => b.risk - a.risk).map((c, i) => (
                 <div key={c.id} className="lift rise" style={{ animationDelay: `${i * 0.05}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20, marginBottom: 12, cursor: "pointer" }} onClick={() => { setTab("claims"); setOpenClaim(c.id); if (!analyzed[c.id]) runAnalysis(c.id); }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}><div><span style={{ fontSize: 14.5, fontWeight: 500 }}>#{c.id}</span><span style={{ fontSize: 12.5, color: C.txt2, marginLeft: 10 }}>{c.codes} · {c.payer}</span></div><RiskPill r={c.risk} big label /></div>
                   <div style={{ fontSize: 13.5, color: C.txt2, lineHeight: 1.6 }}>{lang === "en" ? c.sEn : c.sEs}</div>
@@ -936,6 +1009,97 @@ export default function App() {
 
         <footer style={{ borderTop: `1px solid ${C.line}`, padding: "12px 30px", fontSize: 11.5, color: C.txt3, display: "flex", alignItems: "center", gap: 7, background: C.paper2 }}><ShieldCheck size={14} /> {t.footer}</footer>
       </main>
+    </div>
+  );
+}
+
+function ScanResult({ sel, t, lang, claims, setClaims, setTab, setOpenClaim }) {
+  const isReal = sel.isReal;
+  const [form, setForm] = useState({ id: "", patient: "", codes: "", payer: "", provider: "", dos: "", billed: "", status: "pending" });
+  const [saved, setSaved] = useState(null);
+  const fld = (k, v) => setForm((p) => ({ ...p, [k]: v }));
+
+  const createClaim = () => {
+    const id = form.id || `SCAN-${Date.now()}`;
+    const newClaim = {
+      id, patient: form.patient || "Unknown patient",
+      codes: form.codes || "—", payer: form.payer || "—",
+      provider: form.provider || "—", dos: form.dos || "—",
+      billed: parseFloat(form.billed) || 0, status: form.status || "pending",
+      risk: 50, comp: 70, doc: 70,
+      sEn: "Imported from scan — run AI analysis for a full risk assessment.",
+      sEs: "Importado desde escaneo — ejecuta análisis IA para evaluación completa.",
+      issues: [], fix: [],
+    };
+    setClaims((p) => [newClaim, ...p]);
+    setSaved(id);
+  };
+
+  return (
+    <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, overflow: "hidden" }}>
+      <div style={{ background: `linear-gradient(120deg,${C.tealDk},${C.teal})`, padding: "15px 20px", display: "flex", alignItems: "center", gap: 10 }}>
+        <Sparkles size={18} color="#fff" />
+        <div style={{ fontSize: 14, fontWeight: 500, color: "#fff", fontFamily: FONT_DISPLAY }}>{sel.name}</div>
+        {!isReal && <span style={{ marginLeft: "auto", fontSize: 12, color: "rgba(255,255,255,.8)" }}>{sel.ex.confidence}% {t.confidence}</span>}
+      </div>
+      <div style={{ padding: 20 }}>
+        {/* image preview for real uploads */}
+        {sel.preview && (
+          <img src={sel.preview} alt="record" style={{ width: "100%", borderRadius: 10, marginBottom: 16, maxHeight: 260, objectFit: "contain", background: C.lineSoft }} />
+        )}
+        {sel.preview === null && isReal && (
+          <div style={{ background: C.lineSoft, borderRadius: 10, padding: "24px", textAlign: "center", marginBottom: 16, color: C.txt3, fontSize: 13 }}>
+            <FileText size={28} color={C.txt3} style={{ marginBottom: 8 }} /><br />{lang === "en" ? "PDF uploaded — enter billing data below" : "PDF cargado — ingresa los datos de facturación"}
+          </div>
+        )}
+        {/* for sample: show extracted data */}
+        {!isReal && (
+          <>
+            <Chips label={t.cpt} arr={sel.ex.cpt} c={C.blue} bg={C.blueSoft} />
+            <Chips label={t.icd} arr={sel.ex.icd} c={C.purple} bg={C.purpleSoft} />
+            <Chips label={t.mods} arr={sel.ex.mods} c={C.amber} bg={C.amberSoft} />
+            <KV label={t.units} value={sel.ex.units} /><KV label={t.dos} value={sel.ex.dos} /><KV label={t.npi} value={sel.ex.npi} /><KV label={t.auth} value={sel.ex.auth} missing t={t} />
+          </>
+        )}
+        {/* manual entry form for real uploads */}
+        {isReal && !saved && (
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 12, fontFamily: FONT_DISPLAY, color: C.ink }}>{lang === "en" ? "Enter billing data" : "Ingresa datos de facturación"}</div>
+            {[
+              ["id", lang === "en" ? "Claim ID" : "ID del reclamo", "PV-2024-0901"],
+              ["patient", lang === "en" ? "Patient" : "Paciente", "Patient #5001"],
+              ["codes", lang === "en" ? "CPT / HCPCS codes" : "Códigos CPT / HCPCS", "90837"],
+              ["payer", lang === "en" ? "Payer" : "Pagador", "Plan Vital"],
+              ["provider", lang === "en" ? "Provider" : "Proveedor", "Dr. Rivera"],
+              ["dos", lang === "en" ? "Date of service" : "Fecha de servicio", "May 15, 2024"],
+              ["billed", lang === "en" ? "Billed amount ($)" : "Monto facturado ($)", "195"],
+            ].map(([k, label, ph]) => (
+              <div key={k} style={{ marginBottom: 10 }}>
+                <label style={{ fontSize: 11.5, color: C.txt2, display: "block", marginBottom: 4 }}>{label}</label>
+                <input value={form[k]} onChange={(e) => fld(k, e.target.value)} placeholder={ph} style={{ ...inp, fontSize: 13, padding: "9px 12px" }} />
+              </div>
+            ))}
+            <div style={{ marginBottom: 14 }}>
+              <label style={{ fontSize: 11.5, color: C.txt2, display: "block", marginBottom: 4 }}>{lang === "en" ? "Status" : "Estado"}</label>
+              <select value={form.status} onChange={(e) => fld("status", e.target.value)} style={{ ...inp, fontSize: 13, padding: "9px 12px" }}>
+                <option value="pending">{t.pending}</option>
+                <option value="high">{t.highRisk}</option>
+                <option value="denied">{t.denied}</option>
+              </select>
+            </div>
+          </div>
+        )}
+        <div style={{ background: C.amberSoft, borderRadius: 11, padding: "11px 13px", marginTop: 4, display: "flex", gap: 9 }}><CircleAlert size={15} color={C.amber} style={{ flexShrink: 0, marginTop: 1 }} /><div style={{ fontSize: 12.5, color: "#7a4e10", lineHeight: 1.5 }}>{t.reviewNote}</div></div>
+        {saved ? (
+          <button className="btnp" onClick={() => { setTab("claims"); setOpenClaim(saved); }} style={{ ...btnP, width: "100%", justifyContent: "center", padding: 13, marginTop: 14 }}>
+            <CheckCircle2 size={16} /> {lang === "en" ? "Claim created — open it" : "Reclamo creado — abrirlo"} <ArrowRight size={16} />
+          </button>
+        ) : (
+          <button className="btnp" onClick={isReal ? createClaim : () => { setTab("claims"); setOpenClaim("PV-2024-0847"); }} style={{ ...btnP, width: "100%", justifyContent: "center", padding: 13, marginTop: 14 }}>
+            {t.createClaim} <ArrowRight size={16} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
