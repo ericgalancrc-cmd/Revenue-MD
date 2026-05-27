@@ -474,7 +474,7 @@ const rc = (r) => (r >= 60 ? C.red : r >= 30 ? C.amber : C.teal);
 const rbg = (r) => (r >= 60 ? C.redSoft : r >= 30 ? C.amberSoft : C.tealSoft);
 const SCAN = ["Reading document", "Detecting language", "Parsing codes"];
 
-export default function App() {
+export default function App({ auth0 = null }) {
   const [lang, setLang] = useState("en");
   const [authed, setAuthed] = useState(false);
   const [role, setRole] = useState("manager");
@@ -506,6 +506,11 @@ export default function App() {
   const t = T[lang];
 
   useEffect(() => { setMounted(true); }, []);
+
+  // Auto-authenticate when Auth0 confirms the user is logged in
+  useEffect(() => {
+    if (auth0 && auth0.isAuthenticated && !authed) setAuthed(true);
+  }, [auth0?.isAuthenticated]);
 
   const filtered = useMemo(() => CLAIMS.filter((c) => (filter === "all" || c.status === filter) && (!search || c.id.toLowerCase().includes(search.toLowerCase()) || c.codes.toLowerCase().includes(search.toLowerCase()))), [filter, search]);
   const needsCount = [...PAYERS.flatMap((p) => p.facts), ...BILLING_RULES, ...PRIVACY_RULES, ...SECURITY_RULES].filter((x) => x.v === "needs").length;
@@ -568,14 +573,16 @@ export default function App() {
         <div style={{ width: 460, background: C.paper2, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 52px" }}>
           <div className="rise" style={{ animationDelay: ".12s" }}>
             <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 27, fontWeight: 500, margin: "0 0 6px", color: C.ink }}>{lang === "en" ? "Welcome back" : "Bienvenido"}</h2>
-            <p style={{ color: C.txt2, fontSize: 14, margin: "0 0 30px" }}>{t.demoNote}</p>
-            <Lbl>{t.email}</Lbl><input defaultValue="demo@clinicapr.com" style={inp} />
-            <Lbl mt>{t.password}</Lbl><input type="password" defaultValue="demo1234" style={inp} />
+            <p style={{ color: C.txt2, fontSize: 14, margin: "0 0 30px" }}>{auth0 ? (lang === "en" ? "Sign in with your organization account" : "Inicia sesión con tu cuenta organizacional") : t.demoNote}</p>
+            {!auth0 && <>
+              <Lbl>{t.email}</Lbl><input defaultValue="demo@clinicapr.com" style={inp} />
+              <Lbl mt>{t.password}</Lbl><input type="password" defaultValue="demo1234" style={inp} />
+            </>}
             <Lbl mt>{t.role}</Lbl>
             <select value={role} onChange={(e) => setRole(e.target.value)} style={inp}>
               <option value="coder">{t.coder}</option><option value="biller">{t.biller}</option><option value="manager">{t.manager}</option>
             </select>
-            <button className="btnp" onClick={() => setAuthed(true)} style={{ ...btnP, width: "100%", marginTop: 26, justifyContent: "center", padding: "13px", fontSize: 14.5 }}>{t.signIn} <ArrowRight size={17} /></button>
+            <button className="btnp" onClick={() => auth0 ? auth0.loginWithRedirect() : setAuthed(true)} style={{ ...btnP, width: "100%", marginTop: 26, justifyContent: "center", padding: "13px", fontSize: 14.5 }}>{auth0 && auth0.isLoading ? <Loader2 size={17} className="spin" /> : <>{t.signIn} <ArrowRight size={17} /></>}</button>
             <button onClick={() => setLang(lang === "en" ? "es" : "en")} style={{ ...btnG, margin: "20px auto 0", display: "flex" }}><Languages size={15} /> {lang === "en" ? "Español" : "English"}</button>
           </div>
         </div>
@@ -625,7 +632,7 @@ export default function App() {
         </nav>
         <div style={{ borderTop: "1px solid rgba(255,255,255,.08)", paddingTop: 12, marginTop: 12 }}>
           <button className="navi" onClick={() => setLang(lang === "en" ? "es" : "en")} style={sideBtn}><Languages size={15} /> {lang === "en" ? "Español" : "English"}</button>
-          <button className="navi" onClick={() => { setAuthed(false); setTab("dash"); }} style={sideBtn}><LogOut size={15} /> {t.logout}</button>
+          <button className="navi" onClick={() => { setAuthed(false); setTab("dash"); if (auth0?.logout) auth0.logout({ logoutParams: { returnTo: window.location.origin } }); }} style={sideBtn}><LogOut size={15} /> {t.logout}</button>
         </div>
       </aside>
 

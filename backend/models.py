@@ -87,8 +87,20 @@ class ScrubResult(BaseModel):
 
 
 class BatchResponse(BaseModel):
+    id: str = ""
     total: int
     auto_clear: int
     needs_attention: int
     at_risk: float
     claims: List[ScrubResult]
+
+
+class BatchSummary(BaseModel):
+    """Lightweight batch record for the history list (no claim detail)."""
+    id: str
+    filename: str
+    total: int
+    auto_clear: int
+    needs_attention: int
+    at_risk: float
+    created_at: str
