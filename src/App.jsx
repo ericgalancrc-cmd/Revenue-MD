@@ -458,15 +458,18 @@ export default function App() {
             <div style={{ width: 68, height: 68, borderRadius: 18, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 12px 32px -8px rgba(14,140,107,.65)" }}><Stethoscope size={36} color="#fff" /></div>
             <div style={{ color: "#fff", fontSize: 30, fontWeight: 400, fontFamily: FONT_DISPLAY, letterSpacing: ".5px" }}>Revenue<span style={{ color: C.teal }}>MD</span></div>
           </div>
+          {/* stethoscope silhouette — login panel */}
+          <div style={{ position: "absolute", bottom: -60, right: -60, opacity: .06, pointerEvents: "none", lineHeight: 0 }}><Stethoscope size={420} color="#fff" strokeWidth={1} /></div>
           <div className="rise" style={{ position: "relative", animationDelay: ".08s" }}>
             <div style={{ color: C.gold, fontSize: 13, letterSpacing: 2, textTransform: "uppercase", marginBottom: 18, fontWeight: 600 }}>Revenue Intelligence Software</div>
             <h1 style={{ color: "#fff", fontFamily: FONT_DISPLAY, fontSize: 40, lineHeight: 1.15, fontWeight: 400, margin: 0, maxWidth: 440 }}>{t.tagline}</h1>
-            <div style={{ marginTop: 36, display: "inline-flex", alignItems: "center", gap: 9, background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.14)", borderRadius: 40, padding: "10px 18px" }}>
+          </div>
+          <div style={{ position: "relative", display: "flex", justifyContent: "center" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 9, background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.14)", borderRadius: 40, padding: "10px 20px" }}>
               <ShieldCheck size={15} color={C.teal} />
-              <span style={{ color: "rgba(255,255,255,.85)", fontSize: 13, fontWeight: 500, letterSpacing: ".2px" }}>{t.footer}</span>
+              <span style={{ color: "rgba(255,255,255,.8)", fontSize: 13, fontWeight: 500, letterSpacing: ".2px" }}>{t.footer}</span>
             </div>
           </div>
-          <div style={{ position: "relative" }} />
         </div>
         {/* right form */}
         <div style={{ width: 460, background: C.paper2, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 52px" }}>
@@ -534,8 +537,10 @@ export default function App() {
       </aside>
 
       {/* MAIN */}
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <header style={{ background: C.paper2, borderBottom: `1px solid ${C.line}`, padding: "15px 30px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, position: "relative", overflow: "hidden" }}>
+        {/* stethoscope silhouette — all app pages */}
+        <div style={{ position: "absolute", bottom: -80, right: -80, opacity: .035, pointerEvents: "none", lineHeight: 0, zIndex: 0 }}><Stethoscope size={480} color={C.ink} strokeWidth={.9} /></div>
+        <header style={{ background: C.paper2, borderBottom: `1px solid ${C.line}`, padding: "15px 30px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
           <div style={{ fontSize: 17, fontWeight: 500, fontFamily: FONT_DISPLAY }}>{nav.find((n) => n.id === tab)?.label}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="pill" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.teal, background: C.tealSoft, padding: "5px 11px", borderRadius: 20, fontWeight: 500 }}><span className="pdot" style={{ width: 7, height: 7, borderRadius: "50%", background: C.teal }} /> Live</div>
@@ -546,7 +551,7 @@ export default function App() {
           </div>
         </header>
 
-        <div key={key} style={{ padding: 30, flex: 1, overflow: "auto" }}>
+        <div key={key} style={{ padding: 30, flex: 1, overflow: "auto", position: "relative", zIndex: 1 }}>
           {/* DASHBOARD */}
           {tab === "dash" && (
             <div>
