@@ -26,8 +26,8 @@ const C = {
   txt: "#16244D", txt2: "#54618A", txt3: "#9AA4C0",
   gold: "#16B6C9",
 };
-const FONT_DISPLAY = "'Fraunces', Georgia, serif";
-const FONT_SANS = "'Outfit', ui-sans-serif, system-ui, sans-serif";
+const FONT_DISPLAY = "'DM Serif Display', Georgia, serif";
+const FONT_SANS = "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif";
 
 const T = {
   en: {
@@ -419,7 +419,7 @@ export default function App() {
 
   const FONTS = (
     <style>{`
-      @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Outfit:wght@300;400;500;600&display=swap');
+      @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
       * { box-sizing: border-box; }
       ::-webkit-scrollbar { width: 10px; height: 10px; }
       ::-webkit-scrollbar-thumb { background: #C9D2CE; border-radius: 8px; border: 2px solid transparent; background-clip: content-box; }
@@ -454,20 +454,19 @@ export default function App() {
         <div style={{ flex: 1, background: `linear-gradient(155deg, ${C.ink} 0%, ${C.ink2} 100%)`, padding: "56px 56px", display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", overflow: "hidden" }}>
           <div style={{ position: "absolute", width: 520, height: 520, borderRadius: "50%", background: "radial-gradient(circle, rgba(14,140,107,.18), transparent 70%)", top: -120, right: -160 }} />
           <div style={{ position: "absolute", width: 360, height: 360, borderRadius: "50%", background: "radial-gradient(circle, rgba(201,162,75,.10), transparent 70%)", bottom: -80, left: -100 }} />
-          <div className="rise" style={{ display: "flex", alignItems: "center", gap: 13, position: "relative" }}>
-            <div style={{ width: 44, height: 44, borderRadius: 13, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 24px -8px rgba(14,140,107,.6)" }}><Stethoscope size={24} color="#fff" /></div>
-            <div style={{ color: "#fff", fontSize: 21, fontWeight: 600, fontFamily: FONT_DISPLAY }}>Revenue<span style={{ color: C.teal }}>MD</span></div>
+          <div className="rise" style={{ display: "flex", alignItems: "center", gap: 16, position: "relative" }}>
+            <div style={{ width: 68, height: 68, borderRadius: 18, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 12px 32px -8px rgba(14,140,107,.65)" }}><Stethoscope size={36} color="#fff" /></div>
+            <div style={{ color: "#fff", fontSize: 30, fontWeight: 400, fontFamily: FONT_DISPLAY, letterSpacing: ".5px" }}>Revenue<span style={{ color: C.teal }}>MD</span></div>
           </div>
           <div className="rise" style={{ position: "relative", animationDelay: ".08s" }}>
-            <div style={{ color: C.gold, fontSize: 13, letterSpacing: 2, textTransform: "uppercase", marginBottom: 18, fontWeight: 500 }}>Revenue Intelligence Software</div>
-            <h1 style={{ color: "#fff", fontFamily: FONT_DISPLAY, fontSize: 40, lineHeight: 1.15, fontWeight: 500, margin: 0, maxWidth: 440 }}>{t.tagline}</h1>
-            <div style={{ display: "flex", gap: 26, marginTop: 36 }}>
-              {[["$18.2K", t.m_revenue], ["12.4%", t.m_denial], ["6 payers", "Puerto Rico"]].map(([n, l], i) => (
-                <div key={i}><div style={{ color: "#fff", fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 500 }}>{n}</div><div style={{ color: "rgba(255,255,255,.5)", fontSize: 12.5 }}>{l}</div></div>
-              ))}
+            <div style={{ color: C.gold, fontSize: 13, letterSpacing: 2, textTransform: "uppercase", marginBottom: 18, fontWeight: 600 }}>Revenue Intelligence Software</div>
+            <h1 style={{ color: "#fff", fontFamily: FONT_DISPLAY, fontSize: 40, lineHeight: 1.15, fontWeight: 400, margin: 0, maxWidth: 440 }}>{t.tagline}</h1>
+            <div style={{ marginTop: 36, display: "inline-flex", alignItems: "center", gap: 9, background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.14)", borderRadius: 40, padding: "10px 18px" }}>
+              <ShieldCheck size={15} color={C.teal} />
+              <span style={{ color: "rgba(255,255,255,.85)", fontSize: 13, fontWeight: 500, letterSpacing: ".2px" }}>{t.footer}</span>
             </div>
           </div>
-          <div style={{ color: "rgba(255,255,255,.4)", fontSize: 12, position: "relative", display: "flex", alignItems: "center", gap: 7 }}><ShieldCheck size={14} /> {t.footer}</div>
+          <div style={{ position: "relative" }} />
         </div>
         {/* right form */}
         <div style={{ width: 460, background: C.paper2, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 52px" }}>
