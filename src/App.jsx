@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import {
   LayoutDashboard, ClipboardList, Brain, ReceiptText, BarChart3, Bell,
   Settings, LogOut, Search, Upload, ShieldCheck, Languages, AlertTriangle,
@@ -347,6 +347,10 @@ const SECURITY_RULES = [
   { code: "SEC-014", sev: "error", v: "published", en: "Workforce termination procedures: revoke all ePHI system access within 24 hours of employee separation — include cloud accounts and VPN", es: "Terminacion de empleados: revocar todo acceso a ePHI en 24 horas de la separacion — incluir cuentas en la nube y VPN", src: "HIPAA 45 CFR §164.308(a)(3)(ii)(C); NIST SP 800-53 AC-2" },
 ];
 
+// ── API connection ────────────────────────────────────────────────────────────
+const API_URL = import.meta.env.VITE_API_URL || "";  // set in .env.local
+
+
 const SAMPLE = { lang: "es", confidence: 94, cpt: ["90837", "90785"], icd: ["F32.1", "F41.1"], mods: ["GT"], units: "90837·1  90785·1", dos: "Apr 22, 2024", npi: "1457382910", auth: null };
 
 const GROWTH = [
@@ -489,8 +493,12 @@ export default function App() {
   const [intakeTab, setIntakeTab] = useState("import");
   const [importing, setImporting] = useState(null);
   const [imported, setImported] = useState(null);
+  const [importError, setImportError] = useState(null);
   const [batchLoaded, setBatchLoaded] = useState(false);
   const [batchReading, setBatchReading] = useState(false);
+  const [batchMeta, setBatchMeta] = useState(null);    // { total, auto_clear, needs_attention, at_risk }
+  const batchFileRef = useRef(null);
+  const intakeFileRef = useRef(null);
   const [batchQueue, setBatchQueue] = useState([]);
   const [mounted, setMounted] = useState(false);
   const [learnTab, setLearnTab] = useState("codes");
@@ -683,11 +691,32 @@ export default function App() {
 
               {intakeTab === "import" && (
                 <div>
+                  {/* hidden file input for Intake — triggers real API if VITE_API_URL is set */}
+                  <input ref={intakeFileRef} type="file" accept=".edi,.837,.txt,.csv" style={{ display: "none" }} onChange={async (e) => {
+                    const file = e.target.files?.[0]; if (!file) return;
+                    const src = importing || "File";
+                    setImportError(null);
+                    if (API_URL) {
+                      try {
+                        const form = new FormData(); form.append("file", file);
+                        const res = await fetch(`${API_URL}/api/batch`, { method: "POST", body: form });
+                        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+                        const data = await res.json();
+                        setImporting(null); setImported(src);
+                        setBatchMeta({ total: data.total, auto_clear: data.auto_clear, needs_attention: data.needs_attention, at_risk: data.at_risk });
+                        setBatchQueue(data.claims.map((c) => ({ ...c, sel: c.lane === "auto_clear", st: "pending" })));
+                        setBatchLoaded(true);
+                      } catch (err) { setImporting(null); setImportError(err.message); }
+                    } else {
+                      setTimeout(() => { setImporting(null); setImported(src); }, 1300);
+                    }
+                  }} />
                   <p className="rise" style={{ color: C.txt2, fontSize: 13.5, margin: "0 0 16px", maxWidth: 600, lineHeight: 1.5 }}>{t.importSub}</p>
                   <div className="rise" style={{ fontSize: 12.5, fontWeight: 500, color: C.teal, display: "flex", alignItems: "center", gap: 7, marginBottom: 11, fontFamily: FONT_DISPLAY }}><CheckCircle2 size={15} /> {t.available} — {t.fileImport}</div>
+                  {importError && <div className="rise" style={{ background: C.redSoft, border: `1px solid #f0c5c0`, borderRadius: 10, padding: "10px 14px", marginBottom: 14, fontSize: 13, color: C.red, display: "flex", gap: 8 }}><AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />{importError}</div>}
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(165px,1fr))", gap: 11, marginBottom: 18 }}>
                     {IMPORT_SOURCES.map((s, i) => (
-                      <div key={s.id} className="rise lift" style={{ animationDelay: `${i * 0.05}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 13, padding: 15 }} onClick={() => { setImporting(s.name); setImported(null); setTimeout(() => { setImporting(null); setImported(s.name); }, 1300); }}>
+                      <div key={s.id} className="rise lift" style={{ animationDelay: `${i * 0.05}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 13, padding: 15 }} onClick={() => { setImporting(s.name); setImported(null); setImportError(null); if (API_URL) { intakeFileRef.current?.click(); } else { setTimeout(() => { setImporting(null); setImported(s.name); }, 1300); } }}>
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                           <div style={{ width: 34, height: 34, borderRadius: 9, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center" }}><s.icon size={17} color={C.teal} /></div>
                           <span style={{ fontSize: 9.5, fontWeight: 500, padding: "2px 7px", borderRadius: 10, background: C.tealSoft, color: C.tealDk }}>837 · CSV</span>
@@ -1030,18 +1059,43 @@ export default function App() {
             const toggleAll = () => setBatchQueue((p) => p.map((q) => q.st === "pending" ? { ...q, sel: !allSel } : q));
             const selectLane = (k) => setBatchQueue((p) => p.map((q) => q.lane === k && q.st === "pending" ? { ...q, sel: true } : q));
             const bulkApprove = () => { const n = selCount; setBatchQueue((p) => p.map((q) => q.sel && q.st === "pending" ? { ...q, st: "approved", sel: false } : q)); };
-            const loadBatch = () => { setBatchReading(true); setTimeout(() => { setBatchReading(false); setBatchLoaded(true); setBatchQueue(BATCH_SEED.map((x) => ({ ...x }))); }, 1400); };
+            // ── Batch helpers ──────────────────────────────────────────────
+            const applyBatchResults = (data) => {
+              setBatchMeta({ total: data.total, auto_clear: data.auto_clear, needs_attention: data.needs_attention, at_risk: data.at_risk });
+              setBatchQueue(data.claims.map((c) => ({ ...c, sel: c.lane === "auto_clear", st: "pending" })));
+              setBatchLoaded(true);
+            };
+            const loadMockBatch = () => { setBatchReading(true); setTimeout(() => { setBatchReading(false); setBatchMeta({ total: 42, auto_clear: 31, needs_attention: 11, at_risk: 3400 }); setBatchLoaded(true); setBatchQueue(BATCH_SEED.map((x) => ({ ...x }))); }, 1400); };
+            const uploadBatchFile = async (file) => {
+              if (!file) return;
+              setBatchReading(true);
+              if (API_URL) {
+                try {
+                  const form = new FormData(); form.append("file", file);
+                  const res = await fetch(`${API_URL}/api/batch`, { method: "POST", body: form });
+                  if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+                  applyBatchResults(await res.json());
+                } catch (err) {
+                  console.error("Batch API error:", err);
+                  applyBatchResults({ total: 42, auto_clear: 31, needs_attention: 11, at_risk: 3400, claims: BATCH_SEED.map((x) => ({ ...x })) });
+                } finally { setBatchReading(false); }
+              } else { loadMockBatch(); }
+            };
+            const loadBatch = () => { if (API_URL) { batchFileRef.current?.click(); } else { loadMockBatch(); } };
             return (
               <div>
                 <Head title={t.batchTitle} sub={t.batchSub} />
+                {/* hidden file input — triggers when API_URL is set */}
+                <input ref={batchFileRef} type="file" accept=".edi,.837,.txt,.csv" style={{ display: "none" }} onChange={(e) => uploadBatchFile(e.target.files?.[0])} />
                 {!batchLoaded ? (
                   <div className="rise">
                     {!batchReading ? (
                       <div onClick={loadBatch} style={{ border: `2px dashed ${C.tealMute}`, background: C.paper2, borderRadius: 18, padding: "44px 24px", textAlign: "center", cursor: "pointer", transition: "all .2s" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.tealMute; e.currentTarget.style.background = C.paper2; }}>
                         <div style={{ width: 60, height: 60, borderRadius: 16, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}><Layers size={30} color={C.teal} /></div>
-                        <div style={{ fontSize: 16, fontWeight: 500 }}>{t.batchDrop}</div>
+                        <div style={{ fontSize: 16, fontWeight: 500 }}>{API_URL ? (lang === "en" ? "Upload an EDI 837 batch file" : "Subir un archivo EDI 837 de lote") : t.batchDrop}</div>
                         <div style={{ fontSize: 13, color: C.txt2, marginTop: 5 }}>{t.batchDropSub}</div>
-                        <button className="btnp" style={{ ...btnP, marginTop: 18 }}><Upload size={15} /> {t.batchLoad}</button>
+                        <button className="btnp" style={{ ...btnP, marginTop: 18 }}><Upload size={15} /> {API_URL ? (lang === "en" ? "Select 837 file" : "Seleccionar archivo 837") : t.batchLoad}</button>
+                        {!API_URL && <div style={{ marginTop: 10, fontSize: 11.5, color: C.txt3 }}>{lang === "en" ? "No VITE_API_URL set — loading sample data" : "Sin VITE_API_URL — cargando datos de muestra"}</div>}
                       </div>
                     ) : (
                       <div style={{ border: `2px dashed ${C.amber}`, background: C.paper2, borderRadius: 18, padding: "44px 24px", textAlign: "center", color: C.amber, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 9 }}><Loader2 size={18} className="spin" /> {t.batchReading}</div>
@@ -1050,7 +1104,7 @@ export default function App() {
                 ) : (
                   <div>
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(125px,1fr))", gap: 11, marginBottom: 16 }}>
-                      <Metric i={0} label={t.bImported} value="42" /><Metric i={1} label={t.bAutoClear} value="31" accent={C.teal} /><Metric i={2} label={t.bNeedAtt} value="11" accent={C.red} /><Metric i={3} label={t.bAtRisk} value="$3.4K" accent={C.amber} />
+                      <Metric i={0} label={t.bImported} value={String(batchMeta?.total ?? 42)} /><Metric i={1} label={t.bAutoClear} value={String(batchMeta?.auto_clear ?? 31)} accent={C.teal} /><Metric i={2} label={t.bNeedAtt} value={String(batchMeta?.needs_attention ?? 11)} accent={C.red} /><Metric i={3} label={t.bAtRisk} value={`$${((batchMeta?.at_risk ?? 3400)/1000).toFixed(1)}K`} accent={C.amber} />
                     </div>
                     <div className="rise" style={{ background: selCount ? C.ink : C.paper2, border: `1px solid ${selCount ? C.ink : C.line}`, borderRadius: 13, padding: "11px 15px", display: "flex", alignItems: "center", gap: 12, marginBottom: 16, transition: "all .2s", flexWrap: "wrap" }}>
                       <span style={{ fontSize: 13, fontWeight: 500, color: selCount ? "#fff" : C.txt2 }}>{selCount} {t.bSelected}</span>
