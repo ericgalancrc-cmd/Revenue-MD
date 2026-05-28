@@ -142,6 +142,8 @@ const T = {
     helpR1: "RevenueMD scrubs claims — it does NOT submit them. You send the clean file to your clearinghouse (e.g. Inmediata) after approving.",
     helpR2: "AI is decision support only. Every claim must be reviewed and approved by a human before it goes out.",
     helpR3: "All patient data is HIPAA-encrypted. RevenueMD is built for compliance from the ground up.",
+    notifTitle: "Notifications", notifMarkAll: "Mark all read", notifEmpty: "All caught up.",
+    privacyLink: "Privacy Policy", termsLink: "Terms of Use",
   },
   es: {
     tagline: "Detecta denegaciones antes de que ocurran. Codifica con confianza. Cobra más rápido.",
@@ -256,6 +258,8 @@ const T = {
     helpR1: "RevenueMD revisa reclamos — NO los somete. Tú envías el archivo limpio a tu clearinghouse (ej. Inmediata) después de aprobar.",
     helpR2: "La IA solo apoya decisiones. Cada reclamo debe ser revisado y aprobado por un humano antes de salir.",
     helpR3: "Todos los datos del paciente están encriptados con HIPAA. RevenueMD está diseñado para cumplimiento desde la base.",
+    notifTitle: "Notificaciones", notifMarkAll: "Marcar todas como leídas", notifEmpty: "Todo al día.",
+    privacyLink: "Política de privacidad", termsLink: "Términos de uso",
   },
 };
 
@@ -549,6 +553,180 @@ const LEARN_GUIDES = [
 
 const fmt = (n) => "$" + n.toLocaleString("en-US");
 
+// ── Notification panel ────────────────────────────────────────────────────────
+const DAYS_TO_RENEW = 7; // demo: subscription renews in 7 days
+
+function NotifPanel({ t, lang, role, onClose }) {
+  const [readIds, setReadIds] = useState(new Set());
+  const mark = (id) => setReadIds(p => new Set([...p, id]));
+  const markAll = () => setReadIds(new Set(["sub", "claims", "update"]));
+  const isEn = lang === "en";
+
+  const notifs = [
+    ...(role === "manager" ? [{
+      id: "sub",
+      icon: ReceiptText,
+      color: DAYS_TO_RENEW <= 7 ? C.amber : C.teal,
+      bg:    DAYS_TO_RENEW <= 7 ? C.amberSoft : C.tealSoft,
+      title: isEn ? `Subscription renews in ${DAYS_TO_RENEW} days` : `Suscripción renueva en ${DAYS_TO_RENEW} días`,
+      body:  isEn ? "RevenueMD Professional · $299/month. Verify your payment method is current before the renewal date." : "RevenueMD Professional · $299/mes. Verifica que tu método de pago esté vigente antes del vencimiento.",
+      date:  isEn ? "Today" : "Hoy",
+      cta:   isEn ? "Manage billing" : "Gestionar facturación",
+    }] : []),
+    {
+      id: "claims",
+      icon: ClipboardList,
+      color: C.red, bg: C.redSoft,
+      title: isEn ? "14 claims need attention" : "14 reclamos necesitan atención",
+      body:  isEn ? "Today's batch has 14 claims in 'Needs work' — $8,200 at risk before timely-filing closes." : "El lote de hoy tiene 14 reclamos en 'Requiere trabajo' — $8,200 en riesgo.",
+      date:  isEn ? "Today" : "Hoy",
+      cta:   isEn ? "Review queue" : "Ver cola",
+    },
+    {
+      id: "update",
+      icon: Info,
+      color: C.blue, bg: C.blueSoft,
+      title: isEn ? "Plan Vital updated prior auth list" : "Plan Vital actualizó la lista de auth",
+      body:  isEn ? "ASES updated prior authorization requirements effective June 1, 2026. Review Payer Intelligence." : "ASES actualizó requisitos de autorización previa desde el 1 de junio. Revisa el módulo de Pagadores.",
+      date:  isEn ? "Yesterday" : "Ayer",
+      cta:   isEn ? "View payers" : "Ver pagadores",
+    },
+  ];
+
+  const unread = notifs.filter(n => !readIds.has(n.id));
+
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 300 }} />
+      <div style={{ position: "fixed", top: 68, right: 28, width: 380, background: "#fff", borderRadius: 18, boxShadow: "0 20px 60px -12px rgba(16,36,92,.22), 0 0 0 1px rgba(16,36,92,.08)", zIndex: 301, overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "15px 20px 13px", borderBottom: `1px solid ${C.line}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Bell size={15} color={C.ink} />
+            <span style={{ fontWeight: 600, fontSize: 14, color: C.ink, fontFamily: FONT_SANS }}>{t.notifTitle}</span>
+            {unread.length > 0 && <span style={{ background: C.teal, color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 10, padding: "2px 7px" }}>{unread.length}</span>}
+          </div>
+          <button onClick={markAll} style={{ fontSize: 12, color: C.teal, background: "none", border: "none", cursor: "pointer", fontFamily: FONT_SANS }}>{t.notifMarkAll}</button>
+        </div>
+        <div style={{ maxHeight: 420, overflow: "auto" }}>
+          {notifs.map(n => {
+            const read = readIds.has(n.id);
+            return (
+              <div key={n.id} onClick={() => mark(n.id)} style={{ padding: "14px 20px", borderBottom: `1px solid ${C.lineSoft}`, background: read ? "#fff" : C.paper, cursor: "pointer" }}>
+                <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 10, background: n.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <n.icon size={16} color={n.color} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 6, marginBottom: 3 }}>
+                      <span style={{ fontWeight: read ? 500 : 700, fontSize: 13, color: C.ink, lineHeight: 1.3 }}>{n.title}</span>
+                      {!read && <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.teal, flexShrink: 0, marginTop: 4 }} />}
+                    </div>
+                    <p style={{ margin: "0 0 8px", fontSize: 12.5, color: C.txt2, lineHeight: 1.55 }}>{n.body}</p>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 11.5, color: C.txt3 }}>{n.date}</span>
+                      <button style={{ fontSize: 12, color: C.teal, background: "none", border: "none", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 500 }}>{n.cta} →</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ── Legal modal (Privacy Policy / Terms of Use) ───────────────────────────────
+function LegalModal({ type, lang, onClose }) {
+  const isEn = lang === "en";
+  const docs = {
+    privacy: {
+      en: {
+        title: "Privacy Policy", updated: "Last updated: May 28, 2026",
+        sections: [
+          { h: "1. Overview", p: "RevenueMD is a pre-submission medical claim scrubbing platform for healthcare providers in Puerto Rico. We take the privacy of protected health information (PHI) and personally identifiable information (PII) seriously. This policy explains what we collect, how we use it, and how we protect it." },
+          { h: "2. Information We Collect", p: "We collect: (a) Account information you provide at registration — name, email, organization. (b) PHI contained in EDI 837 files you upload — patient names, dates of service, diagnosis codes, provider identifiers. (c) Usage data such as log timestamps and feature interactions, which never include raw PHI." },
+          { h: "3. How We Use Your Information", p: "PHI is used exclusively to perform claim scrubbing and compliance analysis, and to display results to authorized users in your organization. We do not sell, share, or use PHI for marketing, analytics, or any purpose beyond the services you contracted." },
+          { h: "4. HIPAA Business Associate Agreement (BAA)", p: "RevenueMD operates as a HIPAA Business Associate. Before processing real patient data, your organization must execute a signed BAA with RevenueMD. Operating without a BAA is a HIPAA violation. Contact legal@revenuemdpr.com to request a BAA." },
+          { h: "5. Data Security", p: "All PHI fields are encrypted at rest using AES-256 (Fernet). Data in transit is protected by TLS 1.2 or higher. Access is controlled by role-based authentication. Audit logs are maintained for all data access events. Infrastructure is hosted on HIPAA-eligible AWS services." },
+          { h: "6. Data Retention", p: "Processed claim records are retained for a minimum of 6 years per HIPAA requirements (45 CFR §164.530(j)). You may request deletion of your account data at any time; PHI will be purged within 30 days of termination, except where law requires otherwise." },
+          { h: "7. Your Rights", p: "Under HIPAA and PR Act 194-2000, patients have rights to access and amend their PHI. As the covered entity, your organization is responsible for fulfilling patient rights requests. RevenueMD will cooperate to the extent technically feasible." },
+          { h: "8. Contact", p: "Questions? Contact our Privacy Officer at privacy@revenuemdpr.com or write to RevenueMD, 100 Gran Bulevar Paseos, Suite 112, San Juan, PR 00926." },
+        ],
+      },
+      es: {
+        title: "Política de Privacidad", updated: "Última actualización: 28 de mayo de 2026",
+        sections: [
+          { h: "1. Visión general", p: "RevenueMD es una plataforma de revisión previa de reclamos médicos para proveedores de salud en Puerto Rico. Nos tomamos en serio la privacidad de la información de salud protegida (PHI) y la información personalmente identificable (PII). Esta política explica qué recopilamos, cómo lo usamos y cómo lo protegemos." },
+          { h: "2. Información que recopilamos", p: "Recopilamos: (a) Información de cuenta al registrarse — nombre, correo, organización. (b) PHI en archivos EDI 837 que cargue — nombres de pacientes, fechas de servicio, códigos de diagnóstico, identificadores de proveedores. (c) Datos de uso como marcas de tiempo, que nunca incluyen PHI directa." },
+          { h: "3. Cómo usamos su información", p: "La PHI se usa exclusivamente para realizar la revisión de reclamos y análisis de cumplimiento, y para mostrar resultados a usuarios autorizados. No vendemos, compartimos ni usamos PHI para mercadeo, analítica ni ningún propósito más allá de los servicios contratados." },
+          { h: "4. Acuerdo de Asociado de Negocio HIPAA (BAA)", p: "RevenueMD opera como Asociado de Negocio bajo HIPAA. Antes de procesar datos reales de pacientes, su organización debe firmar un BAA con RevenueMD. Operar sin BAA es una violación de HIPAA. Contacte legal@revenuemdpr.com para solicitar un BAA." },
+          { h: "5. Seguridad de datos", p: "Todos los campos de PHI están encriptados en reposo con AES-256 (Fernet). Los datos en tránsito están protegidos por TLS 1.2 o superior. El acceso está controlado por autenticación basada en roles. Se mantienen registros de auditoría de todos los eventos de acceso a datos." },
+          { h: "6. Retención de datos", p: "Los registros de reclamos se retienen por un mínimo de 6 años según HIPAA (45 CFR §164.530(j)). Puede solicitar la eliminación de sus datos en cualquier momento; la PHI será eliminada en 30 días de la terminación, excepto donde la ley lo requiera." },
+          { h: "7. Sus derechos", p: "Bajo HIPAA y la Ley 194-2000 de PR, los pacientes tienen derechos de acceso y enmienda de su PHI. Su organización es responsable de atender dichas solicitudes. RevenueMD cooperará en la medida técnicamente factible." },
+          { h: "8. Contacto", p: "¿Preguntas? Contacte a nuestro Oficial de Privacidad en privacy@revenuemdpr.com o escriba a RevenueMD, 100 Gran Bulevar Paseos, Suite 112, San Juan, PR 00926." },
+        ],
+      },
+    },
+    terms: {
+      en: {
+        title: "Terms of Use", updated: "Last updated: May 28, 2026",
+        sections: [
+          { h: "1. Acceptance of Terms", p: "By accessing or using RevenueMD, you agree to these Terms of Use and our Privacy Policy. If you do not agree, do not use the Service. These terms apply to all users — coders, billers, and managers — at subscribing organizations." },
+          { h: "2. Service Description", p: "RevenueMD analyzes EDI 837 claim files for payer-specific rule violations, documentation gaps, and coding errors before claims are sent to a clearinghouse. RevenueMD does NOT submit claims to payers or clearinghouses — that remains your organization's responsibility." },
+          { h: "3. Authorized Use Only", p: "The Service is licensed to healthcare provider organizations in Puerto Rico. You must be an authorized representative or employee of a subscribing organization. Sharing credentials, reverse engineering, or reselling the Service is prohibited." },
+          { h: "4. HIPAA Compliance Obligations", p: "You agree to execute a BAA with RevenueMD before uploading real patient data. You are responsible for ensuring your use complies with HIPAA, HITECH, PR Act 194-2000, and all applicable federal and Puerto Rico healthcare regulations." },
+          { h: "5. AI & Rules Engine Disclaimer", p: "RevenueMD's AI and rules engine provide decision support only. All claims must be reviewed and approved by a licensed human professional before submission. RevenueMD is not responsible for denied claims or audit findings arising from reliance on automated outputs without human review." },
+          { h: "6. Subscription & Billing", p: "Subscriptions are billed monthly or annually in advance. Failure to pay within 10 days of the renewal date may result in suspension of access. Refunds are not provided for partial months. Prices may change with 30 days' written notice." },
+          { h: "7. Limitation of Liability", p: "To the maximum extent permitted by law, RevenueMD's total liability for any claim shall not exceed fees paid in the 3 months preceding the claim. RevenueMD is not liable for indirect, incidental, or consequential damages, including lost revenue from denied claims." },
+          { h: "8. Governing Law", p: "These Terms are governed by the laws of the Commonwealth of Puerto Rico and applicable federal law. Disputes shall be resolved in the courts of San Juan, Puerto Rico." },
+        ],
+      },
+      es: {
+        title: "Términos de Uso", updated: "Última actualización: 28 de mayo de 2026",
+        sections: [
+          { h: "1. Aceptación de términos", p: "Al acceder o usar RevenueMD, usted acepta estos Términos de Uso y nuestra Política de Privacidad. Si no está de acuerdo, no use el Servicio. Estos términos aplican a todos los usuarios — codificadores, facturadores y gerentes." },
+          { h: "2. Descripción del servicio", p: "RevenueMD analiza archivos EDI 837 en busca de violaciones de reglas del pagador, brechas de documentación y errores de codificación antes de enviar al clearinghouse. RevenueMD NO somete reclamos a pagadores ni clearinghouses — esa responsabilidad permanece en su organización." },
+          { h: "3. Uso autorizado únicamente", p: "El Servicio está licenciado a organizaciones proveedoras de salud en Puerto Rico. Debe ser representante o empleado autorizado de una organización suscriptora. Compartir credenciales, realizar ingeniería inversa o revender el Servicio está prohibido." },
+          { h: "4. Obligaciones de cumplimiento HIPAA", p: "Usted acepta firmar un BAA con RevenueMD antes de cargar datos reales de pacientes. Es responsable de garantizar que su uso cumpla con HIPAA, HITECH, la Ley 194-2000 de PR y todas las regulaciones aplicables." },
+          { h: "5. Descargo sobre IA y motor de reglas", p: "La IA y el motor de reglas de RevenueMD son herramientas de apoyo a decisiones únicamente. Todos los reclamos deben ser revisados y aprobados por un profesional humano con licencia antes de someterlos. RevenueMD no es responsable por reclamos denegados o hallazgos de auditoría derivados de confiar en salidas automatizadas sin revisión humana." },
+          { h: "6. Suscripción y facturación", p: "Las suscripciones se facturan mensual o anualmente por adelantado. El incumplimiento de pago dentro de 10 días de la fecha de renovación puede resultar en suspensión de acceso. No se ofrecen reembolsos por meses parciales. Los precios pueden cambiar con 30 días de aviso escrito." },
+          { h: "7. Limitación de responsabilidad", p: "En la máxima medida permitida por la ley, la responsabilidad total de RevenueMD no superará los honorarios pagados en los 3 meses anteriores. RevenueMD no es responsable por daños indirectos o consecuentes, incluyendo ingresos perdidos por reclamos denegados." },
+          { h: "8. Ley aplicable", p: "Estos Términos se rigen por las leyes del Estado Libre Asociado de Puerto Rico y la ley federal aplicable. Las disputas se resolverán en los tribunales de San Juan, Puerto Rico." },
+        ],
+      },
+    },
+  };
+  const doc = docs[type][isEn ? "en" : "es"];
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(16,36,92,.68)", zIndex: 1200, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px 16px", backdropFilter: "blur(4px)" }}>
+      <div onClick={e => e.stopPropagation()} style={{ background: "#fff", borderRadius: 22, width: "100%", maxWidth: 700, maxHeight: "90vh", overflow: "auto", boxShadow: "0 40px 100px -20px rgba(16,36,92,.32)" }}>
+        <div style={{ background: `linear-gradient(140deg, ${C.ink} 0%, ${C.ink2} 100%)`, borderRadius: "22px 22px 0 0", padding: "24px 32px 20px", position: "sticky", top: 0, zIndex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div>
+              <div style={{ color: "#fff", fontSize: 19, fontFamily: FONT_DISPLAY, fontWeight: 500 }}>Revenue<span style={{ color: C.teal }}>MD</span> — {doc.title}</div>
+              <div style={{ color: "rgba(255,255,255,.55)", fontSize: 12, marginTop: 3 }}>{doc.updated}</div>
+            </div>
+            <button onClick={onClose} style={{ background: "rgba(255,255,255,.12)", border: "1px solid rgba(255,255,255,.2)", borderRadius: 10, padding: "7px 15px", color: "rgba(255,255,255,.85)", fontSize: 13, cursor: "pointer", fontFamily: FONT_SANS }}>{isEn ? "Close" : "Cerrar"} ✕</button>
+          </div>
+        </div>
+        <div style={{ padding: "28px 32px 40px" }}>
+          {doc.sections.map((s, i) => (
+            <div key={i} style={{ marginBottom: 20 }}>
+              <div style={{ fontWeight: 700, fontSize: 13.5, color: C.ink, marginBottom: 5 }}>{s.h}</div>
+              <p style={{ margin: 0, fontSize: 13.5, color: C.txt, lineHeight: 1.72 }}>{s.p}</p>
+            </div>
+          ))}
+          <div style={{ marginTop: 28, padding: "15px 20px", background: C.paper, borderRadius: 12, border: `1px solid ${C.line}` }}>
+            <p style={{ margin: 0, fontSize: 12.5, color: C.txt2, lineHeight: 1.6 }}>{isEn ? "This document is provided for informational purposes and does not constitute legal advice. For compliance questions, consult a qualified healthcare attorney familiar with Puerto Rico and federal law." : "Este documento se proporciona con fines informativos y no constituye asesoría legal. Para preguntas de cumplimiento, consulte a un abogado especializado en salud familiar con el derecho de Puerto Rico y federal."}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Help modal ────────────────────────────────────────────────────────────────
 function HelpModal({ t, lang, onClose }) {
   const steps = [
@@ -745,6 +923,10 @@ export default function App({ auth0 = null }) {
   const [learnTab, setLearnTab] = useState("codes");
   const [learnSearch, setLearnSearch] = useState("");
   const [helpOpen, setHelpOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifSeen, setNotifSeen] = useState(false);
+  const [legalModal, setLegalModal] = useState(null); // null | "privacy" | "terms"
+  const notifBadge = notifSeen ? 0 : role === "manager" ? 2 : 1;
   const t = T[lang];
 
   useEffect(() => { setMounted(true); }, []);
@@ -888,8 +1070,14 @@ export default function App({ auth0 = null }) {
             </select>
             <button className="btnp" onClick={() => auth0 ? auth0.loginWithRedirect() : setAuthed(true)} style={{ ...btnP, width: "100%", marginTop: 26, justifyContent: "center", padding: "13px", fontSize: 14.5 }}>{auth0 && auth0.isLoading ? <Loader2 size={17} className="spin" /> : <>{t.signIn} <ArrowRight size={17} /></>}</button>
             <button onClick={() => setLang(lang === "en" ? "es" : "en")} style={{ ...btnG, margin: "20px auto 0", display: "flex" }}><Languages size={15} /> {lang === "en" ? "Español" : "English"}</button>
+            <div style={{ display: "flex", justifyContent: "center", gap: 14, marginTop: 18 }}>
+              <button onClick={() => setLegalModal("privacy")} style={{ fontSize: 12, color: C.txt3, background: "none", border: "none", cursor: "pointer", fontFamily: FONT_SANS }}>{t.privacyLink}</button>
+              <span style={{ color: C.txt3, fontSize: 12 }}>·</span>
+              <button onClick={() => setLegalModal("terms")} style={{ fontSize: 12, color: C.txt3, background: "none", border: "none", cursor: "pointer", fontFamily: FONT_SANS }}>{t.termsLink}</button>
+            </div>
           </div>
         </div>
+        {legalModal && <LegalModal type={legalModal} lang={lang} onClose={() => setLegalModal(null)} />}
       </div>
     );
   }
@@ -932,6 +1120,7 @@ export default function App({ auth0 = null }) {
     <div style={{ display: "flex", minHeight: "100vh", background: C.paper, fontFamily: FONT_SANS, color: C.txt }}>
       {FONTS}
       {helpOpen && <HelpModal t={t} lang={lang} onClose={() => setHelpOpen(false)} />}
+      {legalModal && <LegalModal type={legalModal} lang={lang} onClose={() => setLegalModal(null)} />}
       {/* SIDEBAR */}
       <aside style={{ width: 236, background: C.ink, padding: "22px 14px", display: "flex", flexDirection: "column", flexShrink: 0, position: "relative" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "0 10px 22px" }}>
@@ -947,6 +1136,11 @@ export default function App({ auth0 = null }) {
         <div style={{ borderTop: "1px solid rgba(255,255,255,.08)", paddingTop: 12, marginTop: 12 }}>
           <button className="navi" onClick={() => setLang(lang === "en" ? "es" : "en")} style={sideBtn}><Languages size={15} /> {lang === "en" ? "Español" : "English"}</button>
           <button className="navi" onClick={() => { setAuthed(false); setTab("dash"); if (auth0?.logout) auth0.logout({ logoutParams: { returnTo: window.location.origin } }); }} style={sideBtn}><LogOut size={15} /> {t.logout}</button>
+          <div style={{ display: "flex", gap: 10, paddingTop: 10, justifyContent: "center" }}>
+            <button onClick={() => setLegalModal("privacy")} style={{ fontSize: 11, color: "rgba(255,255,255,.35)", background: "none", border: "none", cursor: "pointer", fontFamily: FONT_SANS, padding: 0 }}>{t.privacyLink}</button>
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,.2)" }}>·</span>
+            <button onClick={() => setLegalModal("terms")} style={{ fontSize: 11, color: "rgba(255,255,255,.35)", background: "none", border: "none", cursor: "pointer", fontFamily: FONT_SANS, padding: 0 }}>{t.termsLink}</button>
+          </div>
         </div>
       </aside>
 
@@ -958,6 +1152,13 @@ export default function App({ auth0 = null }) {
           <div style={{ fontSize: 17, fontWeight: 500, fontFamily: FONT_DISPLAY }}>{nav.find((n) => n.id === tab)?.label}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div className="pill" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.teal, background: C.tealSoft, padding: "5px 11px", borderRadius: 20, fontWeight: 500 }}><span className="pdot" style={{ width: 7, height: 7, borderRadius: "50%", background: C.teal }} /> Live</div>
+            <div style={{ position: "relative" }}>
+              <button onClick={() => { setNotifOpen(p => !p); setNotifSeen(true); }} style={{ width: 34, height: 34, borderRadius: "50%", background: notifOpen ? C.ink : C.paper, border: `1px solid ${C.line}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+                <Bell size={15} color={notifOpen ? "#fff" : C.ink} />
+                {notifBadge > 0 && <div style={{ position: "absolute", top: -2, right: -2, width: 16, height: 16, borderRadius: "50%", background: C.teal, color: "#fff", fontSize: 9, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{notifBadge}</div>}
+              </button>
+              {notifOpen && <NotifPanel t={t} lang={lang} role={role} onClose={() => setNotifOpen(false)} />}
+            </div>
             <button onClick={() => setHelpOpen(true)} className="btnp" style={{ display: "flex", alignItems: "center", gap: 7, background: C.ink, color: "#fff", border: "none", borderRadius: 20, padding: "6px 14px 6px 10px", fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: FONT_SANS, boxShadow: "0 4px 12px -4px rgba(16,36,92,.35)" }}>
               <div style={{ width: 18, height: 18, borderRadius: "50%", background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>?</div>
               {t.helpBtn}
@@ -1494,22 +1695,21 @@ export default function App({ auth0 = null }) {
                     ) : (
                       <div style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, overflow: "hidden" }}>
                         {/* Table header */}
-                        <div style={{ display: "grid", gridTemplateColumns: "100px 110px 1fr 100px", gap: 0, background: C.lineSoft, padding: "10px 18px", borderBottom: `1px solid ${C.line}` }}>
-                          {[t.learnCode, "Type", t.learnDesc, t.learnUnits].map(h => (
+                        <div style={{ display: "grid", gridTemplateColumns: "110px 110px 1fr 100px", gap: 0, background: C.lineSoft, padding: "10px 18px", borderBottom: `1px solid ${C.line}` }}>
+                          {[t.learnCode, "Type", t.learnNotes, t.learnUnits].map(h => (
                             <div key={h} style={{ fontSize: 11.5, fontWeight: 600, color: C.txt2, textTransform: "uppercase", letterSpacing: ".06em" }}>{h}</div>
                           ))}
                         </div>
                         {filteredCodes.map((c, i) => {
                           const [tc, tbg] = typeColor[c.type] || [C.txt2, C.lineSoft];
                           return (
-                            <div key={c.code} style={{ display: "grid", gridTemplateColumns: "100px 110px 1fr 100px", gap: 0, padding: "13px 18px", borderBottom: i < filteredCodes.length - 1 ? `1px solid ${C.lineSoft}` : "none", alignItems: "start" }}>
+                            <div key={c.code} style={{ display: "grid", gridTemplateColumns: "110px 110px 1fr 100px", gap: 0, padding: "13px 18px", borderBottom: i < filteredCodes.length - 1 ? `1px solid ${C.lineSoft}` : "none", alignItems: "start" }}>
                               <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 13.5, color: C.ink }}>{c.code}</div>
                               <div>
                                 <span style={{ fontSize: 10.5, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: tbg, color: tc }}>{c.type}</span>
                               </div>
-                              <div>
-                                <div style={{ fontSize: 13.5, color: C.txt, lineHeight: 1.45 }}>{c.desc}</div>
-                                {c.notes && <div style={{ fontSize: 11.5, color: C.txt2, marginTop: 4, lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: 5 }}><Info size={11} color={C.amber} style={{ flexShrink: 0, marginTop: 2 }} />{c.notes}</div>}
+                              <div style={{ fontSize: 13, color: c.notes ? C.txt : C.txt3, lineHeight: 1.45, display: "flex", alignItems: "flex-start", gap: 5 }}>
+                                {c.notes ? <><Info size={11} color={C.amber} style={{ flexShrink: 0, marginTop: 2 }} />{c.notes}</> : <em>{lang === "en" ? "See AMA CPT manual" : "Ver manual AMA CPT"}</em>}
                               </div>
                               <div style={{ fontSize: 12.5, color: C.txt2 }}>{c.units}</div>
                             </div>
