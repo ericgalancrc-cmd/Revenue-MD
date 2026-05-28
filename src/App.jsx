@@ -1218,18 +1218,20 @@ export default function App({ auth0 = null }) {
   }
 
   const nav = [
-    { id: "dash", icon: LayoutDashboard, label: t.nav_dash },
-    { id: "intake", icon: FileScan, label: t.nav_intake },
-    { id: "claims", icon: ClipboardList, label: t.nav_claims },
-    { id: "analysis", icon: Brain, label: t.nav_analysis },
-    { id: "denials", icon: ReceiptText, label: t.nav_denials },
-    { id: "revenue", icon: BarChart3, label: t.nav_revenue },
-    { id: "payers", icon: Building2, label: t.nav_payers },
-    { id: "compliance", icon: ShieldCheck, label: t.nav_compliance },
-    { id: "business", icon: Briefcase, label: t.nav_business },
-    { id: "batch", icon: Layers, label: t.nav_batch },
-    { id: "learn", icon: GraduationCap, label: t.nav_learn },
-    ...(role === "manager" ? [{ id: "subscription", icon: CreditCard, label: t.nav_sub }] : []),
+    { id: "dash",       icon: LayoutDashboard, label: t.nav_dash },
+    { id: "intake",     icon: FileScan,        label: t.nav_intake },
+    { id: "claims",     icon: ClipboardList,   label: t.nav_claims },
+    { id: "analysis",   icon: Brain,           label: t.nav_analysis },
+    { id: "denials",    icon: ReceiptText,     label: t.nav_denials },
+    { id: "payers",     icon: Building2,       label: t.nav_payers },
+    { id: "compliance", icon: ShieldCheck,     label: t.nav_compliance },
+    { id: "batch",      icon: Layers,          label: t.nav_batch },
+    { id: "learn",      icon: GraduationCap,   label: t.nav_learn },
+    ...(role === "manager" ? [
+      { id: "revenue",      icon: BarChart3,  label: t.nav_revenue },
+      { id: "business",     icon: Briefcase,  label: t.nav_business },
+      { id: "subscription", icon: CreditCard, label: t.nav_sub },
+    ] : []),
     { id: "settings", icon: Settings, label: t.nav_settings },
   ];
 
