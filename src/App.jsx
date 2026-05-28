@@ -9,6 +9,7 @@ import {
   Download, Plug, FileInput, Network, Building, Layers, CheckSquare, Square, ListChecks,
   GraduationCap, BookMarked, ExternalLink, Hash, Info, CreditCard, Star, BadgeCheck,
   Palette, UserRound, Sliders, Sun, Moon,
+  Smartphone, Mail, QrCode, KeyRound, ShieldAlert, RefreshCw, Copy,
 } from "lucide-react";
 
 // ============================================================================
@@ -189,9 +190,22 @@ const T = {
     stNotifClaims: "Claim alerts", stNotifClaimsD: "Batches that need attention or have high-risk claims",
     stNotifPayers: "Payer updates", stNotifPayersD: "Rule changes and bulletin updates for Puerto Rico payers",
     stNotifEmail: "Email digest", stNotifEmailD: "Daily summary sent to your work email",
-    stSecuritySub: "Password and two-factor authentication.",
-    stChangePassword: "Change password", stCurrentPwd: "Current password", stNewPwd: "New password", stConfirmPwd: "Confirm new password", stUpdatePwd: "Update password",
-    st2FA: "Two-factor authentication", st2FAStatus: "Not enabled", st2FAEnable: "Enable 2FA", st2FAComingSoon: "Coming soon",
+    stSecuritySub: "Manage your password and authentication methods. Enable multiple methods for stronger HIPAA-compliant security.",
+    stChangePassword: "Password", stCurrentPwd: "Current password", stNewPwd: "New password", stConfirmPwd: "Confirm new password", stUpdatePwd: "Update password",
+    stPwdMethodD: "Your primary login credential. Use at least 12 characters with mixed case, numbers, and symbols (NIST SP 800-63B).",
+    stPwdAlwaysOn: "Always active",
+    stTotpMethod: "Authenticator app", stTotpMethodD: "Use Google Authenticator, Authy, or any TOTP app. A new 6-digit code is generated every 30 seconds.",
+    stTotpSetup: "Set up", stTotpDisable: "Disable", stTotpEnabled: "Enabled",
+    stTotpScanTitle: "Scan with your authenticator app", stTotpManual: "Or enter this key manually",
+    stTotpEnterCode: "Enter the 6-digit code shown in your app to verify", stTotpVerify: "Verify & enable", stTotpCodePh: "000 000",
+    stTotpCopied: "Copied!",
+    stEmailMethod: "Email verification", stEmailMethodD: "A one-time code is sent to your email address each sign-in. Works without a smartphone.",
+    stEmailSetup: "Set up", stEmailDisable: "Disable", stEmailEnabled: "Enabled",
+    stEmailSendCode: "Send code to", stEmailSent: "Code sent —", stEmailEnterCode: "Enter the 6-digit code from your email",
+    stEmailVerify: "Verify & enable",
+    stAuthMethods: "Authentication methods", stAuthMethodsSub: "Enable additional methods for multi-factor authentication (MFA).",
+    stAuthHipaa: "MFA is strongly recommended under HIPAA §164.308(a)(5) for any remote access to systems containing ePHI.",
+    stAuthEnabled: "Active", stAuthDisabled: "Not enabled",
     stTeamSub: "Manage who has access to your organization's RevenueMD account.",
     stAddMember: "Add member", stMemberName: "Name", stMemberRole: "Role", stMemberStatus: "Status", stMemberActive: "Active",
     stInviteEmail: "Invite by email", stSendInvite: "Send invite",
@@ -344,9 +358,22 @@ const T = {
     stNotifClaims: "Alertas de reclamos", stNotifClaimsD: "Lotes que necesitan atención o tienen reclamos de alto riesgo",
     stNotifPayers: "Actualizaciones de pagadores", stNotifPayersD: "Cambios de reglas y boletines de pagadores de Puerto Rico",
     stNotifEmail: "Resumen por email", stNotifEmailD: "Resumen diario enviado a tu correo de trabajo",
-    stSecuritySub: "Contraseña y autenticación de dos factores.",
-    stChangePassword: "Cambiar contraseña", stCurrentPwd: "Contraseña actual", stNewPwd: "Nueva contraseña", stConfirmPwd: "Confirmar nueva contraseña", stUpdatePwd: "Actualizar contraseña",
-    st2FA: "Autenticación de dos factores", st2FAStatus: "No habilitada", st2FAEnable: "Habilitar 2FA", st2FAComingSoon: "Próximamente",
+    stSecuritySub: "Administra tu contraseña y métodos de autenticación. Habilita varios métodos para mayor seguridad según HIPAA.",
+    stChangePassword: "Contraseña", stCurrentPwd: "Contraseña actual", stNewPwd: "Nueva contraseña", stConfirmPwd: "Confirmar nueva contraseña", stUpdatePwd: "Actualizar contraseña",
+    stPwdMethodD: "Tu credencial principal de acceso. Usa al menos 12 caracteres con mayúsculas, números y símbolos (NIST SP 800-63B).",
+    stPwdAlwaysOn: "Siempre activa",
+    stTotpMethod: "App autenticadora", stTotpMethodD: "Usa Google Authenticator, Authy o cualquier app TOTP. Genera un código de 6 dígitos nuevo cada 30 segundos.",
+    stTotpSetup: "Configurar", stTotpDisable: "Deshabilitar", stTotpEnabled: "Habilitada",
+    stTotpScanTitle: "Escanea con tu app autenticadora", stTotpManual: "O ingresa esta clave manualmente",
+    stTotpEnterCode: "Ingresa el código de 6 dígitos que muestra tu app para verificar", stTotpVerify: "Verificar y habilitar", stTotpCodePh: "000 000",
+    stTotpCopied: "¡Copiado!",
+    stEmailMethod: "Verificación por email", stEmailMethodD: "Se envía un código único a tu correo cada vez que inicias sesión. Funciona sin smartphone.",
+    stEmailSetup: "Configurar", stEmailDisable: "Deshabilitar", stEmailEnabled: "Habilitada",
+    stEmailSendCode: "Enviar código a", stEmailSent: "Código enviado —", stEmailEnterCode: "Ingresa el código de 6 dígitos de tu correo",
+    stEmailVerify: "Verificar y habilitar",
+    stAuthMethods: "Métodos de autenticación", stAuthMethodsSub: "Habilita métodos adicionales para autenticación multifactor (MFA).",
+    stAuthHipaa: "El MFA es fuertemente recomendado bajo HIPAA §164.308(a)(5) para acceso remoto a sistemas con ePHI.",
+    stAuthEnabled: "Activo", stAuthDisabled: "No habilitado",
     stTeamSub: "Gestiona quién tiene acceso a la cuenta de tu organización.",
     stAddMember: "Agregar miembro", stMemberName: "Nombre", stMemberRole: "Rol", stMemberStatus: "Estado", stMemberActive: "Activo",
     stInviteEmail: "Invitar por correo", stSendInvite: "Enviar invitación",
@@ -1027,6 +1054,12 @@ export default function App({ auth0 = null }) {
   const [notifPrefs, setNotifPrefs] = useState({ subscription: true, claims: true, payers: true, email: false });
   const [pwdForm, setPwdForm] = useState({ current: "", next: "", confirm: "" });
   const [pwdSaved, setPwdSaved] = useState(false);
+  const [totpStep, setTotpStep] = useState("idle"); // idle | setup | enabled
+  const [totpCode, setTotpCode] = useState("");
+  const [totpCopied, setTotpCopied] = useState(false);
+  const [emailAuthStep, setEmailAuthStep] = useState("idle"); // idle | sent | enabled
+  const [emailAuthCode, setEmailAuthCode] = useState("");
+  const TOTP_SECRET = "JBSWY3DPEHPK3PXP"; // demo secret key
   const acc = THEMES[accentKey] || THEMES.teal;
   const notifBadge = notifSeen ? 0 : role === "manager" ? 2 : 1;
   const t = T[lang];
@@ -2217,31 +2250,159 @@ export default function App({ auth0 = null }) {
                     {/* ── SECURITY ──────────────────────────── */}
                     {settingsTab === "security" && (
                       <div className="rise" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                        <div style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 28 }}>
-                          <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 4, fontFamily: FONT_DISPLAY }}>{t.stChangePassword}</div>
-                          <div style={{ fontSize: 13, color: C.txt2, marginBottom: 20 }}>{t.stSecuritySub}</div>
-                          {[[t.stCurrentPwd, "current", "password"], [t.stNewPwd, "next", "password"], [t.stConfirmPwd, "confirm", "password"]].map(([label, key, type]) => (
-                            <div key={key} style={{ marginBottom: 14 }}>
-                              <label style={{ fontSize: 12.5, fontWeight: 500, color: C.txt2, display: "block", marginBottom: 6 }}>{label}</label>
-                              <input type={type} value={pwdForm[key]} onChange={e => setPwdForm(p => ({ ...p, [key]: e.target.value }))} style={inp} />
-                            </div>
-                          ))}
-                          <button onClick={() => { setPwdSaved(true); setPwdForm({ current: "", next: "", confirm: "" }); setTimeout(() => setPwdSaved(false), 2500); }} style={{ ...btnP, background: acc.hex, marginTop: 4 }}>
-                            {pwdSaved ? <><BadgeCheck size={15} /> {t.stSaved}</> : t.stUpdatePwd}
-                          </button>
+
+                        {/* HIPAA note */}
+                        <div style={{ background: C.blueSoft, border: `1px solid ${C.blue}22`, borderRadius: 14, padding: "12px 16px", display: "flex", alignItems: "flex-start", gap: 10 }}>
+                          <ShieldAlert size={16} color={C.blue} style={{ flexShrink: 0, marginTop: 1 }} />
+                          <span style={{ fontSize: 12.5, color: C.blue, lineHeight: 1.55 }}>{t.stAuthHipaa}</span>
                         </div>
-                        <div style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 28 }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                            <div>
-                              <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, fontFamily: FONT_DISPLAY }}>{t.st2FA}</div>
-                              <div style={{ fontSize: 13, color: C.txt2, marginTop: 4 }}>{t.st2FAStatus}</div>
+
+                        {/* ── METHOD 1: PASSWORD ── */}
+                        <div style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, overflow: "hidden" }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: `1px solid ${C.lineSoft}` }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                              <div style={{ width: 38, height: 38, borderRadius: 10, background: acc.soft, display: "flex", alignItems: "center", justifyContent: "center" }}><KeyRound size={18} color={acc.hex} /></div>
+                              <div>
+                                <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink, fontFamily: FONT_DISPLAY }}>{t.stChangePassword}</div>
+                                <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 2 }}>{t.stPwdMethodD}</div>
+                              </div>
                             </div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{ fontSize: 12, color: C.txt3, fontStyle: "italic" }}>{t.st2FAComingSoon}</span>
-                              <button disabled style={{ ...btnP, background: C.line, color: C.txt3, cursor: "not-allowed" }}>{t.st2FAEnable}</button>
-                            </div>
+                            <span style={{ fontSize: 12, fontWeight: 600, padding: "4px 12px", borderRadius: 20, background: C.tealSoft, color: C.tealDk }}>{t.stPwdAlwaysOn}</span>
+                          </div>
+                          <div style={{ padding: "20px 24px" }}>
+                            {[[t.stCurrentPwd, "current"], [t.stNewPwd, "next"], [t.stConfirmPwd, "confirm"]].map(([label, key]) => (
+                              <div key={key} style={{ marginBottom: 14 }}>
+                                <label style={{ fontSize: 12.5, fontWeight: 500, color: C.txt2, display: "block", marginBottom: 6 }}>{label}</label>
+                                <input type="password" value={pwdForm[key]} onChange={e => setPwdForm(p => ({ ...p, [key]: e.target.value }))} style={inp} />
+                              </div>
+                            ))}
+                            <button onClick={() => { setPwdSaved(true); setPwdForm({ current: "", next: "", confirm: "" }); setTimeout(() => setPwdSaved(false), 2500); }} style={{ ...btnP, background: acc.hex }}>
+                              {pwdSaved ? <><BadgeCheck size={15} /> {t.stSaved}</> : t.stUpdatePwd}
+                            </button>
                           </div>
                         </div>
+
+                        {/* ── METHOD 2: AUTHENTICATOR APP (TOTP) ── */}
+                        <div style={{ background: C.paper2, border: `1px solid ${totpStep === "enabled" ? acc.hex : C.line}`, borderRadius: 18, overflow: "hidden", transition: "border-color .2s" }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: totpStep !== "idle" ? `1px solid ${C.lineSoft}` : "none" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                              <div style={{ width: 38, height: 38, borderRadius: 10, background: totpStep === "enabled" ? acc.soft : C.lineSoft, display: "flex", alignItems: "center", justifyContent: "center", transition: "background .2s" }}><Smartphone size={18} color={totpStep === "enabled" ? acc.hex : C.txt3} /></div>
+                              <div>
+                                <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink, fontFamily: FONT_DISPLAY }}>{t.stTotpMethod}</div>
+                                <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 2 }}>{t.stTotpMethodD}</div>
+                              </div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              {totpStep === "enabled" && <span style={{ fontSize: 12, fontWeight: 600, padding: "4px 12px", borderRadius: 20, background: acc.soft, color: acc.dk }}>{t.stTotpEnabled}</span>}
+                              <button onClick={() => { if (totpStep === "enabled") { setTotpStep("idle"); setTotpCode(""); } else { setTotpStep(totpStep === "idle" ? "setup" : "idle"); setTotpCode(""); } }}
+                                style={{ ...btnP, background: totpStep === "enabled" ? C.redSoft : totpStep === "setup" ? C.lineSoft : acc.hex, color: totpStep === "enabled" ? C.red : totpStep === "setup" ? C.txt2 : "#fff", fontSize: 12.5 }}>
+                                {totpStep === "enabled" ? t.stTotpDisable : totpStep === "setup" ? (lang === "en" ? "Cancel" : "Cancelar") : t.stTotpSetup}
+                              </button>
+                            </div>
+                          </div>
+                          {totpStep === "setup" && (
+                            <div className="rise" style={{ padding: "22px 24px" }}>
+                              <div style={{ fontSize: 13.5, fontWeight: 500, color: C.ink, marginBottom: 16 }}>{t.stTotpScanTitle}</div>
+                              {/* Simulated QR code */}
+                              <div style={{ display: "flex", gap: 24, alignItems: "flex-start", marginBottom: 20, flexWrap: "wrap" }}>
+                                <div style={{ background: "#fff", border: `1px solid ${C.line}`, borderRadius: 12, padding: 12, flexShrink: 0 }}>
+                                  <svg width={140} height={140} viewBox="0 0 14 14" style={{ display: "block", imageRendering: "pixelated" }}>
+                                    {/* QR corner markers */}
+                                    {[[0,0],[8,0],[0,8]].map(([ox,oy],i) => (
+                                      <g key={i}>
+                                        <rect x={ox} y={oy} width={6} height={6} fill={C.ink} rx=".4"/>
+                                        <rect x={ox+1} y={oy+1} width={4} height={4} fill="#fff" rx=".2"/>
+                                        <rect x={ox+2} y={oy+2} width={2} height={2} fill={C.ink} rx=".1"/>
+                                      </g>
+                                    ))}
+                                    {/* data dots */}
+                                    {[[7,7],[7,8],[8,7],[6,8],[7,9],[8,8],[6,9],[9,7],[10,7],[11,7],[7,10],[9,8],[10,9],[11,8],[6,10],[8,10],[10,10],[11,10],[9,11],[11,11],[6,11],[8,11],[7,11],[10,11]].map(([x,y],i) => (
+                                      <rect key={i} x={x} y={y} width={1} height={1} fill={C.ink} />
+                                    ))}
+                                  </svg>
+                                </div>
+                                <div style={{ flex: 1, minWidth: 180 }}>
+                                  <div style={{ fontSize: 12.5, color: C.txt2, marginBottom: 10, lineHeight: 1.6 }}>
+                                    {lang === "en" ? "1. Open your authenticator app (Google Authenticator, Authy, etc.)" : "1. Abre tu app autenticadora (Google Authenticator, Authy, etc.)"}
+                                  </div>
+                                  <div style={{ fontSize: 12.5, color: C.txt2, marginBottom: 16, lineHeight: 1.6 }}>
+                                    {lang === "en" ? "2. Tap the + button and scan this QR code, or enter the key below." : "2. Presiona el botón + y escanea este código, o ingresa la clave abajo."}
+                                  </div>
+                                  <div style={{ fontSize: 12, color: C.txt2, marginBottom: 6 }}>{t.stTotpManual}</div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                    <code style={{ background: C.paper, border: `1px solid ${C.line}`, borderRadius: 8, padding: "7px 12px", fontSize: 13, fontFamily: "monospace", letterSpacing: "0.12em", color: C.ink, flex: 1 }}>{TOTP_SECRET}</code>
+                                    <button onClick={() => { navigator.clipboard?.writeText(TOTP_SECRET); setTotpCopied(true); setTimeout(() => setTotpCopied(false), 2000); }} style={{ ...btnP, background: totpCopied ? C.tealSoft : C.ink, color: totpCopied ? C.tealDk : "#fff", padding: "8px 12px", fontSize: 12, flexShrink: 0 }}>
+                                      {totpCopied ? <><BadgeCheck size={13} /> {t.stTotpCopied}</> : <><Copy size={13} /> {lang === "en" ? "Copy" : "Copiar"}</>}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                              <div style={{ borderTop: `1px solid ${C.lineSoft}`, paddingTop: 18 }}>
+                                <label style={{ fontSize: 12.5, fontWeight: 500, color: C.txt2, display: "block", marginBottom: 8 }}>{t.stTotpEnterCode}</label>
+                                <div style={{ display: "flex", gap: 10 }}>
+                                  <input value={totpCode} onChange={e => setTotpCode(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder={t.stTotpCodePh} maxLength={6} style={{ ...inp, flex: 1, fontSize: 22, fontFamily: "monospace", letterSpacing: "0.3em", textAlign: "center" }} />
+                                  <button onClick={() => { if (totpCode.length === 6) setTotpStep("enabled"); }} style={{ ...btnP, background: totpCode.length === 6 ? acc.hex : C.line, color: totpCode.length === 6 ? "#fff" : C.txt3, flexShrink: 0, cursor: totpCode.length === 6 ? "pointer" : "not-allowed" }}>
+                                    <BadgeCheck size={15} /> {t.stTotpVerify}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {totpStep === "enabled" && (
+                            <div style={{ padding: "14px 24px", display: "flex", alignItems: "center", gap: 10 }}>
+                              <BadgeCheck size={16} color={acc.hex} />
+                              <span style={{ fontSize: 13, color: acc.dk, fontWeight: 500 }}>{lang === "en" ? "Authenticator app is active. A 6-digit code is required at each sign-in." : "App autenticadora activa. Se requerirá un código de 6 dígitos en cada inicio de sesión."}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* ── METHOD 3: EMAIL VERIFICATION ── */}
+                        <div style={{ background: C.paper2, border: `1px solid ${emailAuthStep === "enabled" ? acc.hex : C.line}`, borderRadius: 18, overflow: "hidden", transition: "border-color .2s" }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 24px", borderBottom: emailAuthStep !== "idle" ? `1px solid ${C.lineSoft}` : "none" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                              <div style={{ width: 38, height: 38, borderRadius: 10, background: emailAuthStep === "enabled" ? acc.soft : C.lineSoft, display: "flex", alignItems: "center", justifyContent: "center", transition: "background .2s" }}><Mail size={18} color={emailAuthStep === "enabled" ? acc.hex : C.txt3} /></div>
+                              <div>
+                                <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink, fontFamily: FONT_DISPLAY }}>{t.stEmailMethod}</div>
+                                <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 2 }}>{t.stEmailMethodD}</div>
+                              </div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              {emailAuthStep === "enabled" && <span style={{ fontSize: 12, fontWeight: 600, padding: "4px 12px", borderRadius: 20, background: acc.soft, color: acc.dk }}>{t.stEmailEnabled}</span>}
+                              <button onClick={() => { if (emailAuthStep === "enabled") { setEmailAuthStep("idle"); setEmailAuthCode(""); } else { setEmailAuthStep(emailAuthStep === "idle" ? "sent" : "idle"); setEmailAuthCode(""); } }}
+                                style={{ ...btnP, background: emailAuthStep === "enabled" ? C.redSoft : emailAuthStep === "sent" ? C.lineSoft : acc.hex, color: emailAuthStep === "enabled" ? C.red : emailAuthStep === "sent" ? C.txt2 : "#fff", fontSize: 12.5 }}>
+                                {emailAuthStep === "enabled" ? t.stEmailDisable : emailAuthStep === "sent" ? (lang === "en" ? "Cancel" : "Cancelar") : t.stEmailSetup}
+                              </button>
+                            </div>
+                          </div>
+                          {emailAuthStep === "sent" && (
+                            <div className="rise" style={{ padding: "22px 24px" }}>
+                              <div style={{ background: C.tealSoft, border: `1px solid ${C.tealMute}`, borderRadius: 12, padding: "12px 16px", display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                                <Mail size={15} color={C.tealDk} />
+                                <span style={{ fontSize: 13, color: C.tealDk }}>{t.stEmailSent} <strong>{userProfile.email}</strong></span>
+                              </div>
+                              <label style={{ fontSize: 12.5, fontWeight: 500, color: C.txt2, display: "block", marginBottom: 8 }}>{t.stEmailEnterCode}</label>
+                              <div style={{ display: "flex", gap: 10 }}>
+                                <input value={emailAuthCode} onChange={e => setEmailAuthCode(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder={t.stTotpCodePh} maxLength={6} style={{ ...inp, flex: 1, fontSize: 22, fontFamily: "monospace", letterSpacing: "0.3em", textAlign: "center" }} />
+                                <button onClick={() => { if (emailAuthCode.length === 6) setEmailAuthStep("enabled"); }} style={{ ...btnP, background: emailAuthCode.length === 6 ? acc.hex : C.line, color: emailAuthCode.length === 6 ? "#fff" : C.txt3, flexShrink: 0, cursor: emailAuthCode.length === 6 ? "pointer" : "not-allowed" }}>
+                                  <BadgeCheck size={15} /> {t.stEmailVerify}
+                                </button>
+                              </div>
+                              <div style={{ fontSize: 12, color: C.txt3, marginTop: 10 }}>
+                                {lang === "en" ? "Didn't receive the code? " : "¿No recibiste el código? "}
+                                <button onClick={() => {}} style={{ fontSize: 12, color: acc.hex, background: "none", border: "none", cursor: "pointer", fontFamily: FONT_SANS, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <RefreshCw size={11} /> {lang === "en" ? "Resend" : "Reenviar"}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          {emailAuthStep === "enabled" && (
+                            <div style={{ padding: "14px 24px", display: "flex", alignItems: "center", gap: 10 }}>
+                              <BadgeCheck size={16} color={acc.hex} />
+                              <span style={{ fontSize: 13, color: acc.dk, fontWeight: 500 }}>{lang === "en" ? `Email verification is active. A code will be sent to ${userProfile.email} at each sign-in.` : `Verificación por email activa. Se enviará un código a ${userProfile.email} en cada inicio de sesión.`}</span>
+                            </div>
+                          )}
+                        </div>
+
                       </div>
                     )}
 
