@@ -8,6 +8,7 @@ import {
   Activity, ArrowUpRight, Zap, Briefcase, Target, Rocket, Award, Users, Globe,
   Download, Plug, FileInput, Network, Building, Layers, CheckSquare, Square, ListChecks,
   GraduationCap, BookMarked, ExternalLink, Hash, Info, CreditCard, Star, BadgeCheck,
+  Palette, UserRound, Sliders, Sun, Moon,
 } from "lucide-react";
 
 // ============================================================================
@@ -28,6 +29,18 @@ const C = {
 };
 const FONT_DISPLAY = "'DM Serif Display', Georgia, serif";
 const FONT_SANS = "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif";
+
+// ── Color themes ──────────────────────────────────────────────────────────────
+const THEMES = {
+  teal:    { key:"teal",    hex:"#16B6C9", dk:"#0E8FA0", soft:"#E0F6F9", mute:"#BCEAF0", name:"Ocean",   nameEs:"Océano"    },
+  emerald: { key:"emerald", hex:"#10B981", dk:"#059669", soft:"#D1FAE5", mute:"#A7F3D0", name:"Emerald", nameEs:"Esmeralda" },
+  blue:    { key:"blue",    hex:"#2563EB", dk:"#1D4ED8", soft:"#DBEAFE", mute:"#BFDBFE", name:"Blue",    nameEs:"Azul"      },
+  indigo:  { key:"indigo",  hex:"#4F46E5", dk:"#4338CA", soft:"#EEF2FF", mute:"#E0E7FF", name:"Indigo",  nameEs:"Índigo"    },
+  violet:  { key:"violet",  hex:"#7C3AED", dk:"#6D28D9", soft:"#EDE9FE", mute:"#DDD6FE", name:"Violet",  nameEs:"Violeta"   },
+  rose:    { key:"rose",    hex:"#E11D48", dk:"#BE123C", soft:"#FFE4E6", mute:"#FECDD3", name:"Rose",    nameEs:"Rosa"      },
+  coral:   { key:"coral",   hex:"#EA580C", dk:"#C2410C", soft:"#FFEDD5", mute:"#FED7AA", name:"Coral",   nameEs:"Coral"     },
+  amber:   { key:"amber",   hex:"#D97706", dk:"#B45309", soft:"#FEF3C7", mute:"#FDE68A", name:"Amber",   nameEs:"Ámbar"     },
+};
 
 const T = {
   en: {
@@ -165,6 +178,24 @@ const T = {
     subWhy2T: "First-submission approval rate", subWhy2D: "Every clean-pass claim saves your team days of rework and speeds up cash flow.",
     subWhy3T: "Undercoding recovery", subWhy3D: "AI flags when documentation supports a higher code — completely legal, fully compliant.",
     subGuarantee: "30-day money-back guarantee on annual plans.",
+    settingsTitle: "Settings", settingsSub: "Manage your profile, appearance, and preferences.",
+    stProfile: "My Profile", stAppearance: "Appearance", stNotifs: "Notifications", stSecurity: "Security", stTeam: "Team",
+    stFirstName: "First name", stLastName: "Last name", stEmail: "Email", stRole: "Role", stSaveProfile: "Save changes", stSaved: "Saved!",
+    stAvatarColor: "Avatar color",
+    stThemeTitle: "Accent color", stThemeSub: "Choose the accent color used across the platform. Works with every section.",
+    stDensity: "Display density", stDensityComfy: "Comfortable", stDensityCompact: "Compact",
+    stNotifSub: "Choose which alerts you want to see.",
+    stNotifSubscription: "Subscription reminders", stNotifSubscriptionD: "Renewal date and billing alerts (managers only)",
+    stNotifClaims: "Claim alerts", stNotifClaimsD: "Batches that need attention or have high-risk claims",
+    stNotifPayers: "Payer updates", stNotifPayersD: "Rule changes and bulletin updates for Puerto Rico payers",
+    stNotifEmail: "Email digest", stNotifEmailD: "Daily summary sent to your work email",
+    stSecuritySub: "Password and two-factor authentication.",
+    stChangePassword: "Change password", stCurrentPwd: "Current password", stNewPwd: "New password", stConfirmPwd: "Confirm new password", stUpdatePwd: "Update password",
+    st2FA: "Two-factor authentication", st2FAStatus: "Not enabled", st2FAEnable: "Enable 2FA", st2FAComingSoon: "Coming soon",
+    stTeamSub: "Manage who has access to your organization's RevenueMD account.",
+    stAddMember: "Add member", stMemberName: "Name", stMemberRole: "Role", stMemberStatus: "Status", stMemberActive: "Active",
+    stInviteEmail: "Invite by email", stSendInvite: "Send invite",
+    stLanguage: "Language", stLanguageSub: "Choose the platform language.",
   },
   es: {
     tagline: "Detecta denegaciones antes de que ocurran. Codifica con confianza. Cobra más rápido.",
@@ -302,6 +333,24 @@ const T = {
     subWhy2T: "Tasa de aprobación en primer intento", subWhy2D: "Cada reclamo limpio ahorra días de trabajo a tu equipo y acelera el flujo de caja.",
     subWhy3T: "Recuperación por subcodificación", subWhy3D: "La IA marca cuando la documentación respalda un código más alto — completamente legal y en cumplimiento.",
     subGuarantee: "Garantía de devolución a 30 días en planes anuales.",
+    settingsTitle: "Ajustes", settingsSub: "Administra tu perfil, apariencia y preferencias.",
+    stProfile: "Mi perfil", stAppearance: "Apariencia", stNotifs: "Notificaciones", stSecurity: "Seguridad", stTeam: "Equipo",
+    stFirstName: "Nombre", stLastName: "Apellido", stEmail: "Correo", stRole: "Rol", stSaveProfile: "Guardar cambios", stSaved: "¡Guardado!",
+    stAvatarColor: "Color del avatar",
+    stThemeTitle: "Color de acento", stThemeSub: "Elige el color de acento de la plataforma. Aplica a todas las secciones.",
+    stDensity: "Densidad de visualización", stDensityComfy: "Confortable", stDensityCompact: "Compacto",
+    stNotifSub: "Elige qué alertas quieres recibir.",
+    stNotifSubscription: "Recordatorios de suscripción", stNotifSubscriptionD: "Fecha de renovación y alertas de facturación (solo gerentes)",
+    stNotifClaims: "Alertas de reclamos", stNotifClaimsD: "Lotes que necesitan atención o tienen reclamos de alto riesgo",
+    stNotifPayers: "Actualizaciones de pagadores", stNotifPayersD: "Cambios de reglas y boletines de pagadores de Puerto Rico",
+    stNotifEmail: "Resumen por email", stNotifEmailD: "Resumen diario enviado a tu correo de trabajo",
+    stSecuritySub: "Contraseña y autenticación de dos factores.",
+    stChangePassword: "Cambiar contraseña", stCurrentPwd: "Contraseña actual", stNewPwd: "Nueva contraseña", stConfirmPwd: "Confirmar nueva contraseña", stUpdatePwd: "Actualizar contraseña",
+    st2FA: "Autenticación de dos factores", st2FAStatus: "No habilitada", st2FAEnable: "Habilitar 2FA", st2FAComingSoon: "Próximamente",
+    stTeamSub: "Gestiona quién tiene acceso a la cuenta de tu organización.",
+    stAddMember: "Agregar miembro", stMemberName: "Nombre", stMemberRole: "Rol", stMemberStatus: "Estado", stMemberActive: "Activo",
+    stInviteEmail: "Invitar por correo", stSendInvite: "Enviar invitación",
+    stLanguage: "Idioma", stLanguageSub: "Elige el idioma de la plataforma.",
   },
 };
 
@@ -971,6 +1020,14 @@ export default function App({ auth0 = null }) {
   const [subscribeModal, setSubscribeModal] = useState(null); // null | plan object
   const [subBillingAnn, setSubBillingAnn] = useState(false);
   const [subSuccess, setSubSuccess] = useState(false);
+  const [accentKey, setAccentKey] = useState("teal");
+  const [userProfile, setUserProfile] = useState({ firstName: "Demo", lastName: "User", email: "demo@clinicapr.com", avatarColor: "teal" });
+  const [profileSaved, setProfileSaved] = useState(false);
+  const [settingsTab, setSettingsTab] = useState("profile");
+  const [notifPrefs, setNotifPrefs] = useState({ subscription: true, claims: true, payers: true, email: false });
+  const [pwdForm, setPwdForm] = useState({ current: "", next: "", confirm: "" });
+  const [pwdSaved, setPwdSaved] = useState(false);
+  const acc = THEMES[accentKey] || THEMES.teal;
   const notifBadge = notifSeen ? 0 : role === "manager" ? 2 : 1;
   const t = T[lang];
 
@@ -1140,6 +1197,7 @@ export default function App({ auth0 = null }) {
     { id: "batch", icon: Layers, label: t.nav_batch },
     { id: "learn", icon: GraduationCap, label: t.nav_learn },
     ...(role === "manager" ? [{ id: "subscription", icon: CreditCard, label: t.nav_sub }] : []),
+    { id: "settings", icon: Settings, label: t.nav_settings },
   ];
 
   const runAnalysis = (id) => { setAnalyzing(true); setTimeout(() => { setAnalyzing(false); setAnalyzed((p) => ({ ...p, [id]: true })); }, 1300); };
@@ -1211,13 +1269,13 @@ export default function App({ auth0 = null }) {
       {/* SIDEBAR */}
       <aside style={{ width: 236, background: C.ink, padding: "22px 14px", display: "flex", flexDirection: "column", flexShrink: 0, position: "relative" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "0 10px 22px" }}>
-          <div style={{ width: 34, height: 34, borderRadius: 10, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 6px 18px -6px rgba(14,140,107,.7)" }}><Stethoscope size={19} color="#fff" /></div>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: acc.hex, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 6px 18px -6px ${acc.hex}99` }}><Stethoscope size={19} color="#fff" /></div>
           <div><div style={{ color: "#fff", fontSize: 16, fontWeight: 600, fontFamily: FONT_DISPLAY }}>Revenue<span style={{ color: C.teal }}>MD</span></div></div>
         </div>
         <nav style={{ flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
           {nav.map((n, i) => {
             const a = tab === n.id;
-            return <button key={n.id} className="navi rise" onClick={() => { setTab(n.id); setOpenClaim(null); }} style={{ animationDelay: `${i * 0.03}s`, display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13.5, textAlign: "left", width: "100%", background: a ? C.teal : "transparent", color: a ? "#fff" : "rgba(255,255,255,.62)", fontWeight: a ? 500 : 400, boxShadow: a ? "0 6px 16px -8px rgba(14,140,107,.8)" : "none" }}><n.icon size={17} /> {n.label}</button>;
+            return <button key={n.id} className="navi rise" onClick={() => { setTab(n.id); setOpenClaim(null); }} style={{ animationDelay: `${i * 0.03}s`, display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13.5, textAlign: "left", width: "100%", background: a ? acc.hex : "transparent", color: a ? "#fff" : "rgba(255,255,255,.62)", fontWeight: a ? 500 : 400, boxShadow: a ? `0 6px 16px -8px ${acc.hex}cc` : "none" }}><n.icon size={17} /> {n.label}</button>;
           })}
         </nav>
         <div style={{ borderTop: "1px solid rgba(255,255,255,.08)", paddingTop: 12, marginTop: 12 }}>
@@ -1238,19 +1296,19 @@ export default function App({ auth0 = null }) {
         <header style={{ background: C.paper2, borderBottom: `1px solid ${C.line}`, padding: "15px 30px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
           <div style={{ fontSize: 17, fontWeight: 500, fontFamily: FONT_DISPLAY }}>{nav.find((n) => n.id === tab)?.label}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div className="pill" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.teal, background: C.tealSoft, padding: "5px 11px", borderRadius: 20, fontWeight: 500 }}><span className="pdot" style={{ width: 7, height: 7, borderRadius: "50%", background: C.teal }} /> Live</div>
+            <div className="pill" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: acc.hex, background: acc.soft, padding: "5px 11px", borderRadius: 20, fontWeight: 500 }}><span className="pdot" style={{ width: 7, height: 7, borderRadius: "50%", background: acc.hex }} /> Live</div>
             <div style={{ position: "relative" }}>
               <button onClick={() => { setNotifOpen(p => !p); setNotifSeen(true); }} style={{ width: 34, height: 34, borderRadius: "50%", background: notifOpen ? C.ink : C.paper, border: `1px solid ${C.line}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
                 <Bell size={15} color={notifOpen ? "#fff" : C.ink} />
-                {notifBadge > 0 && <div style={{ position: "absolute", top: -2, right: -2, width: 16, height: 16, borderRadius: "50%", background: C.teal, color: "#fff", fontSize: 9, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{notifBadge}</div>}
+                {notifBadge > 0 && <div style={{ position: "absolute", top: -2, right: -2, width: 16, height: 16, borderRadius: "50%", background: acc.hex, color: "#fff", fontSize: 9, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{notifBadge}</div>}
               </button>
             </div>
             <button onClick={() => setHelpOpen(true)} className="btnp" style={{ display: "flex", alignItems: "center", gap: 7, background: C.ink, color: "#fff", border: "none", borderRadius: 20, padding: "6px 14px 6px 10px", fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: FONT_SANS, boxShadow: "0 4px 12px -4px rgba(16,36,92,.35)" }}>
-              <div style={{ width: 18, height: 18, borderRadius: "50%", background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>?</div>
+              <div style={{ width: 18, height: 18, borderRadius: "50%", background: acc.hex, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>?</div>
               {t.helpBtn}
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.txt2 }}>
-              <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.ink, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 500, fontSize: 11.5 }}>{role === "manager" ? "MG" : role === "biller" ? "BL" : "CD"}</div>
+              <div style={{ width: 30, height: 30, borderRadius: "50%", background: (THEMES[userProfile.avatarColor] || acc).hex, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: 11.5 }}>{(userProfile.firstName[0] || "D")}{(userProfile.lastName[0] || "U")}</div>
               {t[role]}
             </div>
           </div>
@@ -2017,6 +2075,209 @@ export default function App({ auth0 = null }) {
                     </div>
                   </div>
                 )}
+              </div>
+            );
+          })()}
+          {/* SETTINGS */}
+          {tab === "settings" && (() => {
+            const stTabs = [
+              { id: "profile",    icon: UserRound,  label: t.stProfile },
+              { id: "appearance", icon: Palette,    label: t.stAppearance },
+              { id: "notifs",     icon: Bell,       label: t.stNotifs },
+              { id: "security",   icon: Lock,       label: t.stSecurity },
+              ...(role === "manager" ? [{ id: "team", icon: Users, label: t.stTeam }] : []),
+            ];
+            const avatarBg = (THEMES[userProfile.avatarColor] || acc).hex;
+            const initials = (userProfile.firstName[0] || "D") + (userProfile.lastName[0] || "U");
+            const demoTeam = [
+              { name: "Dr. Rivera, LCSW", email: "rivera@clinicapr.com",  role: t.coder,   color: THEMES.teal.hex },
+              { name: "Dr. Colón, PhD",   email: "colon@clinicapr.com",   role: t.biller,  color: THEMES.emerald.hex },
+              { name: "Dr. Méndez, MD",   email: "mendez@clinicapr.com",  role: t.coder,   color: THEMES.indigo.hex },
+            ];
+            return (
+              <div>
+                <Head title={t.settingsTitle} sub={t.settingsSub} />
+                <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
+                  {/* sidebar tabs */}
+                  <div style={{ width: 190, flexShrink: 0, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 8, display: "flex", flexDirection: "column", gap: 2 }}>
+                    {stTabs.map(s => {
+                      const active = settingsTab === s.id;
+                      return (
+                        <button key={s.id} onClick={() => setSettingsTab(s.id)} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13.5, textAlign: "left", width: "100%", background: active ? acc.soft : "transparent", color: active ? acc.dk : C.txt2, fontWeight: active ? 600 : 400, fontFamily: FONT_SANS }}>
+                          <s.icon size={16} color={active ? acc.hex : C.txt3} /> {s.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* content panel */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+
+                    {/* ── PROFILE ───────────────────────────── */}
+                    {settingsTab === "profile" && (
+                      <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 28 }}>
+                        {/* avatar */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 18, marginBottom: 28, paddingBottom: 24, borderBottom: `1px solid ${C.lineSoft}` }}>
+                          <div style={{ width: 68, height: 68, borderRadius: "50%", background: avatarBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700, color: "#fff", fontFamily: FONT_DISPLAY, flexShrink: 0 }}>{initials}</div>
+                          <div>
+                            <div style={{ fontFamily: FONT_DISPLAY, fontSize: 19, fontWeight: 500, color: C.ink }}>{userProfile.firstName} {userProfile.lastName}</div>
+                            <div style={{ fontSize: 13, color: C.txt2, marginTop: 3 }}>{userProfile.email}</div>
+                            <span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 10px", borderRadius: 20, background: acc.soft, color: acc.dk, marginTop: 6, display: "inline-block" }}>{t[role]}</span>
+                          </div>
+                        </div>
+
+                        {/* form */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                          <div>
+                            <label style={{ fontSize: 12.5, fontWeight: 500, color: C.txt2, display: "block", marginBottom: 6 }}>{t.stFirstName}</label>
+                            <input value={userProfile.firstName} onChange={e => setUserProfile(p => ({ ...p, firstName: e.target.value }))} style={inp} />
+                          </div>
+                          <div>
+                            <label style={{ fontSize: 12.5, fontWeight: 500, color: C.txt2, display: "block", marginBottom: 6 }}>{t.stLastName}</label>
+                            <input value={userProfile.lastName} onChange={e => setUserProfile(p => ({ ...p, lastName: e.target.value }))} style={inp} />
+                          </div>
+                        </div>
+                        <div style={{ marginBottom: 16 }}>
+                          <label style={{ fontSize: 12.5, fontWeight: 500, color: C.txt2, display: "block", marginBottom: 6 }}>{t.stEmail}</label>
+                          <input value={userProfile.email} readOnly style={{ ...inp, background: C.paper, color: C.txt3 }} />
+                        </div>
+                        <div style={{ marginBottom: 22 }}>
+                          <label style={{ fontSize: 12.5, fontWeight: 500, color: C.txt2, display: "block", marginBottom: 10 }}>{t.stAvatarColor}</label>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            {Object.values(THEMES).map(th => (
+                              <button key={th.key} onClick={() => setUserProfile(p => ({ ...p, avatarColor: th.key }))} title={lang === "en" ? th.name : th.nameEs} style={{ width: 32, height: 32, borderRadius: "50%", background: th.hex, border: userProfile.avatarColor === th.key ? `3px solid ${C.ink}` : "3px solid transparent", cursor: "pointer", outline: userProfile.avatarColor === th.key ? `2px solid ${th.hex}` : "none", outlineOffset: 2, transition: "all .15s" }} />
+                            ))}
+                          </div>
+                        </div>
+                        <button onClick={() => { setProfileSaved(true); setTimeout(() => setProfileSaved(false), 2000); }} style={{ ...btnP, background: acc.hex }}>
+                          {profileSaved ? <><BadgeCheck size={15} /> {t.stSaved}</> : t.stSaveProfile}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* ── APPEARANCE ────────────────────────── */}
+                    {settingsTab === "appearance" && (
+                      <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 28 }}>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 4, fontFamily: FONT_DISPLAY }}>{t.stThemeTitle}</div>
+                        <div style={{ fontSize: 13, color: C.txt2, marginBottom: 20, lineHeight: 1.6 }}>{t.stThemeSub}</div>
+
+                        {/* color swatches */}
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(120px,1fr))", gap: 10, marginBottom: 28 }}>
+                          {Object.values(THEMES).map(th => {
+                            const active = accentKey === th.key;
+                            return (
+                              <button key={th.key} onClick={() => setAccentKey(th.key)} style={{ padding: "14px 12px", borderRadius: 14, border: `2px solid ${active ? th.hex : C.line}`, background: active ? th.soft : C.paper, cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, transition: "all .15s", boxShadow: active ? `0 4px 14px -4px ${th.hex}55` : "none" }}>
+                                <div style={{ width: 32, height: 32, borderRadius: "50%", background: th.hex, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  {active && <BadgeCheck size={16} color="#fff" />}
+                                </div>
+                                <span style={{ fontSize: 12.5, fontWeight: active ? 600 : 400, color: active ? th.dk : C.txt2 }}>{lang === "en" ? th.name : th.nameEs}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        {/* live preview strip */}
+                        <div style={{ borderTop: `1px solid ${C.lineSoft}`, paddingTop: 20, marginBottom: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: C.txt2, marginBottom: 12 }}>{lang === "en" ? "Preview" : "Vista previa"}</div>
+                          <div style={{ background: C.ink, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                            <div style={{ width: 28, height: 28, borderRadius: 8, background: acc.hex, display: "flex", alignItems: "center", justifyContent: "center" }}><Stethoscope size={15} color="#fff" /></div>
+                            <span style={{ color: "#fff", fontSize: 14, fontFamily: FONT_DISPLAY }}>Revenue<span style={{ color: acc.hex }}>MD</span></span>
+                            <div style={{ flex: 1 }} />
+                            <div style={{ background: acc.soft, color: acc.hex, fontSize: 11.5, fontWeight: 600, padding: "4px 12px", borderRadius: 20 }}>● Live</div>
+                            <div style={{ background: acc.hex, color: "#fff", fontSize: 12, fontWeight: 500, padding: "6px 14px", borderRadius: 10 }}>{lang === "en" ? "Action" : "Acción"}</div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── NOTIFICATIONS ─────────────────────── */}
+                    {settingsTab === "notifs" && (
+                      <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 28 }}>
+                        <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 4, fontFamily: FONT_DISPLAY }}>{t.stNotifs}</div>
+                        <div style={{ fontSize: 13, color: C.txt2, marginBottom: 22, lineHeight: 1.6 }}>{t.stNotifSub}</div>
+                        {[
+                          ...(role === "manager" ? [{ key: "subscription", title: t.stNotifSubscription, desc: t.stNotifSubscriptionD }] : []),
+                          { key: "claims",       title: t.stNotifClaims,        desc: t.stNotifClaimsD },
+                          { key: "payers",       title: t.stNotifPayers,        desc: t.stNotifPayersD },
+                          { key: "email",        title: t.stNotifEmail,         desc: t.stNotifEmailD },
+                        ].map((n, i, arr) => (
+                          <div key={n.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 0", borderBottom: i < arr.length - 1 ? `1px solid ${C.lineSoft}` : "none" }}>
+                            <div>
+                              <div style={{ fontSize: 13.5, fontWeight: 500, color: C.ink }}>{n.title}</div>
+                              <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 2 }}>{n.desc}</div>
+                            </div>
+                            <div onClick={() => setNotifPrefs(p => ({ ...p, [n.key]: !p[n.key] }))} style={{ width: 44, height: 24, borderRadius: 12, background: notifPrefs[n.key] ? acc.hex : C.line, cursor: "pointer", position: "relative", flexShrink: 0, marginLeft: 16, transition: "background .2s" }}>
+                              <div style={{ position: "absolute", top: 3, left: notifPrefs[n.key] ? 22 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,.18)", transition: "left .2s" }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* ── SECURITY ──────────────────────────── */}
+                    {settingsTab === "security" && (
+                      <div className="rise" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                        <div style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 28 }}>
+                          <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 4, fontFamily: FONT_DISPLAY }}>{t.stChangePassword}</div>
+                          <div style={{ fontSize: 13, color: C.txt2, marginBottom: 20 }}>{t.stSecuritySub}</div>
+                          {[[t.stCurrentPwd, "current", "password"], [t.stNewPwd, "next", "password"], [t.stConfirmPwd, "confirm", "password"]].map(([label, key, type]) => (
+                            <div key={key} style={{ marginBottom: 14 }}>
+                              <label style={{ fontSize: 12.5, fontWeight: 500, color: C.txt2, display: "block", marginBottom: 6 }}>{label}</label>
+                              <input type={type} value={pwdForm[key]} onChange={e => setPwdForm(p => ({ ...p, [key]: e.target.value }))} style={inp} />
+                            </div>
+                          ))}
+                          <button onClick={() => { setPwdSaved(true); setPwdForm({ current: "", next: "", confirm: "" }); setTimeout(() => setPwdSaved(false), 2500); }} style={{ ...btnP, background: acc.hex, marginTop: 4 }}>
+                            {pwdSaved ? <><BadgeCheck size={15} /> {t.stSaved}</> : t.stUpdatePwd}
+                          </button>
+                        </div>
+                        <div style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 28 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div>
+                              <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, fontFamily: FONT_DISPLAY }}>{t.st2FA}</div>
+                              <div style={{ fontSize: 13, color: C.txt2, marginTop: 4 }}>{t.st2FAStatus}</div>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ fontSize: 12, color: C.txt3, fontStyle: "italic" }}>{t.st2FAComingSoon}</span>
+                              <button disabled style={{ ...btnP, background: C.line, color: C.txt3, cursor: "not-allowed" }}>{t.st2FAEnable}</button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── TEAM (manager only) ───────────────── */}
+                    {settingsTab === "team" && role === "manager" && (
+                      <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 28 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                          <div style={{ fontSize: 15, fontWeight: 600, color: C.ink, fontFamily: FONT_DISPLAY }}>{t.stTeam}</div>
+                          <button onClick={() => setTab("subscription")} style={{ ...btnP, background: acc.hex, fontSize: 12 }}><CreditCard size={13} /> {t.subCurrentPlan}</button>
+                        </div>
+                        <div style={{ fontSize: 13, color: C.txt2, marginBottom: 22 }}>{t.stTeamSub}</div>
+                        <div style={{ marginBottom: 20 }}>
+                          {demoTeam.map((m, i) => (
+                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 0", borderBottom: i < demoTeam.length - 1 ? `1px solid ${C.lineSoft}` : "none" }}>
+                              <div style={{ width: 36, height: 36, borderRadius: "50%", background: m.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>{m.name[3]}{m.name.split(" ")[1]?.[0]}</div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: 13.5, fontWeight: 500, color: C.ink }}>{m.name}</div>
+                                <div style={{ fontSize: 12, color: C.txt3, marginTop: 1 }}>{m.email}</div>
+                              </div>
+                              <span style={{ fontSize: 12, fontWeight: 500, padding: "4px 12px", borderRadius: 20, background: acc.soft, color: acc.dk }}>{m.role}</span>
+                              <span style={{ fontSize: 11.5, color: C.teal }}>{t.stMemberActive}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div style={{ borderTop: `1px solid ${C.lineSoft}`, paddingTop: 20 }}>
+                          <div style={{ fontSize: 13, fontWeight: 500, color: C.ink, marginBottom: 10 }}>{t.stInviteEmail}</div>
+                          <div style={{ display: "flex", gap: 10 }}>
+                            <input placeholder="colleague@clinicapr.com" style={{ ...inp, flex: 1 }} />
+                            <button style={{ ...btnP, background: acc.hex, flexShrink: 0 }}>{t.stSendInvite}</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                </div>
               </div>
             );
           })()}
