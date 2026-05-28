@@ -7,7 +7,7 @@ import {
   FileScan, Loader2, Sparkles, ArrowRight, CircleAlert, BookOpen, FileSearch,
   Activity, ArrowUpRight, Zap, Briefcase, Target, Rocket, Award, Users, Globe,
   Download, Plug, FileInput, Network, Building, Layers, CheckSquare, Square, ListChecks,
-  GraduationCap, BookMarked, ExternalLink, Hash, Info,
+  GraduationCap, BookMarked, ExternalLink, Hash, Info, CreditCard, Star, BadgeCheck,
 } from "lucide-react";
 
 // ============================================================================
@@ -144,6 +144,27 @@ const T = {
     helpR3: "All patient data is HIPAA-encrypted. RevenueMD is built for compliance from the ground up.",
     notifTitle: "Notifications", notifMarkAll: "Mark all read", notifEmpty: "All caught up.",
     privacyLink: "Privacy Policy", termsLink: "Terms of Use",
+    nav_sub: "Subscription",
+    subTitle: "Choose your plan", subSub: "Transparent, all-inclusive pricing. No per-claim overage surprises. Cancel or upgrade anytime.",
+    subBilling: "Monthly", subBillingAnn: "Annual  (save 17%)",
+    subCurrentPlan: "Current plan", subPopular: "Most popular", subGetStarted: "Subscribe now", subContact: "Contact sales",
+    subPerMo: "/ mo", subPerMoAnn: "/ mo, billed annually",
+    subAnnSave: "You save", subPerYear: "/ year",
+    subFeatClaims: "claims / month", subFeatProviders: "providers", subFeatUnlimited: "Unlimited",
+    subFeatRules: "Full PR rules engine (ASES, Plan Vital, Triple-S, MCS, MMM, Humana)", subFeatAI: "AI claim analysis & suggested fixes",
+    subFeatAudit: "Audit log & batch history", subFeatEncrypt: "HIPAA PHI encryption at rest", subFeatSupport: "Priority support",
+    subFeatDedicated: "Dedicated account manager + SLA", subFeatAPI: "API access & custom rules",
+    subFeatBasicRules: "Core PR rules engine (ASES, Plan Vital)", subFeatEmailSupport: "Email support (2-business-day SLA)",
+    subFeatStandardRules: "Full PR rules engine — all 7 payers", subFeatChatSupport: "Chat + email support",
+    subModalTitle: "You're one step away", subModalSub: "This will complete your subscription via our secure payment processor. You will receive a confirmation email with your invoice.",
+    subModalConfirm: "Confirm & subscribe", subModalCancel: "Cancel",
+    subModalNote: "By subscribing you agree to our Terms of Use and authorize the charge shown above. Cancel anytime from this page.",
+    subTrialBadge: "Demo mode — no active subscription",
+    subWhyTitle: "Why RevenueMD pays for itself",
+    subWhy1T: "Average denial rate in PR: 18%", subWhy1D: "RevenueMD customers target under 10%, recovering thousands per month.",
+    subWhy2T: "First-submission approval rate", subWhy2D: "Every clean-pass claim saves your team days of rework and speeds up cash flow.",
+    subWhy3T: "Undercoding recovery", subWhy3D: "AI flags when documentation supports a higher code — completely legal, fully compliant.",
+    subGuarantee: "30-day money-back guarantee on annual plans.",
   },
   es: {
     tagline: "Detecta denegaciones antes de que ocurran. Codifica con confianza. Cobra más rápido.",
@@ -260,6 +281,27 @@ const T = {
     helpR3: "Todos los datos del paciente están encriptados con HIPAA. RevenueMD está diseñado para cumplimiento desde la base.",
     notifTitle: "Notificaciones", notifMarkAll: "Marcar todas como leídas", notifEmpty: "Todo al día.",
     privacyLink: "Política de privacidad", termsLink: "Términos de uso",
+    nav_sub: "Suscripción",
+    subTitle: "Elige tu plan", subSub: "Precios transparentes e inclusivos. Sin sorpresas por reclamo. Cancela o cambia de plan en cualquier momento.",
+    subBilling: "Mensual", subBillingAnn: "Anual  (ahorra 17%)",
+    subCurrentPlan: "Plan actual", subPopular: "Más popular", subGetStarted: "Suscribirse ahora", subContact: "Contactar ventas",
+    subPerMo: "/ mes", subPerMoAnn: "/ mes, facturado anualmente",
+    subAnnSave: "Ahorras", subPerYear: "/ año",
+    subFeatClaims: "reclamos / mes", subFeatProviders: "proveedores", subFeatUnlimited: "Ilimitados",
+    subFeatRules: "Motor de reglas PR completo (ASES, Plan Vital, Triple-S, MCS, MMM, Humana)", subFeatAI: "Análisis IA y correcciones sugeridas",
+    subFeatAudit: "Bitácora de auditoría e historial de lotes", subFeatEncrypt: "Cifrado HIPAA de PHI en reposo", subFeatSupport: "Soporte prioritario",
+    subFeatDedicated: "Gerente de cuenta dedicado + SLA", subFeatAPI: "Acceso API y reglas personalizadas",
+    subFeatBasicRules: "Motor de reglas PR principal (ASES, Plan Vital)", subFeatEmailSupport: "Soporte por email (SLA 2 días hábiles)",
+    subFeatStandardRules: "Motor de reglas PR completo — 7 pagadores", subFeatChatSupport: "Soporte por chat + email",
+    subModalTitle: "Estás a un paso", subModalSub: "Esto completará tu suscripción a través de nuestro procesador de pago seguro. Recibirás un email de confirmación con tu factura.",
+    subModalConfirm: "Confirmar y suscribirse", subModalCancel: "Cancelar",
+    subModalNote: "Al suscribirte aceptas nuestros Términos de uso y autorizas el cargo indicado arriba. Cancela en cualquier momento desde esta página.",
+    subTrialBadge: "Modo demo — sin suscripción activa",
+    subWhyTitle: "Por qué RevenueMD se paga solo",
+    subWhy1T: "Tasa promedio de denegaciones en PR: 18%", subWhy1D: "Los clientes de RevenueMD apuntan a menos del 10%, recuperando miles al mes.",
+    subWhy2T: "Tasa de aprobación en primer intento", subWhy2D: "Cada reclamo limpio ahorra días de trabajo a tu equipo y acelera el flujo de caja.",
+    subWhy3T: "Recuperación por subcodificación", subWhy3D: "La IA marca cuando la documentación respalda un código más alto — completamente legal y en cumplimiento.",
+    subGuarantee: "Garantía de devolución a 30 días en planes anuales.",
   },
 };
 
@@ -926,6 +968,9 @@ export default function App({ auth0 = null }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifSeen, setNotifSeen] = useState(false);
   const [legalModal, setLegalModal] = useState(null); // null | "privacy" | "terms"
+  const [subscribeModal, setSubscribeModal] = useState(null); // null | plan object
+  const [subBillingAnn, setSubBillingAnn] = useState(false);
+  const [subSuccess, setSubSuccess] = useState(false);
   const notifBadge = notifSeen ? 0 : role === "manager" ? 2 : 1;
   const t = T[lang];
 
@@ -1094,6 +1139,7 @@ export default function App({ auth0 = null }) {
     { id: "business", icon: Briefcase, label: t.nav_business },
     { id: "batch", icon: Layers, label: t.nav_batch },
     { id: "learn", icon: GraduationCap, label: t.nav_learn },
+    ...(role === "manager" ? [{ id: "subscription", icon: CreditCard, label: t.nav_sub }] : []),
   ];
 
   const runAnalysis = (id) => { setAnalyzing(true); setTimeout(() => { setAnalyzing(false); setAnalyzed((p) => ({ ...p, [id]: true })); }, 1300); };
@@ -1121,6 +1167,46 @@ export default function App({ auth0 = null }) {
       {FONTS}
       {helpOpen && <HelpModal t={t} lang={lang} onClose={() => setHelpOpen(false)} />}
       {legalModal && <LegalModal type={legalModal} lang={lang} onClose={() => setLegalModal(null)} />}
+      {subscribeModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(16,36,92,.55)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={() => setSubscribeModal(null)}>
+          <div onClick={e => e.stopPropagation()} className="rise" style={{ background: C.paper2, borderRadius: 22, padding: 32, width: "100%", maxWidth: 440, boxShadow: "0 32px 80px -16px rgba(16,36,92,.35)" }}>
+            {subSuccess ? (
+              <div style={{ textAlign: "center", padding: "12px 0" }}>
+                <div style={{ width: 60, height: 60, borderRadius: "50%", background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}><BadgeCheck size={30} color={C.tealDk} /></div>
+                <div style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 500, color: C.ink, marginBottom: 8 }}>{lang === "en" ? "You're subscribed!" : "¡Suscripción activa!"}</div>
+                <div style={{ fontSize: 14, color: C.txt2, lineHeight: 1.6, marginBottom: 24 }}>{lang === "en" ? `Welcome to RevenueMD ${subscribeModal.name}. A confirmation email is on its way.` : `Bienvenido a RevenueMD ${subscribeModal.name}. Un email de confirmación está en camino.`}</div>
+                <button onClick={() => setSubscribeModal(null)} style={{ ...btnP, margin: "0 auto", padding: "10px 28px" }}>{lang === "en" ? "Close" : "Cerrar"}</button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                  <div style={{ width: 42, height: 42, borderRadius: 12, background: subscribeModal.popular ? C.tealSoft : C.blueSoft, display: "flex", alignItems: "center", justifyContent: "center" }}><CreditCard size={20} color={subscribeModal.popular ? C.tealDk : C.blue} /></div>
+                  <div>
+                    <div style={{ fontFamily: FONT_DISPLAY, fontSize: 19, fontWeight: 500, color: C.ink }}>{t.subModalTitle}</div>
+                    <div style={{ fontSize: 13, color: C.txt2 }}>RevenueMD {subscribeModal.name}</div>
+                  </div>
+                </div>
+                <div style={{ background: subscribeModal.billingAnn ? C.tealSoft : C.blueSoft, border: `1px solid ${subscribeModal.billingAnn ? C.tealMute : C.line}`, borderRadius: 14, padding: 16, marginBottom: 18 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div>
+                      <div style={{ fontSize: 13.5, fontWeight: 500, color: C.ink }}>RevenueMD {subscribeModal.name}</div>
+                      <div style={{ fontSize: 12, color: C.txt2, marginTop: 2 }}>{subscribeModal.billingAnn ? t.subBillingAnn : t.subBilling}</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontFamily: FONT_DISPLAY, fontSize: 22, fontWeight: 600, color: C.ink }}>${subscribeModal.billingAnn ? subscribeModal.priceAnnual * 12 : subscribeModal.priceMonthly}<span style={{ fontSize: 13, fontWeight: 400, color: C.txt2 }}>{subscribeModal.billingAnn ? t.subPerYear : t.subPerMo}</span></div>
+                      {subscribeModal.billingAnn && <div style={{ fontSize: 12, color: C.tealDk, fontWeight: 500 }}>${subscribeModal.priceMonthly - subscribeModal.priceAnnual * 12 / 12 > 0 ? t.subAnnSave : ""} ${((subscribeModal.priceMonthly - subscribeModal.priceAnnual) * 12).toLocaleString()}/yr</div>}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ fontSize: 13, color: C.txt2, lineHeight: 1.6, marginBottom: 20 }}>{t.subModalSub}</div>
+                <button onClick={() => setSubSuccess(true)} style={{ ...btnP, width: "100%", justifyContent: "center", marginBottom: 10 }}><CreditCard size={15} /> {t.subModalConfirm}</button>
+                <button onClick={() => setSubscribeModal(null)} style={{ ...btnG, width: "100%", justifyContent: "center" }}>{t.subModalCancel}</button>
+                <div style={{ fontSize: 11.5, color: C.txt3, marginTop: 14, lineHeight: 1.5 }}>{t.subModalNote}</div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
       {/* SIDEBAR */}
       <aside style={{ width: 236, background: C.ink, padding: "22px 14px", display: "flex", flexDirection: "column", flexShrink: 0, position: "relative" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "0 10px 22px" }}>
@@ -1555,6 +1641,144 @@ export default function App({ auth0 = null }) {
               </div>
             </div>
           )}
+
+          {/* SUBSCRIPTION */}
+          {tab === "subscription" && role === "manager" && (() => {
+            const isEn = lang === "en";
+            const plans = [
+              {
+                id: "starter",
+                name: isEn ? "Starter" : "Inicial",
+                priceMonthly: 299,
+                priceAnnual: 249,
+                claims: 500,
+                providers: 2,
+                color: C.blue, soft: C.blueSoft,
+                features: [
+                  t.subFeatBasicRules,
+                  `500 ${t.subFeatClaims}`,
+                  `2 ${t.subFeatProviders}`,
+                  t.subFeatEmailSupport,
+                  t.subFeatAudit,
+                  t.subFeatEncrypt,
+                ],
+                cta: t.subGetStarted,
+                popular: false,
+              },
+              {
+                id: "professional",
+                name: isEn ? "Professional" : "Profesional",
+                priceMonthly: 699,
+                priceAnnual: 579,
+                claims: 2500,
+                providers: 8,
+                color: C.teal, soft: C.tealSoft,
+                features: [
+                  t.subFeatRules,
+                  `2,500 ${t.subFeatClaims}`,
+                  `8 ${t.subFeatProviders}`,
+                  t.subFeatAI,
+                  t.subFeatChatSupport,
+                  t.subFeatAudit,
+                  t.subFeatEncrypt,
+                ],
+                cta: t.subGetStarted,
+                popular: true,
+              },
+              {
+                id: "enterprise",
+                name: "Enterprise",
+                priceMonthly: 1299,
+                priceAnnual: 1079,
+                claims: null,
+                providers: null,
+                color: C.ink, soft: C.lineSoft,
+                features: [
+                  t.subFeatRules,
+                  `${t.subFeatUnlimited} ${t.subFeatClaims}`,
+                  `${t.subFeatUnlimited} ${t.subFeatProviders}`,
+                  t.subFeatAI,
+                  t.subFeatDedicated,
+                  t.subFeatAPI,
+                  t.subFeatAudit,
+                  t.subFeatEncrypt,
+                ],
+                cta: t.subContact,
+                popular: false,
+              },
+            ];
+            const price = (p) => subBillingAnn ? p.priceAnnual : p.priceMonthly;
+            const annualTotal = (p) => p.priceAnnual * 12;
+            const savings = (p) => (p.priceMonthly - p.priceAnnual) * 12;
+
+            return (
+              <div>
+                <Head title={t.subTitle} sub={t.subSub} />
+
+                {/* trial badge */}
+                <div className="rise" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.amberSoft, border: `1px solid ${C.amber}`, borderRadius: 24, padding: "7px 16px", marginBottom: 24, fontSize: 13, color: C.amber, fontWeight: 500 }}>
+                  <CreditCard size={14} /> {t.subTrialBadge}
+                </div>
+
+                {/* billing toggle */}
+                <div className="rise" style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
+                  <span style={{ fontSize: 14, fontWeight: subBillingAnn ? 400 : 600, color: subBillingAnn ? C.txt3 : C.ink }}>{t.subBilling}</span>
+                  <div onClick={() => setSubBillingAnn(p => !p)} style={{ width: 44, height: 24, borderRadius: 12, background: subBillingAnn ? C.teal : C.line, cursor: "pointer", position: "relative", transition: "background .2s" }}>
+                    <div style={{ position: "absolute", top: 3, left: subBillingAnn ? 22 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,.18)", transition: "left .2s" }} />
+                  </div>
+                  <span style={{ fontSize: 14, fontWeight: subBillingAnn ? 600 : 400, color: subBillingAnn ? C.ink : C.txt3 }}>{t.subBillingAnn}</span>
+                  {subBillingAnn && <span style={{ fontSize: 11.5, fontWeight: 600, background: C.tealSoft, color: C.tealDk, borderRadius: 20, padding: "3px 10px" }}>17% OFF</span>}
+                </div>
+
+                {/* pricing cards */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", gap: 16, marginBottom: 32 }}>
+                  {plans.map((p, i) => (
+                    <div key={p.id} className="rise lift" style={{ animationDelay: `${i * 0.07}s`, background: p.popular ? `linear-gradient(155deg,${C.ink},${C.ink2})` : C.paper2, border: p.popular ? "none" : `1px solid ${C.line}`, borderRadius: 20, padding: 24, position: "relative", display: "flex", flexDirection: "column" }}>
+                      {p.popular && (
+                        <div style={{ position: "absolute", top: -12, left: "50%", transform: "translateX(-50%)", background: C.teal, color: "#fff", fontSize: 11, fontWeight: 700, padding: "4px 14px", borderRadius: 20, display: "flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}>
+                          <Star size={10} fill="#fff" /> {t.subPopular}
+                        </div>
+                      )}
+                      <div style={{ fontSize: 16, fontWeight: 600, color: p.popular ? "#fff" : C.ink, fontFamily: FONT_DISPLAY, marginBottom: 6 }}>{p.name}</div>
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: 4, marginBottom: 4 }}>
+                        <span style={{ fontSize: 38, fontWeight: 600, fontFamily: FONT_DISPLAY, color: p.popular ? "#fff" : C.ink, lineHeight: 1 }}>${price(p)}</span>
+                        <span style={{ fontSize: 13, color: p.popular ? "rgba(255,255,255,.7)" : C.txt3, paddingBottom: 6 }}>{subBillingAnn ? t.subPerMoAnn : t.subPerMo}</span>
+                      </div>
+                      {subBillingAnn && (
+                        <div style={{ fontSize: 12.5, color: p.popular ? C.teal : C.tealDk, fontWeight: 500, marginBottom: 4 }}>
+                          {t.subAnnSave} ${savings(p).toLocaleString()}{t.subPerYear}
+                        </div>
+                      )}
+                      <div style={{ borderTop: `1px solid ${p.popular ? "rgba(255,255,255,.12)" : C.lineSoft}`, margin: "16px 0" }} />
+                      <ul style={{ listStyle: "none", padding: 0, margin: "0 0 20px", flex: 1, display: "flex", flexDirection: "column", gap: 9 }}>
+                        {p.features.map((f, fi) => (
+                          <li key={fi} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13, color: p.popular ? "rgba(255,255,255,.88)" : C.txt, lineHeight: 1.4 }}>
+                            <BadgeCheck size={15} color={p.popular ? C.teal : C.tealDk} style={{ flexShrink: 0, marginTop: 1 }} />{f}
+                          </li>
+                        ))}
+                      </ul>
+                      <button className="btnp" onClick={() => { setSubscribeModal({ ...p, billingAnn: subBillingAnn }); setSubSuccess(false); }} style={{ width: "100%", justifyContent: "center", padding: "11px", borderRadius: 12, border: "none", cursor: "pointer", fontSize: 13.5, fontWeight: 600, fontFamily: FONT_SANS, background: p.popular ? C.teal : C.ink, color: "#fff", display: "flex", alignItems: "center", gap: 7 }}>
+                        <CreditCard size={15} /> {p.cta}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                {/* why it pays off */}
+                <SectionLabel icon={TrendingUp} text={t.subWhyTitle} />
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 12, marginBottom: 20 }}>
+                  {[[Zap, t.subWhy1T, t.subWhy1D, C.teal, C.tealSoft], [Award, t.subWhy2T, t.subWhy2D, C.blue, C.blueSoft], [Sparkles, t.subWhy3T, t.subWhy3D, C.amber, C.amberSoft]].map(([Ic, ti, d, c, bg], i) => (
+                    <div key={i} className="rise lift" style={{ animationDelay: `${i * 0.06}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 14, padding: 18 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: 9, background: bg, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}><Ic size={17} color={c} /></div>
+                      <div style={{ fontSize: 13.5, fontWeight: 500, marginBottom: 4 }}>{ti}</div>
+                      <div style={{ fontSize: 12.5, color: C.txt2, lineHeight: 1.5 }}>{d}</div>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ fontSize: 12.5, color: C.txt3, fontStyle: "italic" }}>{t.subGuarantee}</div>
+              </div>
+            );
+          })()}
 
           {/* BATCH QUEUE */}
           {tab === "batch" && (() => {
