@@ -1,3 +1,23 @@
 node_modules
 dist
 .DS_Store
+
+# Vite cache
+.vite/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# SQLite temp/WAL files
+*.db-shm
+*.db-wal
+*.db-journal
+
+# Database files (keep .env.example, ignore actual DBs)
+*.db
+backups/
+
+# Environment secrets
+.env
