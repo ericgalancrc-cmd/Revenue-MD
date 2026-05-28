@@ -47,7 +47,7 @@ const T = {
   en: {
     tagline: "Identify denials before they happen. Code with confidence. Get paid faster.",
     email: "Work email", password: "Password", role: "Your role", signIn: "Enter platform",
-    demoNote: "Demo — any credentials work", coder: "Coder", biller: "Biller", manager: "Manager",
+    demoNote: "Demo — any credentials work", coder: "Coder / Biller", manager: "Manager",
     nav_dash: "Overview", nav_intake: "Intake", nav_claims: "Claims", nav_analysis: "AI Analysis",
     nav_denials: "Denials", nav_revenue: "Revenue", nav_payers: "Payers", nav_compliance: "Compliance",
     nav_settings: "Settings", logout: "Sign out", nav_business: "Business", nav_batch: "Batch queue",
@@ -214,7 +214,7 @@ const T = {
   es: {
     tagline: "Detecta denegaciones antes de que ocurran. Codifica con confianza. Cobra más rápido.",
     email: "Correo de trabajo", password: "Contraseña", role: "Tu rol", signIn: "Entrar a la plataforma",
-    demoNote: "Demo — cualquier credencial funciona", coder: "Codificador", biller: "Facturador", manager: "Gerente",
+    demoNote: "Demo — cualquier credencial funciona", coder: "Codificador / Facturador", manager: "Gerente",
     nav_dash: "Resumen", nav_intake: "Recepción", nav_claims: "Reclamos", nav_analysis: "Análisis IA",
     nav_denials: "Denegaciones", nav_revenue: "Ingresos", nav_payers: "Pagadores", nav_compliance: "Cumplimiento",
     nav_settings: "Ajustes", logout: "Salir", nav_business: "Negocio", nav_batch: "Cola por lote",
@@ -791,7 +791,7 @@ function LegalModal({ type, lang, onClose }) {
       en: {
         title: "Terms of Use", updated: "Last updated: May 28, 2026",
         sections: [
-          { h: "1. Acceptance of Terms", p: "By accessing or using RevenueMD, you agree to these Terms of Use and our Privacy Policy. If you do not agree, do not use the Service. These terms apply to all users — coders, billers, and managers — at subscribing organizations." },
+          { h: "1. Acceptance of Terms", p: "By accessing or using RevenueMD, you agree to these Terms of Use and our Privacy Policy. If you do not agree, do not use the Service. These terms apply to all users — coders/billers and managers — at subscribing organizations." },
           { h: "2. Service Description", p: "RevenueMD analyzes EDI 837 claim files for payer-specific rule violations, documentation gaps, and coding errors before claims are sent to a clearinghouse. RevenueMD does NOT submit claims to payers or clearinghouses — that remains your organization's responsibility." },
           { h: "3. Authorized Use Only", p: "The Service is licensed to healthcare provider organizations in Puerto Rico. You must be an authorized representative or employee of a subscribing organization. Sharing credentials, reverse engineering, or reselling the Service is prohibited." },
           { h: "4. HIPAA Compliance Obligations", p: "You agree to execute a BAA with RevenueMD before uploading real patient data. You are responsible for ensuring your use complies with HIPAA, HITECH, PR Act 194-2000, and all applicable federal and Puerto Rico healthcare regulations." },
@@ -1201,7 +1201,7 @@ export default function App({ auth0 = null }) {
             </>}
             <Lbl mt>{t.role}</Lbl>
             <select value={role} onChange={(e) => setRole(e.target.value)} style={inp}>
-              <option value="coder">{t.coder}</option><option value="biller">{t.biller}</option><option value="manager">{t.manager}</option>
+              <option value="coder">{t.coder}</option><option value="manager">{t.manager}</option>
             </select>
             <button className="btnp" onClick={() => auth0 ? auth0.loginWithRedirect() : setAuthed(true)} style={{ ...btnP, width: "100%", marginTop: 26, justifyContent: "center", padding: "13px", fontSize: 14.5 }}>{auth0 && auth0.isLoading ? <Loader2 size={17} className="spin" /> : <>{t.signIn} <ArrowRight size={17} /></>}</button>
             <button onClick={() => setLang(lang === "en" ? "es" : "en")} style={{ ...btnG, margin: "20px auto 0", display: "flex" }}><Languages size={15} /> {lang === "en" ? "Español" : "English"}</button>
@@ -1341,7 +1341,7 @@ export default function App({ auth0 = null }) {
               {t.helpBtn}
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.txt2 }}>
-              <div style={{ width: 30, height: 30, borderRadius: "50%", background: (THEMES[userProfile.avatarColor] || acc).hex, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: 11.5 }}>{(userProfile.firstName[0] || "D")}{(userProfile.lastName[0] || "U")}</div>
+              <div style={{ width: 30, height: 30, borderRadius: "50%", background: (THEMES[userProfile.avatarColor] || acc).hex, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: 11.5 }}>{role === "manager" ? "MG" : "CB"}</div>
               {t[role]}
             </div>
           </div>
@@ -2124,8 +2124,8 @@ export default function App({ auth0 = null }) {
             const initials = (userProfile.firstName[0] || "D") + (userProfile.lastName[0] || "U");
             const demoTeam = [
               { name: "Dr. Rivera, LCSW", email: "rivera@clinicapr.com",  role: t.coder,   color: THEMES.teal.hex },
-              { name: "Dr. Colón, PhD",   email: "colon@clinicapr.com",   role: t.biller,  color: THEMES.emerald.hex },
-              { name: "Dr. Méndez, MD",   email: "mendez@clinicapr.com",  role: t.coder,   color: THEMES.indigo.hex },
+              { name: "Dr. Colón, PhD",   email: "colon@clinicapr.com",   role: t.coder,   color: THEMES.emerald.hex },
+              { name: "Dr. Méndez, MD",   email: "mendez@clinicapr.com",  role: t.manager, color: THEMES.indigo.hex },
             ];
             return (
               <div>
