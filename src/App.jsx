@@ -639,8 +639,8 @@ function NotifPanel({ t, lang, role, onClose }) {
 
   return (
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 300 }} />
-      <div style={{ position: "fixed", top: 68, right: 28, width: 380, background: "#fff", borderRadius: 18, boxShadow: "0 20px 60px -12px rgba(16,36,92,.22), 0 0 0 1px rgba(16,36,92,.08)", zIndex: 301, overflow: "hidden" }}>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 8000 }} />
+      <div style={{ position: "fixed", top: 68, right: 28, width: 380, background: "#fff", borderRadius: 18, boxShadow: "0 20px 60px -12px rgba(16,36,92,.22), 0 0 0 1px rgba(16,36,92,.08)", zIndex: 8001, overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "15px 20px 13px", borderBottom: `1px solid ${C.line}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Bell size={15} color={C.ink} />
@@ -1167,6 +1167,7 @@ export default function App({ auth0 = null }) {
       {FONTS}
       {helpOpen && <HelpModal t={t} lang={lang} onClose={() => setHelpOpen(false)} />}
       {legalModal && <LegalModal type={legalModal} lang={lang} onClose={() => setLegalModal(null)} />}
+      {notifOpen && <NotifPanel t={t} lang={lang} role={role} onClose={() => setNotifOpen(false)} />}
       {subscribeModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(16,36,92,.55)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={() => setSubscribeModal(null)}>
           <div onClick={e => e.stopPropagation()} className="rise" style={{ background: C.paper2, borderRadius: 22, padding: 32, width: "100%", maxWidth: 440, boxShadow: "0 32px 80px -16px rgba(16,36,92,.35)" }}>
@@ -1243,7 +1244,6 @@ export default function App({ auth0 = null }) {
                 <Bell size={15} color={notifOpen ? "#fff" : C.ink} />
                 {notifBadge > 0 && <div style={{ position: "absolute", top: -2, right: -2, width: 16, height: 16, borderRadius: "50%", background: C.teal, color: "#fff", fontSize: 9, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{notifBadge}</div>}
               </button>
-              {notifOpen && <NotifPanel t={t} lang={lang} role={role} onClose={() => setNotifOpen(false)} />}
             </div>
             <button onClick={() => setHelpOpen(true)} className="btnp" style={{ display: "flex", alignItems: "center", gap: 7, background: C.ink, color: "#fff", border: "none", borderRadius: 20, padding: "6px 14px 6px 10px", fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: FONT_SANS, boxShadow: "0 4px 12px -4px rgba(16,36,92,.35)" }}>
               <div style={{ width: 18, height: 18, borderRadius: "50%", background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>?</div>
