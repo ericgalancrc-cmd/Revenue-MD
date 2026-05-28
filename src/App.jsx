@@ -146,7 +146,7 @@ const T = {
     privacyLink: "Privacy Policy", termsLink: "Terms of Use",
     nav_sub: "Subscription",
     subTitle: "Choose your plan", subSub: "Transparent, all-inclusive pricing. No per-claim overage surprises. Cancel or upgrade anytime.",
-    subBilling: "Monthly", subBillingAnn: "Annual  (save 17%)",
+    subBilling: "Monthly", subBillingAnn: "Annual  (save 25%)",
     subCurrentPlan: "Current plan", subPopular: "Most popular", subGetStarted: "Subscribe now", subContact: "Contact sales",
     subPerMo: "/ mo", subPerMoAnn: "/ mo, billed annually",
     subAnnSave: "You save", subPerYear: "/ year",
@@ -283,7 +283,7 @@ const T = {
     privacyLink: "Política de privacidad", termsLink: "Términos de uso",
     nav_sub: "Suscripción",
     subTitle: "Elige tu plan", subSub: "Precios transparentes e inclusivos. Sin sorpresas por reclamo. Cancela o cambia de plan en cualquier momento.",
-    subBilling: "Mensual", subBillingAnn: "Anual  (ahorra 17%)",
+    subBilling: "Mensual", subBillingAnn: "Anual  (ahorra 25%)",
     subCurrentPlan: "Plan actual", subPopular: "Más popular", subGetStarted: "Suscribirse ahora", subContact: "Contactar ventas",
     subPerMo: "/ mes", subPerMoAnn: "/ mes, facturado anualmente",
     subAnnSave: "Ahorras", subPerYear: "/ año",
@@ -1650,7 +1650,7 @@ export default function App({ auth0 = null }) {
                 id: "starter",
                 name: isEn ? "Starter" : "Inicial",
                 priceMonthly: 299,
-                priceAnnual: 249,
+                priceAnnual: 224,
                 claims: 500,
                 providers: 2,
                 color: C.blue, soft: C.blueSoft,
@@ -1669,7 +1669,7 @@ export default function App({ auth0 = null }) {
                 id: "professional",
                 name: isEn ? "Professional" : "Profesional",
                 priceMonthly: 699,
-                priceAnnual: 579,
+                priceAnnual: 524,
                 claims: 2500,
                 providers: 8,
                 color: C.teal, soft: C.tealSoft,
@@ -1689,7 +1689,7 @@ export default function App({ auth0 = null }) {
                 id: "enterprise",
                 name: "Enterprise",
                 priceMonthly: 1299,
-                priceAnnual: 1079,
+                priceAnnual: 974,
                 claims: null,
                 providers: null,
                 color: C.ink, soft: C.lineSoft,
@@ -1727,7 +1727,7 @@ export default function App({ auth0 = null }) {
                     <div style={{ position: "absolute", top: 3, left: subBillingAnn ? 22 : 3, width: 18, height: 18, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,.18)", transition: "left .2s" }} />
                   </div>
                   <span style={{ fontSize: 14, fontWeight: subBillingAnn ? 600 : 400, color: subBillingAnn ? C.ink : C.txt3 }}>{t.subBillingAnn}</span>
-                  {subBillingAnn && <span style={{ fontSize: 11.5, fontWeight: 600, background: C.tealSoft, color: C.tealDk, borderRadius: 20, padding: "3px 10px" }}>17% OFF</span>}
+                  {subBillingAnn && <span style={{ fontSize: 11.5, fontWeight: 600, background: C.tealSoft, color: C.tealDk, borderRadius: 20, padding: "3px 10px" }}>25% OFF</span>}
                 </div>
 
                 {/* pricing cards */}
