@@ -10,6 +10,7 @@ import {
   GraduationCap, BookMarked, ExternalLink, Hash, Info, CreditCard, Star, BadgeCheck,
   Palette, UserRound, Sliders, Sun, Moon,
   Smartphone, Mail, QrCode, KeyRound, ShieldAlert, RefreshCw, Copy,
+  Menu, X,
 } from "lucide-react";
 
 // ============================================================================
@@ -42,6 +43,16 @@ const THEMES = {
   coral:   { key:"coral",   hex:"#EA580C", dk:"#C2410C", soft:"#FFEDD5", mute:"#FED7AA", name:"Coral",   nameEs:"Coral"     },
   amber:   { key:"amber",   hex:"#D97706", dk:"#B45309", soft:"#FEF3C7", mute:"#FDE68A", name:"Amber",   nameEs:"Ámbar"     },
 };
+
+function useWindowWidth() {
+  const [w, setW] = useState(typeof window !== "undefined" ? window.innerWidth : 1280);
+  useEffect(() => {
+    const h = () => setW(window.innerWidth);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+  return w;
+}
 
 const T = {
   en: {
@@ -210,6 +221,9 @@ const T = {
     stAddMember: "Add member", stMemberName: "Name", stMemberRole: "Role", stMemberStatus: "Status", stMemberActive: "Active",
     stInviteEmail: "Invite by email", stSendInvite: "Send invite",
     stLanguage: "Language", stLanguageSub: "Choose the platform language.",
+    mobileManagerOnly: "This view is for managers only",
+    mobileManagerOnlySub: "The coding & billing tools require a desktop browser. Please sign in from your computer to access claims, batch queues, and analysis.",
+    mobileCoderDesk: "Sign in on desktop",
   },
   es: {
     tagline: "Detecta denegaciones antes de que ocurran. Codifica con confianza. Cobra más rápido.",
@@ -378,6 +392,9 @@ const T = {
     stAddMember: "Agregar miembro", stMemberName: "Nombre", stMemberRole: "Rol", stMemberStatus: "Estado", stMemberActive: "Activo",
     stInviteEmail: "Invitar por correo", stSendInvite: "Enviar invitación",
     stLanguage: "Idioma", stLanguageSub: "Elige el idioma de la plataforma.",
+    mobileManagerOnly: "Esta vista es solo para gerentes",
+    mobileManagerOnlySub: "Las herramientas de codificación y facturación requieren un navegador de escritorio. Inicia sesión desde tu computadora para acceder a reclamos, colas y análisis.",
+    mobileCoderDesk: "Iniciar sesión en escritorio",
   },
 };
 
@@ -1008,6 +1025,9 @@ const rbg = (r) => (r >= 60 ? C.redSoft : r >= 30 ? C.amberSoft : C.tealSoft);
 const SCAN = ["Reading document", "Detecting language", "Parsing codes"];
 
 export default function App({ auth0 = null }) {
+  const winW = useWindowWidth();
+  const isMobile = winW < 768;
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lang, setLang] = useState("en");
   const [authed, setAuthed] = useState(false);
   const [role, setRole] = useState("manager");
@@ -1167,10 +1187,10 @@ export default function App({ auth0 = null }) {
   // ---------- LOGIN ----------
   if (!authed) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", fontFamily: FONT_SANS, background: C.ink }}>
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: isMobile ? "column" : "row", fontFamily: FONT_SANS, background: C.ink }}>
         {FONTS}
-        {/* left brand panel */}
-        <div style={{ flex: 1, background: `linear-gradient(155deg, ${C.ink} 0%, ${C.ink2} 100%)`, padding: "56px 56px", display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", overflow: "hidden" }}>
+        {/* left brand panel — hidden on mobile */}
+        <div style={{ flex: 1, background: `linear-gradient(155deg, ${C.ink} 0%, ${C.ink2} 100%)`, padding: isMobile ? "32px 28px 24px" : "56px 56px", display: "flex", flexDirection: "column", justifyContent: "space-between", position: "relative", overflow: "hidden", ...(isMobile ? { minHeight: 180 } : {}) }}>
           <div style={{ position: "absolute", width: 520, height: 520, borderRadius: "50%", background: "radial-gradient(circle, rgba(14,140,107,.18), transparent 70%)", top: -120, right: -160 }} />
           <div style={{ position: "absolute", width: 360, height: 360, borderRadius: "50%", background: "radial-gradient(circle, rgba(201,162,75,.10), transparent 70%)", bottom: -80, left: -100 }} />
           <div className="rise" style={{ display: "flex", alignItems: "center", gap: 16, position: "relative" }}>
@@ -1191,7 +1211,7 @@ export default function App({ auth0 = null }) {
           </div>
         </div>
         {/* right form */}
-        <div style={{ width: 460, background: C.paper2, display: "flex", flexDirection: "column", justifyContent: "center", padding: "0 52px" }}>
+        <div style={{ width: isMobile ? "100%" : 460, background: C.paper2, display: "flex", flexDirection: "column", justifyContent: "center", padding: isMobile ? "32px 24px 40px" : "0 52px" }}>
           <div className="rise" style={{ animationDelay: ".12s" }}>
             <h2 style={{ fontFamily: FONT_DISPLAY, fontSize: 27, fontWeight: 500, margin: "0 0 6px", color: C.ink }}>{lang === "en" ? "Welcome back" : "Bienvenido"}</h2>
             <p style={{ color: C.txt2, fontSize: 14, margin: "0 0 30px" }}>{auth0 ? (lang === "en" ? "Sign in with your organization account" : "Inicia sesión con tu cuenta organizacional") : t.demoNote}</p>
@@ -1235,6 +1255,35 @@ export default function App({ auth0 = null }) {
     { id: "settings", icon: Settings, label: t.nav_settings },
   ];
 
+  // Mobile: only managers see the platform; only business sections shown
+  const MOBILE_TABS = new Set(["dash", "revenue", "business", "subscription", "settings"]);
+  const visibleNav = isMobile ? nav.filter(n => MOBILE_TABS.has(n.id)) : nav;
+
+  // Coder/Biller on mobile → desktop-only screen
+  if (isMobile && role !== "manager") {
+    return (
+      <div style={{ minHeight: "100vh", background: C.ink, fontFamily: FONT_SANS, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 28, textAlign: "center" }}>
+        {FONTS}
+        <div style={{ width: 72, height: 72, borderRadius: 22, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 22, boxShadow: `0 12px 36px -8px ${C.teal}88` }}>
+          <Stethoscope size={36} color="#fff" />
+        </div>
+        <div style={{ color: "#fff", fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 400, marginBottom: 12 }}>Revenue<span style={{ color: C.teal }}>MD</span></div>
+        <div style={{ color: "rgba(255,255,255,.92)", fontSize: 17, fontWeight: 600, marginBottom: 10 }}>{t.mobileManagerOnly}</div>
+        <div style={{ color: "rgba(255,255,255,.6)", fontSize: 14, lineHeight: 1.65, maxWidth: 320, marginBottom: 32 }}>{t.mobileManagerOnlySub}</div>
+        <div style={{ background: "rgba(255,255,255,.06)", border: "1px solid rgba(255,255,255,.12)", borderRadius: 16, padding: "16px 20px", marginBottom: 28, maxWidth: 320, width: "100%" }}>
+          <div style={{ color: "rgba(255,255,255,.5)", fontSize: 12, marginBottom: 4 }}>{lang === "en" ? "Currently signed in as" : "Sesión iniciada como"}</div>
+          <div style={{ color: "#fff", fontSize: 14, fontWeight: 500 }}>{t[role]}</div>
+        </div>
+        <button onClick={() => { setAuthed(false); }} style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "12px 28px", borderRadius: 12, border: "none", background: C.teal, color: "#fff", fontSize: 14, fontWeight: 500, cursor: "pointer", fontFamily: FONT_SANS, marginBottom: 12 }}>
+          <LogOut size={16} /> {t.mobileCoderDesk}
+        </button>
+        <button onClick={() => setLang(lang === "en" ? "es" : "en")} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 16px", borderRadius: 10, border: "none", background: "transparent", color: "rgba(255,255,255,.5)", fontSize: 13, cursor: "pointer", fontFamily: FONT_SANS }}>
+          <Languages size={15} /> {lang === "en" ? "Español" : "English"}
+        </button>
+      </div>
+    );
+  }
+
   const runAnalysis = (id) => { setAnalyzing(true); setTimeout(() => { setAnalyzing(false); setAnalyzed((p) => ({ ...p, [id]: true })); }, 1300); };
   const addSample = () => {
     const f = { id: Date.now() + "", name: "expediente_PV_4452.pdf", status: "scanning", stage: 0, preview: null, isReal: false };
@@ -1261,6 +1310,8 @@ export default function App({ auth0 = null }) {
       {helpOpen && <HelpModal t={t} lang={lang} onClose={() => setHelpOpen(false)} />}
       {legalModal && <LegalModal type={legalModal} lang={lang} onClose={() => setLegalModal(null)} />}
       {notifOpen && <NotifPanel t={t} lang={lang} role={role} onClose={() => setNotifOpen(false)} />}
+      {/* Mobile sidebar backdrop */}
+      {isMobile && sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(16,36,92,.45)", zIndex: 900, backdropFilter: "blur(2px)" }} />}
       {subscribeModal && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(16,36,92,.55)", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }} onClick={() => setSubscribeModal(null)}>
           <div onClick={e => e.stopPropagation()} className="rise" style={{ background: C.paper2, borderRadius: 22, padding: 32, width: "100%", maxWidth: 440, boxShadow: "0 32px 80px -16px rgba(16,36,92,.35)" }}>
@@ -1302,15 +1353,15 @@ export default function App({ auth0 = null }) {
         </div>
       )}
       {/* SIDEBAR */}
-      <aside style={{ width: 236, background: C.ink, padding: "22px 14px", display: "flex", flexDirection: "column", flexShrink: 0, position: "relative" }}>
+      <aside style={{ width: 236, background: C.ink, padding: "22px 14px", display: "flex", flexDirection: "column", flexShrink: 0, ...(isMobile ? { position: "fixed", top: 0, left: 0, height: "100vh", zIndex: 950, transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)", transition: "transform .26s cubic-bezier(.2,.8,.2,1)", boxShadow: sidebarOpen ? "6px 0 32px rgba(16,36,92,.35)" : "none" } : { position: "relative" }) }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "0 10px 22px" }}>
           <div style={{ width: 34, height: 34, borderRadius: 10, background: acc.hex, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 6px 18px -6px ${acc.hex}99` }}><Stethoscope size={19} color="#fff" /></div>
           <div><div style={{ color: "#fff", fontSize: 16, fontWeight: 600, fontFamily: FONT_DISPLAY }}>Revenue<span style={{ color: C.teal }}>MD</span></div></div>
         </div>
         <nav style={{ flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
-          {nav.map((n, i) => {
+          {visibleNav.map((n, i) => {
             const a = tab === n.id;
-            return <button key={n.id} className="navi rise" onClick={() => { setTab(n.id); setOpenClaim(null); }} style={{ animationDelay: `${i * 0.03}s`, display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13.5, textAlign: "left", width: "100%", background: a ? acc.hex : "transparent", color: a ? "#fff" : "rgba(255,255,255,.62)", fontWeight: a ? 500 : 400, boxShadow: a ? `0 6px 16px -8px ${acc.hex}cc` : "none" }}><n.icon size={17} /> {n.label}</button>;
+            return <button key={n.id} className="navi rise" onClick={() => { setTab(n.id); setOpenClaim(null); if (isMobile) setSidebarOpen(false); }} style={{ animationDelay: `${i * 0.03}s`, display: "flex", alignItems: "center", gap: 11, padding: "10px 12px", borderRadius: 10, border: "none", cursor: "pointer", fontSize: 13.5, textAlign: "left", width: "100%", background: a ? acc.hex : "transparent", color: a ? "#fff" : "rgba(255,255,255,.62)", fontWeight: a ? 500 : 400, boxShadow: a ? `0 6px 16px -8px ${acc.hex}cc` : "none" }}><n.icon size={17} /> {n.label}</button>;
           })}
         </nav>
         <div style={{ borderTop: "1px solid rgba(255,255,255,.08)", paddingTop: 12, marginTop: 12 }}>
@@ -1328,10 +1379,17 @@ export default function App({ auth0 = null }) {
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, position: "relative", overflow: "hidden" }}>
         {/* stethoscope silhouette — all app pages */}
         <div style={{ position: "absolute", bottom: -80, right: -80, opacity: .035, pointerEvents: "none", lineHeight: 0, zIndex: 0 }}><Stethoscope size={480} color={C.ink} strokeWidth={.9} /></div>
-        <header style={{ background: C.paper2, borderBottom: `1px solid ${C.line}`, padding: "15px 30px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
-          <div style={{ fontSize: 17, fontWeight: 500, fontFamily: FONT_DISPLAY }}>{nav.find((n) => n.id === tab)?.label}</div>
+        <header style={{ background: C.paper2, borderBottom: `1px solid ${C.line}`, padding: isMobile ? "12px 16px" : "15px 30px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 1, flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div className="pill" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: acc.hex, background: acc.soft, padding: "5px 11px", borderRadius: 20, fontWeight: 500 }}><span className="pdot" style={{ width: 7, height: 7, borderRadius: "50%", background: acc.hex }} /> Live</div>
+            {isMobile && (
+              <button onClick={() => setSidebarOpen(p => !p)} style={{ width: 36, height: 36, borderRadius: 10, background: C.ink, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                {sidebarOpen ? <X size={18} color="#fff" /> : <Menu size={18} color="#fff" />}
+              </button>
+            )}
+            <div style={{ fontSize: isMobile ? 15 : 17, fontWeight: 500, fontFamily: FONT_DISPLAY }}>{nav.find((n) => n.id === tab)?.label}</div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 6 : 10 }}>
+            {!isMobile && <div className="pill" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: acc.hex, background: acc.soft, padding: "5px 11px", borderRadius: 20, fontWeight: 500 }}><span className="pdot" style={{ width: 7, height: 7, borderRadius: "50%", background: acc.hex }} /> Live</div>}
             <div style={{ position: "relative" }}>
               <button onClick={() => { setNotifOpen(p => !p); setNotifSeen(true); }} style={{ width: 34, height: 34, borderRadius: "50%", background: notifOpen ? C.ink : C.paper, border: `1px solid ${C.line}`, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
                 <Bell size={15} color={notifOpen ? "#fff" : C.ink} />
@@ -1340,16 +1398,16 @@ export default function App({ auth0 = null }) {
             </div>
             <button onClick={() => setHelpOpen(true)} className="btnp" style={{ display: "flex", alignItems: "center", gap: 7, background: C.ink, color: "#fff", border: "none", borderRadius: 20, padding: "6px 14px 6px 10px", fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: FONT_SANS, boxShadow: "0 4px 12px -4px rgba(16,36,92,.35)" }}>
               <div style={{ width: 18, height: 18, borderRadius: "50%", background: acc.hex, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>?</div>
-              {t.helpBtn}
+              {!isMobile && t.helpBtn}
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.txt2 }}>
               <div style={{ width: 30, height: 30, borderRadius: "50%", background: (THEMES[userProfile.avatarColor] || acc).hex, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: 11.5 }}>{role === "manager" ? "MG" : "CB"}</div>
-              {t[role]}
+              {!isMobile && t[role]}
             </div>
           </div>
         </header>
 
-        <div key={key} style={{ padding: 30, flex: 1, overflow: "auto", position: "relative", zIndex: 1 }}>
+        <div key={key} style={{ padding: isMobile ? 16 : 30, flex: 1, overflow: "auto", position: "relative", zIndex: 1 }}>
           {/* DASHBOARD */}
           {tab === "dash" && (
             <div>
@@ -1446,7 +1504,7 @@ export default function App({ auth0 = null }) {
               )}
 
               {intakeTab === "scan" && (
-              <div style={{ display: "grid", gridTemplateColumns: sel ? "1fr 1fr" : "1fr", gap: 18, alignItems: "start" }}>
+              <div style={{ display: "grid", gridTemplateColumns: sel && !isMobile ? "1fr 1fr" : "1fr", gap: 18, alignItems: "start" }}>
                 <div className="rise">
                   <div
                     onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft; }}
@@ -1514,13 +1572,13 @@ export default function App({ auth0 = null }) {
             return (
               <div>
                 <button onClick={() => setOpenClaim(null)} style={{ ...btnG, marginBottom: 16 }}><ChevronRight size={15} style={{ transform: "rotate(180deg)" }} /> {t.back}</button>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 290px", gap: 18, alignItems: "start" }}>
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 290px", gap: 18, alignItems: "start" }}>
                   <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 24 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
                       <div><h2 style={{ fontSize: 21, fontWeight: 500, margin: 0, fontFamily: FONT_DISPLAY }}>#{c.id}</h2><div style={{ fontSize: 13, color: C.txt2, marginTop: 3 }}>{c.patient} · {c.provider}</div></div>
                       <RiskPill r={c.risk} big label />
                     </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 20, padding: "14px 0", borderTop: `1px solid ${C.lineSoft}`, borderBottom: `1px solid ${C.lineSoft}` }}>
+                    <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: 12, marginBottom: 20, padding: "14px 0", borderTop: `1px solid ${C.lineSoft}`, borderBottom: `1px solid ${C.lineSoft}` }}>
                       <Field label={t.cpt} value={c.codes} /><Field label="Payer" value={c.payer} /><Field label={t.dos} value={c.dos} /><Field label="Billed" value={fmt(c.billed)} />
                     </div>
                     {!A ? (
@@ -2011,8 +2069,9 @@ export default function App({ auth0 = null }) {
                       <div style={{ textAlign: "center", padding: "40px 20px", color: C.txt3, fontSize: 14 }}>{t.learnNoResults}</div>
                     ) : (
                       <div style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, overflow: "hidden" }}>
+                        <div style={{ overflowX: "auto" }}>
                         {/* Table header */}
-                        <div style={{ display: "grid", gridTemplateColumns: "110px 110px 1fr 100px", gap: 0, background: C.lineSoft, padding: "10px 18px", borderBottom: `1px solid ${C.line}` }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "110px 110px 1fr 100px", minWidth: 420, gap: 0, background: C.lineSoft, padding: "10px 18px", borderBottom: `1px solid ${C.line}` }}>
                           {[t.learnCode, "Type", t.learnNotes, t.learnUnits].map(h => (
                             <div key={h} style={{ fontSize: 11.5, fontWeight: 600, color: C.txt2, textTransform: "uppercase", letterSpacing: ".06em" }}>{h}</div>
                           ))}
@@ -2020,7 +2079,7 @@ export default function App({ auth0 = null }) {
                         {filteredCodes.map((c, i) => {
                           const [tc, tbg] = typeColor[c.type] || [C.txt2, C.lineSoft];
                           return (
-                            <div key={c.code} style={{ display: "grid", gridTemplateColumns: "110px 110px 1fr 100px", gap: 0, padding: "13px 18px", borderBottom: i < filteredCodes.length - 1 ? `1px solid ${C.lineSoft}` : "none", alignItems: "start" }}>
+                            <div key={c.code} style={{ display: "grid", gridTemplateColumns: "110px 110px 1fr 100px", minWidth: 420, gap: 0, padding: "13px 18px", borderBottom: i < filteredCodes.length - 1 ? `1px solid ${C.lineSoft}` : "none", alignItems: "start" }}>
                               <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 13.5, color: C.ink }}>{c.code}</div>
                               <div>
                                 <span style={{ fontSize: 10.5, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: tbg, color: tc }}>{c.type}</span>
@@ -2032,6 +2091,7 @@ export default function App({ auth0 = null }) {
                             </div>
                           );
                         })}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -2132,8 +2192,20 @@ export default function App({ auth0 = null }) {
             return (
               <div>
                 <Head title={t.settingsTitle} sub={t.settingsSub} />
-                <div style={{ display: "flex", gap: 24, alignItems: "flex-start" }}>
-                  {/* sidebar tabs */}
+                <div style={{ display: "flex", gap: 24, alignItems: "flex-start", flexDirection: isMobile ? "column" : "row" }}>
+                  {/* sidebar tabs — horizontal strip on mobile */}
+                  {isMobile ? (
+                    <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, width: "100%" }}>
+                      {stTabs.map(s => {
+                        const active = settingsTab === s.id;
+                        return (
+                          <button key={s.id} onClick={() => setSettingsTab(s.id)} style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "9px 16px", borderRadius: 20, border: `1px solid ${active ? acc.hex : C.line}`, cursor: "pointer", fontSize: 13, whiteSpace: "nowrap", background: active ? acc.soft : C.paper2, color: active ? acc.dk : C.txt2, fontWeight: active ? 600 : 400, fontFamily: FONT_SANS, flexShrink: 0 }}>
+                            <s.icon size={14} color={active ? acc.hex : C.txt3} /> {s.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
                   <div style={{ width: 190, flexShrink: 0, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 8, display: "flex", flexDirection: "column", gap: 2 }}>
                     {stTabs.map(s => {
                       const active = settingsTab === s.id;
@@ -2144,6 +2216,7 @@ export default function App({ auth0 = null }) {
                       );
                     })}
                   </div>
+                  )}
 
                   {/* content panel */}
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -2162,7 +2235,7 @@ export default function App({ auth0 = null }) {
                         </div>
 
                         {/* form */}
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16, marginBottom: 16 }}>
                           <div>
                             <label style={{ fontSize: 12.5, fontWeight: 500, color: C.txt2, display: "block", marginBottom: 6 }}>{t.stFirstName}</label>
                             <input value={userProfile.firstName} onChange={e => setUserProfile(p => ({ ...p, firstName: e.target.value }))} style={inp} />
