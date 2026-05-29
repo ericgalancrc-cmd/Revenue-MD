@@ -915,7 +915,7 @@ function LegalModal({ type, lang, onClose }) {
           { h: "2. Information We Collect", p: "We collect: (a) Account information you provide at registration — name, email, organization. (b) PHI contained in EDI 837 files you upload — patient names, dates of service, diagnosis codes, provider identifiers. (c) Usage data such as log timestamps and feature interactions, which never include raw PHI." },
           { h: "3. How We Use Your Information", p: "PHI is used exclusively to perform claim scrubbing and compliance analysis, and to display results to authorized users in your organization. We do not sell, share, or use PHI for marketing, analytics, or any purpose beyond the services you contracted." },
           { h: "4. HIPAA Business Associate Agreement (BAA)", p: "RevenueMD operates as a HIPAA Business Associate. Before processing real patient data, your organization must execute a signed BAA with RevenueMD. Operating without a BAA is a HIPAA violation. Contact legal@revenuemdpr.com to request a BAA." },
-          { h: "5. Data Security", p: "All PHI fields are encrypted at rest using AES-256 (Fernet). Data in transit is protected by TLS 1.2 or higher. Access is controlled by role-based authentication. Audit logs are maintained for all data access events. Infrastructure is hosted on HIPAA-eligible AWS services." },
+          { h: "5. Data Security", p: "DEMO MODE: The current version of RevenueMD runs as a browser-based demonstration. No PHI is transmitted to or stored on any server in this mode — all data exists only in your browser's memory and is discarded when you close the tab. In a production deployment connected to RevenueMD's backend, all PHI fields are encrypted at rest (AES-256), data in transit is protected by TLS 1.2 or higher, access is controlled by server-enforced role-based authentication with MFA, and tamper-evident audit logs are maintained for all PHI access events. A signed Business Associate Agreement (BAA) is required before any real patient data may be processed." },
           { h: "6. Data Retention", p: "Processed claim records are retained for a minimum of 6 years per HIPAA requirements (45 CFR §164.530(j)). You may request deletion of your account data at any time; PHI will be purged within 30 days of termination, except where law requires otherwise." },
           { h: "7. Your Rights", p: "Under HIPAA and PR Act 194-2000, patients have rights to access and amend their PHI. As the covered entity, your organization is responsible for fulfilling patient rights requests. RevenueMD will cooperate to the extent technically feasible." },
           { h: "8. Contact", p: "Questions? Contact our Privacy Officer at privacy@revenuemdpr.com or write to RevenueMD, 100 Gran Bulevar Paseos, Suite 112, San Juan, PR 00926." },
@@ -928,7 +928,7 @@ function LegalModal({ type, lang, onClose }) {
           { h: "2. Información que recopilamos", p: "Recopilamos: (a) Información de cuenta al registrarse — nombre, correo, organización. (b) PHI en archivos EDI 837 que cargue — nombres de pacientes, fechas de servicio, códigos de diagnóstico, identificadores de proveedores. (c) Datos de uso como marcas de tiempo, que nunca incluyen PHI directa." },
           { h: "3. Cómo usamos su información", p: "La PHI se usa exclusivamente para realizar la revisión de reclamos y análisis de cumplimiento, y para mostrar resultados a usuarios autorizados. No vendemos, compartimos ni usamos PHI para mercadeo, analítica ni ningún propósito más allá de los servicios contratados." },
           { h: "4. Acuerdo de Asociado de Negocio HIPAA (BAA)", p: "RevenueMD opera como Asociado de Negocio bajo HIPAA. Antes de procesar datos reales de pacientes, su organización debe firmar un BAA con RevenueMD. Operar sin BAA es una violación de HIPAA. Contacte legal@revenuemdpr.com para solicitar un BAA." },
-          { h: "5. Seguridad de datos", p: "Todos los campos de PHI están encriptados en reposo con AES-256 (Fernet). Los datos en tránsito están protegidos por TLS 1.2 o superior. El acceso está controlado por autenticación basada en roles. Se mantienen registros de auditoría de todos los eventos de acceso a datos." },
+          { h: "5. Seguridad de datos", p: "MODO DEMO: La versión actual de RevenueMD funciona como una demostración en el navegador. Ningún PHI se transmite ni almacena en ningún servidor en este modo — todos los datos existen solo en la memoria de su navegador y se descartan al cerrar la pestaña. En un despliegue de producción conectado al backend de RevenueMD, todos los campos de PHI están encriptados en reposo (AES-256), los datos en tránsito están protegidos por TLS 1.2 o superior, el acceso está controlado por autenticación basada en roles con MFA aplicada por el servidor, y se mantienen registros de auditoría a prueba de manipulaciones para todos los eventos de acceso a PHI. Se requiere un Acuerdo de Asociado de Negocio (BAA) firmado antes de que se pueda procesar cualquier dato real de pacientes." },
           { h: "6. Retención de datos", p: "Los registros de reclamos se retienen por un mínimo de 6 años según HIPAA (45 CFR §164.530(j)). Puede solicitar la eliminación de sus datos en cualquier momento; la PHI será eliminada en 30 días de la terminación, excepto donde la ley lo requiera." },
           { h: "7. Sus derechos", p: "Bajo HIPAA y la Ley 194-2000 de PR, los pacientes tienen derechos de acceso y enmienda de su PHI. Su organización es responsable de atender dichas solicitudes. RevenueMD cooperará en la medida técnicamente factible." },
           { h: "8. Contacto", p: "¿Preguntas? Contacte a nuestro Oficial de Privacidad en privacy@revenuemdpr.com o escriba a RevenueMD, 100 Gran Bulevar Paseos, Suite 112, San Juan, PR 00926." },
@@ -1183,6 +1183,7 @@ export default function App({ auth0 = null }) {
   const [batchMeta, setBatchMeta] = useState(null);    // { total, auto_clear, needs_attention, at_risk }
   const batchFileRef = useRef(null);
   const intakeFileRef = useRef(null);
+  const uploadBatchFileRef = useRef(null);
   const [batchQueue, setBatchQueue] = useState([]);
   const [mounted, setMounted] = useState(false);
   const [claims, setClaims] = useState(CLAIMS_DEMO);
@@ -1210,7 +1211,12 @@ export default function App({ auth0 = null }) {
   const [totpCopied, setTotpCopied] = useState(false);
   const [emailAuthStep, setEmailAuthStep] = useState("idle"); // idle | sent | enabled
   const [emailAuthCode, setEmailAuthCode] = useState("");
-  const TOTP_SECRET = "JBSWY3DPEHPK3PXP"; // demo secret key
+  const [baaConfirmed, setBaaConfirmed] = useState(false);
+  const [baaModalFile, setBaaModalFile] = useState(null); // { file, target: "csv"|"batch" }
+  const [TOTP_SECRET] = useState(() => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    return Array.from({ length: 16 }, () => chars[Math.floor(Math.random() * 32)]).join("");
+  });
   const acc = THEMES[accentKey] || THEMES.teal;
   const notifBadge = notifSeen ? 0 : role === "manager" ? 2 : 1;
   const t = T[lang];
@@ -1269,8 +1275,11 @@ export default function App({ auth0 = null }) {
     }).filter((c) => c.id);
   };
 
+  const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
   const handleCSVFile = (file) => {
     if (!file) return;
+    if (file.size > MAX_UPLOAD_BYTES) { setCsvResult({ error: true, name: file.name, sizeErr: true }); return; }
+    if (!baaConfirmed) { setBaaModalFile({ file, target: "csv" }); return; }
     setCsvImporting(true); setCsvResult(null);
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -1441,6 +1450,43 @@ export default function App({ auth0 = null }) {
       {helpOpen && <HelpModal t={t} lang={lang} onClose={() => setHelpOpen(false)} />}
       {legalModal && <LegalModal type={legalModal} lang={lang} onClose={() => setLegalModal(null)} />}
       {notifOpen && <NotifPanel t={t} lang={lang} role={role} onClose={() => setNotifOpen(false)} />}
+      {/* BAA warning modal — fires before any PHI file upload */}
+      {baaModalFile && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(16,36,92,.65)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(3px)" }}>
+          <div className="rise" style={{ background: C.paper2, borderRadius: 22, padding: 32, width: "100%", maxWidth: 480, boxShadow: "0 32px 80px -16px rgba(16,36,92,.4)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 18 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: "#FFF3CD", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><ShieldCheck size={24} color="#B45309" /></div>
+              <div style={{ fontFamily: FONT_DISPLAY, fontSize: 19, color: C.ink, fontWeight: 600 }}>
+                {lang === "en" ? "HIPAA BAA Required" : "Se requiere BAA HIPAA"}
+              </div>
+            </div>
+            <p style={{ fontSize: 14, color: C.txt2, lineHeight: 1.65, marginBottom: 20 }}>
+              {lang === "en"
+                ? "You are about to upload a file that may contain Protected Health Information (PHI). Under HIPAA, a signed Business Associate Agreement (BAA) with RevenueMD must be in place before processing real patient data."
+                : "Está a punto de subir un archivo que puede contener Información de Salud Protegida (PHI). Bajo HIPAA, debe existir un Acuerdo de Asociado de Negocio (BAA) firmado con RevenueMD antes de procesar datos reales de pacientes."}
+            </p>
+            <div style={{ background: "#FFFBEB", border: "1px solid #F59E0B", borderRadius: 10, padding: "12px 16px", marginBottom: 22, fontSize: 13, color: "#92400E" }}>
+              {lang === "en"
+                ? "⚠️ This is a DEMO environment. Do NOT upload real patient data unless your organization has executed a BAA with RevenueMD (legal@revenuemdpr.com)."
+                : "⚠️ Este es un entorno DEMO. NO suba datos reales de pacientes a menos que su organización haya ejecutado un BAA con RevenueMD (legal@revenuemdpr.com)."}
+            </div>
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+              <button onClick={() => setBaaModalFile(null)} style={{ padding: "10px 22px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: "transparent", color: C.txt2, fontSize: 14, cursor: "pointer", fontFamily: FONT_SANS }}>
+                {lang === "en" ? "Cancel" : "Cancelar"}
+              </button>
+              <button onClick={() => {
+                const pending = baaModalFile;
+                setBaaConfirmed(true);
+                setBaaModalFile(null);
+                if (pending.target === "csv") handleCSVFile(pending.file);
+                else if (pending.target === "batch" && uploadBatchFileRef.current) uploadBatchFileRef.current(pending.file);
+              }} style={{ padding: "10px 22px", borderRadius: 10, border: "none", background: "#B45309", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: FONT_SANS }}>
+                {lang === "en" ? "I confirm — proceed" : "Confirmo — continuar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Mobile sidebar backdrop */}
       {isMobile && sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(16,36,92,.45)", zIndex: 900, backdropFilter: "blur(2px)" }} />}
       {subscribeModal && (
@@ -1613,7 +1659,7 @@ export default function App({ auth0 = null }) {
                       </div>
                     </div>
                   )}
-                  {csvResult?.error && <div className="rise" style={{ background: C.redSoft, border: `1px solid #f0c5c0`, borderRadius: 12, padding: "11px 14px", marginBottom: 14, fontSize: 12.5, color: C.red, display: "flex", gap: 8, alignItems: "center" }}><AlertTriangle size={15} />{lang === "en" ? `Could not parse "${csvResult.name}". Check it has a header row.` : `No se pudo leer "${csvResult.name}". Verifica que tenga encabezado.`}</div>}
+                  {csvResult?.error && <div className="rise" style={{ background: C.redSoft, border: `1px solid #f0c5c0`, borderRadius: 12, padding: "11px 14px", marginBottom: 14, fontSize: 12.5, color: C.red, display: "flex", gap: 8, alignItems: "center" }}><AlertTriangle size={15} />{csvResult.sizeErr ? (lang === "en" ? `"${csvResult.name}" exceeds the 25 MB limit. Split the file and re-upload.` : `"${csvResult.name}" supera el límite de 25 MB. Divida el archivo y vuelva a subir.`) : (lang === "en" ? `Could not parse "${csvResult.name}". Check it has a header row.` : `No se pudo leer "${csvResult.name}". Verifica que tenga encabezado.`)}</div>}
 
                   {/* CSV format hint */}
                   <div className="rise" style={{ background: C.ink, borderRadius: 13, padding: "13px 16px", marginBottom: 16 }}>
@@ -2079,6 +2125,8 @@ export default function App({ auth0 = null }) {
             const loadMockBatch = () => { setBatchReading(true); setTimeout(() => { setBatchReading(false); setBatchMeta({ total: 42, auto_clear: 31, needs_attention: 11, at_risk: 3400 }); setBatchLoaded(true); setBatchQueue(BATCH_SEED.map((x) => ({ ...x }))); }, 1400); };
             const uploadBatchFile = async (file) => {
               if (!file) return;
+              if (file.size > MAX_UPLOAD_BYTES) { alert(lang === "en" ? `File exceeds 25 MB limit (${(file.size/1024/1024).toFixed(1)} MB). Please split the batch and re-upload.` : `El archivo supera el límite de 25 MB (${(file.size/1024/1024).toFixed(1)} MB). Divida el lote y vuelva a subir.`); return; }
+              if (!baaConfirmed) { setBaaModalFile({ file, target: "batch" }); return; }
               setBatchReading(true);
               if (API_URL) {
                 try {
@@ -2092,6 +2140,7 @@ export default function App({ auth0 = null }) {
                 } finally { setBatchReading(false); }
               } else { loadMockBatch(); }
             };
+            uploadBatchFileRef.current = uploadBatchFile;
             const loadBatch = () => { if (API_URL) { batchFileRef.current?.click(); } else { loadMockBatch(); } };
             return (
               <div>
