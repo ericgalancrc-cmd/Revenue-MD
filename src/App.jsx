@@ -1248,6 +1248,23 @@ export default function App({ auth0 = null }) {
       .catch(() => { /* no API — demo mode, batch stays seeded locally */ });
   }, [authed]);
 
+  // Parse a codes string like "90837 GT + H0004 ×8" into service_lines array
+  // so the backend rules engine can inspect individual CPT codes and modifiers.
+  const buildServiceLines = (codesStr) => {
+    if (!codesStr || codesStr === "—") return [];
+    return codesStr.split(/[,+]/).map((part) => {
+      part = part.trim();
+      if (!part) return null;
+      let units = 1;
+      const um = part.match(/[×xX*](\d+)/);
+      if (um) { units = parseInt(um[1]); part = part.slice(0, um.index).trim(); }
+      const tokens = part.split(/\s+/);
+      const cpt = (tokens[0] || "").toUpperCase();
+      const mods = tokens.slice(1).filter((t) => /^[A-Z0-9]{2}$/.test(t.toUpperCase())).map((t) => t.toUpperCase());
+      return cpt ? { cpt, mods, units, charge: 0 } : null;
+    }).filter(Boolean);
+  };
+
   const parseCSV = (text) => {
     const lines = text.trim().split("\n").filter(Boolean);
     if (lines.length < 2) return [];
@@ -1256,18 +1273,26 @@ export default function App({ auth0 = null }) {
       const vals = line.split(",").map((v) => v.trim().replace(/^"|"$/g, ""));
       const row = {};
       headers.forEach((h, idx) => { row[h] = vals[idx] || ""; });
+      const codes = row.codes || row.cpt || row.procedure_code || "—";
       return {
         id: row.id || `CSV-${Date.now()}-${i}`,
         patient: row.patient || row.patient_name || `Patient #${1000 + i}`,
-        codes: row.codes || row.cpt || row.procedure_code || "—",
+        codes,
         payer: row.payer || row.insurance || "Unknown",
         provider: row.provider || row.rendering_provider || "—",
+        npi: row.npi || row.rendering_npi || "",
         dos: row.dos || row.date_of_service || row.service_date || "—",
+        auth: row.auth || row.authorization || "",
+        pos: row.pos || row.place_of_service || "11",
+        diagnosis: row.diagnosis || row.icd10 || row.dx || "",
+        member_id: row.member_id || row.subscriber_id || "",
         risk: parseInt(row.risk) || 50,
         status: row.status || "pending",
         billed: parseFloat(row.billed || row.billed_amount || 0),
+        val: parseFloat(row.billed || row.billed_amount || 0),
         comp: parseInt(row.compliance) || 70,
         doc: parseInt(row.documentation) || 70,
+        service_lines: buildServiceLines(codes),
         sEn: "Imported claim — run AI analysis for a full risk assessment.",
         sEs: "Reclamo importado — ejecuta el análisis IA para una evaluación completa.",
         issues: [], fix: [],
@@ -2144,6 +2169,35 @@ export default function App({ auth0 = null }) {
             const applyBatchResults = (data) => {
               setBatchMeta({ total: data.total, auto_clear: data.auto_clear, needs_attention: data.needs_attention, at_risk: data.at_risk });
               setBatchQueue(data.claims.map((c) => ({ ...c, sel: c.lane === "auto_clear", st: "pending" })));
+              // Merge real scrub results into the claims workspace so each claim
+              // can be opened, inspected, and fixed in the claims detail view.
+              if (data.claims?.length) {
+                const workspaceClaims = data.claims.map((c) => ({
+                  id:       c.id,
+                  patient:  c.patient || "Unknown",
+                  codes:    c.codes || "—",
+                  payer:    c.payer || "Unknown",
+                  provider: c.provider || c.prov || "—",
+                  dos:      c.dos || "—",
+                  billed:   c.billed || c.val || 0,
+                  status:   c.lane === "auto_clear" ? "clear" : c.lane === "quick_review" ? "pending" : "denied",
+                  risk:     c.risk ?? 50,
+                  comp:     c.comp ?? 70,
+                  doc:      c.doc ?? 70,
+                  sEn:      c.sEn || "Scrubbed via batch upload.",
+                  sEs:      c.sEs || "Revisado mediante carga de lote.",
+                  issues:   c.issues || [],
+                  fix:      c.fix || [],
+                  service_lines: c.service_lines || [],
+                  npi:      c.npi || "",
+                  diagnosis: c.diagnosis || "",
+                }));
+                setClaims((prev) => {
+                  const existingIds = new Set(prev.map((x) => x.id));
+                  const fresh = workspaceClaims.filter((c) => !existingIds.has(c.id));
+                  return [...fresh, ...prev];
+                });
+              }
               setBatchLoaded(true);
             };
             const loadMockBatch = () => { setBatchReading(true); setTimeout(() => { setBatchReading(false); setBatchMeta({ total: 42, auto_clear: 31, needs_attention: 11, at_risk: 3400 }); setBatchLoaded(true); setBatchQueue(BATCH_SEED.map((x) => ({ ...x }))); }, 1400); };
@@ -2221,6 +2275,11 @@ export default function App({ auth0 = null }) {
                           </div>
                           <span style={{ fontSize: 11.5, color: C.txt3 }}>${q.val}</span>
                           <RiskPill r={q.risk} />
+                          <button
+                            title={lang === "en" ? "Open in workspace" : "Abrir en espacio de trabajo"}
+                            onClick={() => { setTab("claims"); setOpenClaim(q.id); setAnalyzed((p) => ({ ...p, [q.id]: true })); }}
+                            style={{ flexShrink: 0, background: "transparent", border: `1px solid ${C.border}`, borderRadius: 7, padding: "4px 9px", cursor: "pointer", fontSize: 11, color: C.txt2, display: "flex", alignItems: "center", gap: 4 }}
+                          ><ClipboardList size={12} /> {lang === "en" ? "Open" : "Abrir"}</button>
                         </div>
                       ); })}
                       <div style={{ textAlign: "center", padding: 14, fontSize: 12, color: C.txt3 }}>{t.bMore}</div>

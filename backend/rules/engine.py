@@ -160,6 +160,12 @@ def scrub(claim: ParsedClaim) -> ScrubResult:
     claim = claim.model_copy(update={"payer": _normalize_payer(claim.payer),
                                       "prov":  claim.prov or claim.provider})
 
+    # Rebuild service_lines from codes string when the frontend sends only text
+    # (e.g. claims imported via CSV in the browser and sent to /api/analyze)
+    if not claim.service_lines and claim.codes and claim.codes != "—":
+        from parsers.csv_claims import _codes_to_service_lines
+        claim = claim.model_copy(update={"service_lines": _codes_to_service_lines(claim.codes)})
+
     all_issues: List[Issue] = []
     all_fixes:  List[Fix]   = []
     total_risk  = 0
