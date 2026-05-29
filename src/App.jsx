@@ -1424,7 +1424,31 @@ export default function App({ auth0 = null }) {
     );
   }
 
-  const runAnalysis = (id) => { setAnalyzing(true); setTimeout(() => { setAnalyzing(false); setAnalyzed((p) => ({ ...p, [id]: true })); }, 1300); };
+  const runAnalysis = async (id) => {
+    setAnalyzing(true);
+    if (API_URL) {
+      try {
+        const claim = claims.find((x) => x.id === id);
+        if (claim) {
+          const res = await fetch(`${API_URL}/api/analyze`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(claim),
+          });
+          if (res.ok) {
+            const result = await res.json();
+            setClaims((prev) => prev.map((x) => x.id === id ? { ...x, ...result } : x));
+          }
+        }
+      } catch (e) {
+        console.error("Analysis error:", e);
+      }
+    } else {
+      await new Promise((r) => setTimeout(r, 1300)); // demo delay
+    }
+    setAnalyzing(false);
+    setAnalyzed((p) => ({ ...p, [id]: true }));
+  };
   const addSample = () => {
     const f = { id: Date.now() + "", name: "expediente_PV_4452.pdf", status: "scanning", stage: 0, preview: null, isReal: false };
     setFiles((p) => [f, ...p]);

@@ -1,0 +1,9 @@
+id,patient,codes,payer,provider,npi,dos,billed,auth,pos,diagnosis,member_id
+TST-ERR-001,Rosa Martínez,H0004 ×10,Plan Vital,Dr. Rivera,1234567890,2026-05-20,640.00,,11,F32.1,PV-88221
+TST-ERR-002,Luis Hernández,90837 + 90785,Plan Vital,Dr. Colón,9876543210,2026-05-21,245.00,,11,F43.10,PV-77443
+TST-ERR-003,Carmen Vega,90839 + 90834,ASES Mi Salud,Dr. Méndez,1112223334,2026-05-22,400.00,,11,F41.0,
+TST-ERR-004,Miguel Torres,90833 + 99214,Medicare,Dr. Rivera,,2026-05-23,185.00,,11,E11.65
+TST-ERR-005,Isabel Díaz,H0004 ×5,MMM,Dr. Colón,9876543210,2026-04-01,320.00,,11,F33.0,MMM-33219
+TST-ERR-006,Jorge Santos,90791,Triple-S,Dr. Méndez,1112223334,2026-05-20,280.00,,11,,XYZ-9988
+TST-WARN-001,Sofía Cruz,99214,Medicare,Dr. Rivera,1234567890,2026-05-20,185.00,,11,E11.9
+TST-WARN-002,Andrés Rivera,90834,Plan Vital,Dr. Colón,9876543210,2026-05-15,245.00,,11,F32.09
