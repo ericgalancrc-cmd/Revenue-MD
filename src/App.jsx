@@ -1369,15 +1369,15 @@ export default function App({ auth0 = null }) {
   }
 
   const nav = [
-    { id: "dash",       icon: LayoutDashboard, label: t.nav_dash },
-    { id: "intake",     icon: FileScan,        label: t.nav_intake },
-    { id: "claims",     icon: ClipboardList,   label: t.nav_claims },
-    { id: "analysis",   icon: Brain,           label: t.nav_analysis },
-    { id: "denials",    icon: ReceiptText,     label: t.nav_denials },
-    { id: "payers",     icon: Building2,       label: t.nav_payers },
-    { id: "compliance", icon: ShieldCheck,     label: t.nav_compliance },
-    { id: "batch",      icon: Layers,          label: t.nav_batch },
-    { id: "learn",      icon: GraduationCap,   label: t.nav_learn },
+    { id: "dash",       icon: LayoutDashboard, label: t.nav_dash },       // 1 — daily health check
+    { id: "batch",      icon: Layers,          label: t.nav_batch },      // 2 — primary daily workspace
+    { id: "intake",     icon: FileScan,        label: t.nav_intake },     // 3 — import new claims
+    { id: "claims",     icon: ClipboardList,   label: t.nav_claims },     // 4 — individual claim work
+    { id: "analysis",   icon: Brain,           label: t.nav_analysis },   // 5 — AI deep-dive on flagged claims
+    { id: "denials",    icon: ReceiptText,     label: t.nav_denials },    // 6 — denial tracking & appeals
+    { id: "payers",     icon: Building2,       label: t.nav_payers },     // 7 — payer rules reference
+    { id: "learn",      icon: GraduationCap,   label: t.nav_learn },      // 8 — code lookup reference
+    { id: "compliance", icon: ShieldCheck,     label: t.nav_compliance }, // 9 — regulatory reference
     ...(role === "manager" ? [
       { id: "revenue",      icon: BarChart3,  label: t.nav_revenue },
       { id: "business",     icon: Briefcase,  label: t.nav_business },
