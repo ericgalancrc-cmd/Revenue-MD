@@ -22,15 +22,17 @@ and POST to http://localhost:8000/api/batch with form field "file".
 """
 from __future__ import annotations
 
-import io
 import os
 import uuid
 from datetime import datetime, timezone
-from typing import Dict, List
+from typing import List
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.orm import Session
 
+from database import get_db, init_db
+from db_models import BatchRecord, ClaimRecord
 from models import BatchResponse, ParsedClaim, ScrubResult
 from parser import parse_837
 from parsers.csv_claims import parse_csv
@@ -55,31 +57,59 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── In-memory batch store (swap for a real DB in production) ─────────────────
 
-_batches: Dict[str, BatchResponse] = {}
+@app.on_event("startup")
+def startup():
+    init_db()
 
 
-def _store_batch(results: List[ScrubResult]) -> BatchResponse:
-    auto_clear = [r for r in results if r.lane.value == "auto_clear"]
-    needs_attention = [r for r in results if r.lane.value != "auto_clear"]
-    at_risk = sum(r.val for r in results if r.lane.value == "needs_work")
+# ── Helpers ──────────────────────────────────────────────────────────────────
 
-    batch = BatchResponse(
-        id              = str(uuid.uuid4()),
-        created         = datetime.now(timezone.utc).isoformat(),
+def _store_batch(results: List[ScrubResult], db: Session) -> BatchResponse:
+    auto_clear      = sum(1 for r in results if r.lane.value == "auto_clear")
+    needs_attention = sum(1 for r in results if r.lane.value != "auto_clear")
+    at_risk         = round(sum(r.val for r in results if r.lane.value == "needs_work"), 2)
+
+    batch_id = str(uuid.uuid4())
+    created  = datetime.now(timezone.utc).isoformat()
+
+    batch_row = BatchRecord(
+        id              = batch_id,
+        created         = created,
         total           = len(results),
-        auto_clear      = len(auto_clear),
-        needs_attention = len(needs_attention),
-        at_risk         = round(at_risk, 2),
+        auto_clear      = auto_clear,
+        needs_attention = needs_attention,
+        at_risk         = at_risk,
+    )
+    db.add(batch_row)
+
+    for result in results:
+        db.add(ClaimRecord.from_result(result, batch_id))
+
+    db.commit()
+    db.refresh(batch_row)
+
+    return BatchResponse(
+        id              = batch_id,
+        created         = created,
+        total           = len(results),
+        auto_clear      = auto_clear,
+        needs_attention = needs_attention,
+        at_risk         = at_risk,
         claims          = results,
     )
-    _batches[batch.id] = batch
-    # Keep only the 20 most recent batches in memory
-    if len(_batches) > 20:
-        oldest_key = sorted(_batches, key=lambda k: _batches[k].created)[0]
-        del _batches[oldest_key]
-    return batch
+
+
+def _batch_row_to_response(batch_row: BatchRecord) -> BatchResponse:
+    return BatchResponse(
+        id              = batch_row.id,
+        created         = batch_row.created,
+        total           = batch_row.total,
+        auto_clear      = batch_row.auto_clear,
+        needs_attention = batch_row.needs_attention,
+        at_risk         = batch_row.at_risk,
+        claims          = [c.to_result() for c in batch_row.claims],
+    )
 
 
 def _detect_and_parse(content: bytes, filename: str) -> List[ParsedClaim]:
@@ -118,7 +148,7 @@ async def scrub_claims(claims: List[ParsedClaim]):
 
 
 @app.post("/api/batch", response_model=BatchResponse)
-async def batch(file: UploadFile = File(...)):
+async def batch(file: UploadFile = File(...), db: Session = Depends(get_db)):
     """
     Main workflow endpoint: upload an EDI 837 or CSV file,
     parse + scrub all claims in one shot, persist the batch, and return results.
@@ -132,20 +162,27 @@ async def batch(file: UploadFile = File(...)):
                                   "Verify it is an EDI 837P or a CSV with a header row.")
 
     results = scrub_many(raw_claims)
-    return _store_batch(results)
+    return _store_batch(results, db)
 
 
 @app.get("/api/batches", response_model=List[BatchResponse])
-def list_batches():
+def list_batches(db: Session = Depends(get_db)):
     """Return up to 20 most recent batches, newest first."""
-    return sorted(_batches.values(), key=lambda b: b.created, reverse=True)
+    rows = (
+        db.query(BatchRecord)
+        .order_by(BatchRecord.created.desc())
+        .limit(20)
+        .all()
+    )
+    return [_batch_row_to_response(row) for row in rows]
 
 
 @app.get("/api/batches/{batch_id}", response_model=BatchResponse)
-def get_batch(batch_id: str):
-    if batch_id not in _batches:
+def get_batch(batch_id: str, db: Session = Depends(get_db)):
+    row = db.query(BatchRecord).filter(BatchRecord.id == batch_id).first()
+    if row is None:
         raise HTTPException(404, f"Batch '{batch_id}' not found.")
-    return _batches[batch_id]
+    return _batch_row_to_response(row)
 
 
 @app.post("/api/analyze", response_model=ScrubResult)
