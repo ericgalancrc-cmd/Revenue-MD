@@ -1161,6 +1161,7 @@ export default function App({ auth0 = null }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [lang, setLang] = useState("en");
   const [authed, setAuthed] = useState(false);
+  const [accessToken, setAccessToken] = useState("");
   const [role, setRole] = useState("manager");
   const [tab, setTab] = useState("dash");
   const [filter, setFilter] = useState("all");
@@ -1223,21 +1224,41 @@ export default function App({ auth0 = null }) {
 
   useEffect(() => { setMounted(true); }, []);
 
-  // Auto-authenticate when Auth0 confirms the user is logged in
+  // Auto-authenticate when Auth0 confirms the user is logged in, then grab an access token
   useEffect(() => {
-    if (auth0 && auth0.isAuthenticated && !authed) setAuthed(true);
+    if (!auth0?.isAuthenticated) return;
+    if (!authed) setAuthed(true);
+    if (auth0.getAccessTokenSilently) {
+      const audience = import.meta.env.VITE_AUTH0_AUDIENCE;
+      auth0.getAccessTokenSilently(audience ? { authorizationParams: { audience } } : {})
+        .then(setAccessToken)
+        .catch(() => {});
+    }
   }, [auth0?.isAuthenticated]);
 
-  // After login: reload the most recent batch from the API so state survives logout/restart
+  // Helper: returns Authorization header when a token is available
+  const authHeaders = () => (accessToken ? { Authorization: `Bearer ${accessToken}` } : {});
+
+  // After login: check BAA status, then reload the most recent batch
   useEffect(() => {
     if (!authed || !API_URL || batchLoaded) return;
-    fetch(`${API_URL}/api/batches`)
+    if (auth0?.isAuthenticated && !accessToken) return; // wait for token
+    // Check BAA acceptance (only meaningful when auth is enabled)
+    if (accessToken) {
+      fetch(`${API_URL}/api/baa/status`, { headers: authHeaders() })
+        .then((r) => r.ok ? r.json() : null)
+        .then((data) => {
+          if (data && !data.accepted) setBaaModalFile({ file: null, target: "login" });
+          else if (data && data.accepted) setBaaConfirmed(true);
+        })
+        .catch(() => {});
+    }
+    fetch(`${API_URL}/api/batches`, { headers: authHeaders() })
       .then((r) => r.ok ? r.json() : null)
       .then((batches) => {
         if (!batches || !batches.length) return;
         const latest = batches[0];
-        // Load the full batch (with claims) from the server
-        return fetch(`${API_URL}/api/batches/${latest.id}`).then((r) => r.ok ? r.json() : null);
+        return fetch(`${API_URL}/api/batches/${latest.id}`, { headers: authHeaders() }).then((r) => r.ok ? r.json() : null);
       })
       .then((data) => {
         if (!data || !data.claims || !data.claims.length) return;
@@ -1246,7 +1267,7 @@ export default function App({ auth0 = null }) {
         setBatchLoaded(true);
       })
       .catch(() => { /* no API — demo mode, batch stays seeded locally */ });
-  }, [authed]);
+  }, [authed, accessToken]);
 
   // Parse a codes string like "90837 GT + H0004 ×8" into service_lines array
   // so the backend rules engine can inspect individual CPT codes and modifiers.
@@ -1457,7 +1478,7 @@ export default function App({ auth0 = null }) {
         if (claim) {
           const res = await fetch(`${API_URL}/api/analyze`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: { "Content-Type": "application/json", ...authHeaders() },
             body: JSON.stringify(claim),
           });
           if (res.ok) {
@@ -1520,15 +1541,29 @@ export default function App({ auth0 = null }) {
                 : "⚠️ Este es un entorno DEMO. NO suba datos reales de pacientes a menos que su organización haya ejecutado un BAA con RevenueMD (legal@revenuemdpr.com)."}
             </div>
             <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
-              <button onClick={() => setBaaModalFile(null)} style={{ padding: "10px 22px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: "transparent", color: C.txt2, fontSize: 14, cursor: "pointer", fontFamily: FONT_SANS }}>
+              <button onClick={() => {
+                setBaaModalFile(null);
+                if (baaModalFile?.target === "login") {
+                  setAuthed(false);
+                  if (auth0?.logout) auth0.logout({ logoutParams: { returnTo: window.location.origin } });
+                }
+              }} style={{ padding: "10px 22px", borderRadius: 10, border: `1.5px solid ${C.border}`, background: "transparent", color: C.txt2, fontSize: 14, cursor: "pointer", fontFamily: FONT_SANS }}>
                 {lang === "en" ? "Cancel" : "Cancelar"}
               </button>
               <button onClick={() => {
                 const pending = baaModalFile;
                 setBaaConfirmed(true);
                 setBaaModalFile(null);
-                if (pending.target === "csv") handleCSVFile(pending.file);
-                else if (pending.target === "batch" && uploadBatchFileRef.current) uploadBatchFileRef.current(pending.file);
+                if (pending.target === "login") {
+                  // Record acceptance in the backend
+                  if (API_URL && accessToken) {
+                    fetch(`${API_URL}/api/baa/accept`, { method: "POST", headers: authHeaders() }).catch(() => {});
+                  }
+                } else if (pending.target === "csv") {
+                  handleCSVFile(pending.file);
+                } else if (pending.target === "batch" && uploadBatchFileRef.current) {
+                  uploadBatchFileRef.current(pending.file);
+                }
               }} style={{ padding: "10px 22px", borderRadius: 10, border: "none", background: "#B45309", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: FONT_SANS }}>
                 {lang === "en" ? "I confirm — proceed" : "Confirmo — continuar"}
               </button>
@@ -2209,7 +2244,7 @@ export default function App({ auth0 = null }) {
               if (API_URL) {
                 try {
                   const form = new FormData(); form.append("file", file);
-                  const res = await fetch(`${API_URL}/api/batch`, { method: "POST", body: form });
+                  const res = await fetch(`${API_URL}/api/batch`, { method: "POST", body: form, headers: authHeaders() });
                   if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
                   applyBatchResults(await res.json());
                 } catch (err) {

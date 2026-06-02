@@ -23,6 +23,7 @@ class BatchRecord(Base):
     auto_clear      = Column(Integer, default=0)
     needs_attention = Column(Integer, default=0)
     at_risk         = Column(Float,   default=0.0)
+    org_id          = Column(String,  nullable=True, index=True, default="demo")
 
     claims = relationship(
         "ClaimRecord",
@@ -37,6 +38,7 @@ class ClaimRecord(Base):
 
     row_id   = Column(Integer, primary_key=True, autoincrement=True)
     batch_id = Column(String, ForeignKey("batches.id", ondelete="CASCADE"), nullable=False, index=True)
+    org_id   = Column(String,  nullable=True, index=True, default="demo")
 
     # Scalar fields
     claim_id  = Column(String,  nullable=False)
@@ -78,10 +80,11 @@ class ClaimRecord(Base):
     # ── Serialisation helpers ─────────────────────────────────────────
 
     @classmethod
-    def from_result(cls, result, batch_id: str) -> "ClaimRecord":
+    def from_result(cls, result, batch_id: str, org_id: str = "demo") -> "ClaimRecord":
         """Build a ClaimRecord from a ScrubResult Pydantic model."""
         return cls(
             batch_id           = batch_id,
+            org_id             = org_id,
             claim_id           = result.id,
             patient            = result.patient,
             codes              = result.codes,
@@ -144,3 +147,29 @@ class ClaimRecord(Base):
             issues        = [Issue(**i) for i in json.loads(self.issues_json or "[]")],
             fix           = [Fix(**f)   for f in json.loads(self.fix_json   or "[]")],
         )
+
+
+class BAARecord(Base):
+    """Records each org's acceptance of the HIPAA Business Associate Agreement."""
+    __tablename__ = "baa_records"
+
+    id          = Column(String,  primary_key=True)
+    org_id      = Column(String,  nullable=False, index=True)
+    user_id     = Column(String,  nullable=False)
+    accepted_at = Column(String,  nullable=False)
+    ip_address  = Column(String,  default="")
+    version     = Column(String,  default="1.0")
+
+
+class AuditLog(Base):
+    """HIPAA-required audit trail: every batch/claim operation is logged."""
+    __tablename__ = "audit_logs"
+
+    id            = Column(Integer, primary_key=True, autoincrement=True)
+    org_id        = Column(String,  nullable=False, index=True)
+    user_id       = Column(String,  nullable=False)
+    action        = Column(String,  nullable=False)   # e.g. batch_created, batch_read, baa_accepted
+    resource_type = Column(String,  default="")
+    resource_id   = Column(String,  default="")
+    timestamp     = Column(String,  nullable=False)
+    ip_address    = Column(String,  default="")

@@ -49,6 +49,23 @@ def get_db():
 
 
 def init_db():
-    """Create all tables. Called once at startup."""
-    from db_models import BatchRecord, ClaimRecord  # noqa: F401 — registers models
+    """Create all tables and apply lightweight SQLite column migrations."""
+    from db_models import BatchRecord, ClaimRecord, BAARecord, AuditLog  # noqa: F401
     Base.metadata.create_all(bind=engine)
+    if _is_sqlite:
+        _sqlite_migrate()
+
+
+def _sqlite_migrate():
+    """Add new columns to existing SQLite tables without Alembic."""
+    new_columns = [
+        ("batches",       "org_id", "TEXT DEFAULT 'demo'"),
+        ("claim_records", "org_id", "TEXT DEFAULT 'demo'"),
+    ]
+    with engine.connect() as conn:
+        for table, column, definition in new_columns:
+            try:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {definition}"))
+                conn.commit()
+            except Exception:
+                pass  # column already exists — safe to ignore

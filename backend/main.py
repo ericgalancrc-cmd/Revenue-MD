@@ -3,13 +3,16 @@ RevenueMD Backend — FastAPI
 
 Endpoints
 ---------
-GET  /health              Health check
-POST /api/parse           Upload EDI 837 or CSV → raw parsed claims (no scrubbing)
-POST /api/scrub           Pass raw claims JSON → scrubbed results
-POST /api/batch           Upload EDI 837 or CSV → parse + scrub in one shot (main flow)
-GET  /api/batches         List recent batches (newest first)
-GET  /api/batches/{id}    Get a specific batch by ID
-POST /api/analyze         Scrub a single claim dict (for the claim workspace AI button)
+GET  /health                  Health check (public)
+POST /api/parse               Upload EDI 837 or CSV → raw parsed claims
+POST /api/scrub               Raw claims JSON → scrubbed results
+POST /api/batch               Upload file → parse + scrub + persist (main flow)
+GET  /api/batches             List org's recent batches (newest first)
+GET  /api/batches/{id}        Get a specific batch by ID
+POST /api/analyze             Scrub a single claim dict (AI analysis button)
+GET  /api/baa/status          Check if the org has accepted the BAA
+POST /api/baa/accept          Record BAA acceptance for the org
+GET  /api/audit               Last 100 audit log entries for the org
 
 Run locally
 -----------
@@ -17,22 +20,22 @@ Run locally
   pip install -r requirements.txt
   uvicorn main:app --reload --port 8000
 
-Then set VITE_API_URL=http://localhost:8000 in the frontend's .env.local
-and POST to http://localhost:8000/api/batch with form field "file".
+Set AUTH0_DOMAIN + AUTH0_AUDIENCE to enable JWT auth; omit for demo mode.
 """
 from __future__ import annotations
 
 import os
 import uuid
 from datetime import datetime, timezone
-from typing import List
+from typing import List, Optional
 
-from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
+from auth import get_current_user
 from database import get_db, init_db
-from db_models import BatchRecord, ClaimRecord
+from db_models import AuditLog, BAARecord, BatchRecord, ClaimRecord
 from models import BatchResponse, ParsedClaim, ScrubResult
 from parser import parse_837
 from parsers.csv_claims import parse_csv
@@ -65,7 +68,27 @@ def startup():
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
-def _store_batch(results: List[ScrubResult], db: Session) -> BatchResponse:
+def _audit(
+    db: Session,
+    org_id: str,
+    user_id: str,
+    action: str,
+    resource_type: str = "",
+    resource_id: str = "",
+    ip: str = "",
+) -> None:
+    db.add(AuditLog(
+        org_id        = org_id,
+        user_id       = user_id,
+        action        = action,
+        resource_type = resource_type,
+        resource_id   = resource_id,
+        timestamp     = datetime.now(timezone.utc).isoformat(),
+        ip_address    = ip,
+    ))
+
+
+def _store_batch(results: List[ScrubResult], db: Session, org_id: str) -> BatchResponse:
     auto_clear      = sum(1 for r in results if r.lane.value == "auto_clear")
     needs_attention = sum(1 for r in results if r.lane.value != "auto_clear")
     at_risk         = round(sum(r.val for r in results if r.lane.value == "needs_work"), 2)
@@ -80,11 +103,12 @@ def _store_batch(results: List[ScrubResult], db: Session) -> BatchResponse:
         auto_clear      = auto_clear,
         needs_attention = needs_attention,
         at_risk         = at_risk,
+        org_id          = org_id,
     )
     db.add(batch_row)
 
     for result in results:
-        db.add(ClaimRecord.from_result(result, batch_id))
+        db.add(ClaimRecord.from_result(result, batch_id, org_id=org_id))
 
     db.commit()
     db.refresh(batch_row)
@@ -116,10 +140,16 @@ def _detect_and_parse(content: bytes, filename: str) -> List[ParsedClaim]:
     """Auto-detect EDI 837 vs CSV by filename extension and content."""
     name = filename.lower()
     text = content.decode("utf-8", errors="replace")
-
     if name.endswith((".csv", ".txt")) and not text.strip().upper().startswith("ISA"):
         return parse_csv(text)
     return parse_837(text)
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else ""
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
@@ -130,8 +160,10 @@ def health():
 
 
 @app.post("/api/parse", response_model=List[ParsedClaim])
-async def parse_file(file: UploadFile = File(...)):
-    """Parse a file and return raw (un-scrubbed) claim objects."""
+async def parse_file(
+    file: UploadFile = File(...),
+    user: dict = Depends(get_current_user),
+):
     content = await file.read()
     claims = _detect_and_parse(content, file.filename or "upload.edi")
     if not claims:
@@ -140,19 +172,23 @@ async def parse_file(file: UploadFile = File(...)):
 
 
 @app.post("/api/scrub", response_model=List[ScrubResult])
-async def scrub_claims(claims: List[ParsedClaim]):
-    """Accept raw claim JSON and return scrubbed results."""
+async def scrub_claims(
+    claims: List[ParsedClaim],
+    user: dict = Depends(get_current_user),
+):
     if not claims:
         raise HTTPException(422, "claims list must not be empty.")
     return scrub_many(claims)
 
 
 @app.post("/api/batch", response_model=BatchResponse)
-async def batch(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    """
-    Main workflow endpoint: upload an EDI 837 or CSV file,
-    parse + scrub all claims in one shot, persist the batch, and return results.
-    """
+async def batch(
+    request: Request,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    org_id = user["sub"]
     content = await file.read()
     filename = file.filename or "upload.edi"
 
@@ -162,33 +198,126 @@ async def batch(file: UploadFile = File(...), db: Session = Depends(get_db)):
                                   "Verify it is an EDI 837P or a CSV with a header row.")
 
     results = scrub_many(raw_claims)
-    return _store_batch(results, db)
+    result_batch = _store_batch(results, db, org_id=org_id)
+    _audit(db, org_id, org_id, "batch_created", "batch", result_batch.id, _client_ip(request))
+    db.commit()
+    return result_batch
 
 
 @app.get("/api/batches", response_model=List[BatchResponse])
-def list_batches(db: Session = Depends(get_db)):
-    """Return up to 20 most recent batches, newest first."""
+def list_batches(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    org_id = user["sub"]
     rows = (
         db.query(BatchRecord)
+        .filter(BatchRecord.org_id == org_id)
         .order_by(BatchRecord.created.desc())
         .limit(20)
         .all()
     )
+    _audit(db, org_id, org_id, "batches_listed", ip=_client_ip(request))
+    db.commit()
     return [_batch_row_to_response(row) for row in rows]
 
 
 @app.get("/api/batches/{batch_id}", response_model=BatchResponse)
-def get_batch(batch_id: str, db: Session = Depends(get_db)):
-    row = db.query(BatchRecord).filter(BatchRecord.id == batch_id).first()
+def get_batch(
+    batch_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    org_id = user["sub"]
+    row = (
+        db.query(BatchRecord)
+        .filter(BatchRecord.id == batch_id, BatchRecord.org_id == org_id)
+        .first()
+    )
     if row is None:
         raise HTTPException(404, f"Batch '{batch_id}' not found.")
+    _audit(db, org_id, org_id, "batch_read", "batch", batch_id, _client_ip(request))
+    db.commit()
     return _batch_row_to_response(row)
 
 
 @app.post("/api/analyze", response_model=ScrubResult)
-async def analyze_claim(claim: ParsedClaim):
-    """
-    Scrub a single claim dict.
-    Called by the frontend's 'Run AI analysis' button in the claim workspace.
-    """
+async def analyze_claim(
+    claim: ParsedClaim,
+    user: dict = Depends(get_current_user),
+):
     return scrub(claim)
+
+
+# ── BAA endpoints ─────────────────────────────────────────────────────────────
+
+@app.get("/api/baa/status")
+def baa_status(
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Return whether this org has accepted the BAA."""
+    org_id = user["sub"]
+    record = (
+        db.query(BAARecord)
+        .filter(BAARecord.org_id == org_id)
+        .order_by(BAARecord.accepted_at.desc())
+        .first()
+    )
+    return {"accepted": record is not None, "at": record.accepted_at if record else None}
+
+
+@app.post("/api/baa/accept")
+def baa_accept(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Record BAA acceptance for this org (idempotent — safe to call multiple times)."""
+    org_id  = user["sub"]
+    user_id = user.get("email", org_id)
+    now     = datetime.now(timezone.utc).isoformat()
+    ip      = _client_ip(request)
+
+    db.add(BAARecord(
+        id          = str(uuid.uuid4()),
+        org_id      = org_id,
+        user_id     = user_id,
+        accepted_at = now,
+        ip_address  = ip,
+        version     = "1.0",
+    ))
+    _audit(db, org_id, user_id, "baa_accepted", "baa", "", ip)
+    db.commit()
+    return {"accepted": True, "at": now}
+
+
+# ── Audit log ─────────────────────────────────────────────────────────────────
+
+@app.get("/api/audit")
+def list_audit(
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Return the last 100 audit log entries for this org."""
+    org_id = user["sub"]
+    rows = (
+        db.query(AuditLog)
+        .filter(AuditLog.org_id == org_id)
+        .order_by(AuditLog.timestamp.desc())
+        .limit(100)
+        .all()
+    )
+    return [
+        {
+            "id":            r.id,
+            "action":        r.action,
+            "resource_type": r.resource_type,
+            "resource_id":   r.resource_id,
+            "timestamp":     r.timestamp,
+            "ip":            r.ip_address,
+        }
+        for r in rows
+    ]
