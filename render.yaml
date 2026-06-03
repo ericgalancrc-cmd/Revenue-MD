@@ -13,6 +13,10 @@ services:
           property: connectionString
       - key: CORS_ORIGINS
         value: https://revenue-md.vercel.app  # update to your real Vercel URL
+      - key: AUTH0_DOMAIN
+        value: dev-mvhfi6mnltzukbs2.us.auth0.com
+      - key: AUTH0_AUDIENCE
+        value: https://api.revenuemd.com
 
 databases:
   - name: revenuemd-db
