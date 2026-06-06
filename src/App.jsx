@@ -1702,7 +1702,7 @@ export default function App({ auth0 = null }) {
                       <div style={{ width: 36, height: 36, borderRadius: 9, background: rbg(c.risk), display: "flex", alignItems: "center", justifyContent: "center" }}><FileText size={16} color={rc(c.risk)} /></div>
                       <div><div style={{ fontSize: 13.5, fontWeight: 500 }}>#{c.id}</div><div style={{ fontSize: 12, color: C.txt2 }}>{c.codes} · {c.payer}</div></div>
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}><RiskPill r={c.risk} /><ChevronRight size={16} color={C.txt3} /></div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}><RiskPill r={c.risk} t={t} /><ChevronRight size={16} color={C.txt3} /></div>
                   </div>
                 ))}
               </div>
@@ -1825,7 +1825,7 @@ export default function App({ auth0 = null }) {
                       <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}><span style={{ fontSize: 14, fontWeight: 500 }}>#{c.id}</span>{reviewed.includes(c.id) && <span style={{ fontSize: 11, color: C.teal, display: "flex", alignItems: "center", gap: 3 }}><CheckCircle2 size={13} /> {t.reviewed}</span>}<span style={{ fontSize: 11, color: C.txt2, padding: "2px 9px", background: C.lineSoft, borderRadius: 12 }}>{c.payer}</span></div>
                       <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 3 }}>{c.codes} · {c.provider} · {c.dos}</div>
                     </div>
-                    <RiskPill r={c.risk} big />
+                    <RiskPill r={c.risk} big t={t} />
                     <ChevronRight size={18} color={C.txt3} />
                   </div>
                 ))}
@@ -1843,7 +1843,7 @@ export default function App({ auth0 = null }) {
                   <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 24 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
                       <div><h2 style={{ fontSize: 21, fontWeight: 500, margin: 0, fontFamily: FONT_DISPLAY }}>#{c.id}</h2><div style={{ fontSize: 13, color: C.txt2, marginTop: 3 }}>{c.patient} · {c.provider}</div></div>
-                      <RiskPill r={c.risk} big label />
+                      <RiskPill r={c.risk} big t={t} />
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: 12, marginBottom: 20, padding: "14px 0", borderTop: `1px solid ${C.lineSoft}`, borderBottom: `1px solid ${C.lineSoft}` }}>
                       <Field label={t.cpt} value={c.codes} /><Field label="Payer" value={c.payer} /><Field label={t.dos} value={c.dos} /><Field label="Billed" value={fmt(c.billed)} />
@@ -1874,7 +1874,7 @@ export default function App({ auth0 = null }) {
               <Head title={t.nav_analysis} sub={lang === "en" ? "Every claim, ranked by AI-assessed denial risk." : "Cada reclamo, ordenado por riesgo de denegación evaluado por IA."} />
               {[...claims].sort((a, b) => b.risk - a.risk).map((c, i) => (
                 <div key={c.id} className="lift rise" style={{ animationDelay: `${i * 0.05}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20, marginBottom: 12, cursor: "pointer" }} onClick={() => { setTab("claims"); setOpenClaim(c.id); if (!analyzed[c.id]) runAnalysis(c.id); }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}><div><span style={{ fontSize: 14.5, fontWeight: 500 }}>#{c.id}</span><span style={{ fontSize: 12.5, color: C.txt2, marginLeft: 10 }}>{c.codes} · {c.payer}</span></div><RiskPill r={c.risk} big label /></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}><div><span style={{ fontSize: 14.5, fontWeight: 500 }}>#{c.id}</span><span style={{ fontSize: 12.5, color: C.txt2, marginLeft: 10 }}>{c.codes} · {c.payer}</span></div><RiskPill r={c.risk} big t={t} /></div>
                   <div style={{ fontSize: 13.5, color: C.txt2, lineHeight: 1.6 }}>{lang === "en" ? c.sEn : c.sEs}</div>
                 </div>
               ))}
@@ -2315,7 +2315,7 @@ export default function App({ auth0 = null }) {
                             <div style={{ fontSize: 11.5, color: C.txt2, marginTop: 2 }}>{q.codes} · {q.payer} · {q.prov}{iss ? <> · <span style={{ color: lane[1] }}>{iss}</span></> : ""}</div>
                           </div>
                           <span style={{ fontSize: 11.5, color: C.txt3 }}>${q.val}</span>
-                          <RiskPill r={q.risk} />
+                          <RiskPill r={q.risk} t={t} />
                           <button
                             title={lang === "en" ? "Open in workspace" : "Abrir en espacio de trabajo"}
                             onClick={() => { setTab("claims"); setOpenClaim(q.id); setAnalyzed((p) => ({ ...p, [q.id]: true })); }}
@@ -2888,9 +2888,10 @@ function Metric({ label, value, sub, trend, up, accent, i = 0 }) {
   );
 }
 function Field({ label, value }) { return <div><div style={{ fontSize: 11, color: C.txt3, marginBottom: 3 }}>{label}</div><div style={{ fontSize: 13.5, fontWeight: 500 }}>{value}</div></div>; }
-function RiskPill({ r, big, label }) {
-  const t = T.en;
-  return <span style={{ fontSize: big ? 13 : 12, fontWeight: 500, padding: big ? "5px 13px" : "4px 11px", borderRadius: 20, background: rbg(r), color: rc(r), display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: rc(r) }} />{r}%{label ? " " + t.denialRisk : ""}</span>;
+function RiskPill({ r, big, t: tProp }) {
+  const t = tProp || T.en;
+  const txt = r >= 60 ? t.riskHigh : r >= 30 ? t.riskMid : t.riskLow;
+  return <span style={{ fontSize: big ? 13 : 12, fontWeight: 500, padding: big ? "5px 13px" : "4px 11px", borderRadius: 20, background: rbg(r), color: rc(r), display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: rc(r) }} />{txt}</span>;
 }
 function Score({ label, value, invert, delay, type, t }) {
   const good = invert ? value < 30 : value >= 70;
