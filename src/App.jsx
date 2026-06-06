@@ -1907,28 +1907,28 @@ export default function App({ auth0 = null }) {
                         {c.issues.map((iss, i) => { const s = SEV[iss.sev]; return <div key={i} className="rise" style={{ animationDelay: `${i * 0.06}s`, display: "flex", gap: 11, padding: 13, borderRadius: 12, background: s.bg, marginBottom: 8 }}><s.icon size={17} color={s.c} style={{ flexShrink: 0, marginTop: 1 }} /><div><div style={{ fontSize: 13, fontWeight: 500, color: s.c }}>{lang === "en" ? iss.tEn : iss.tEs}</div><div style={{ fontSize: 12.5, color: s.c, opacity: 0.82, marginTop: 2, lineHeight: 1.5 }}>{lang === "en" ? iss.dEn : iss.dEs}</div></div></div>; })}
                         {c.fix.length > 0 && <><div style={{ fontSize: 13.5, fontWeight: 500, margin: "18px 0 10px", fontFamily: FONT_DISPLAY }}>{t.sugg}</div>{c.fix.map((f, i) => <div key={i} style={{ border: `1px solid ${C.tealMute}`, background: C.tealSoft, borderRadius: 12, padding: 13 }}><div style={{ fontSize: 13, fontWeight: 500, color: C.tealDk }}>{lang === "en" ? f.tEn : f.tEs}</div><div style={{ fontSize: 12.5, color: "#0a5c47", marginTop: 3, lineHeight: 1.5 }}>{lang === "en" ? f.wEn : f.wEs}</div><div style={{ display: "flex", gap: 8, marginTop: 11 }}><button className="btnp" style={{ ...btnP, padding: "7px 15px", fontSize: 12.5 }}>{t.apply}</button><button style={{ ...btnG, fontSize: 12.5 }}>{t.dismiss}</button></div></div>)}</>}
                         {(() => { const tips = getProTips(c.codes); return (tips.codes.length + tips.mods.length > 0) ? (
-                          <div className="rise" style={{ marginTop: 18, background: "#FFFBEB", border: "1.5px solid #F0D06A", borderRadius: 14, padding: 16 }}>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: "#92601A", marginBottom: 10, display: "flex", alignItems: "center", gap: 6, textTransform: "uppercase", letterSpacing: ".07em" }}><Lightbulb size={14} /> {t.learnProTipT}</div>
-                            <div style={{ fontSize: 12, color: "#7A5214", marginBottom: 12, lineHeight: 1.5 }}>{t.learnProTipSub}</div>
+                          <div className="rise" style={{ marginTop: 18, background: "#F3EFFD", border: "1.5px solid #9B7CF0", borderRadius: 14, padding: 16 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#5B21B6", marginBottom: 10, display: "flex", alignItems: "center", gap: 6, textTransform: "uppercase", letterSpacing: ".07em" }}><Lightbulb size={14} /> {t.learnProTipT}</div>
+                            <div style={{ fontSize: 12, color: "#6D28D9", marginBottom: 12, lineHeight: 1.5 }}>{t.learnProTipSub}</div>
                             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                               {tips.codes.map((tip, i) => (
-                                <div key={i} style={{ background: "#fff", border: "1px solid #F0D06A", borderRadius: 10, padding: "10px 13px" }}>
+                                <div key={i} style={{ background: "#fff", border: "1px solid #C4B5FD", borderRadius: 10, padding: "10px 13px" }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
                                     <span style={{ fontSize: 11, fontWeight: 700, padding: "1px 8px", borderRadius: 8, background: (TYPE_COLOR[tip.type] || [C.txt2, C.lineSoft])[1], color: (TYPE_COLOR[tip.type] || [C.txt2, C.lineSoft])[0] }}>{tip.type}</span>
                                     <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 13, color: C.ink }}>{tip.code}</span>
                                     <span style={{ fontSize: 12.5, color: C.txt2 }}>— {tip.desc}</span>
                                   </div>
-                                  {tip.notes && <div style={{ fontSize: 12.5, color: "#5a4010", lineHeight: 1.55 }}>{tip.notes}</div>}
+                                  {tip.notes && <div style={{ fontSize: 12.5, color: "#4C1D95", lineHeight: 1.55 }}>{tip.notes}</div>}
                                 </div>
                               ))}
                               {tips.mods.map((tip, i) => (
-                                <div key={i} style={{ background: "#fff", border: "1px solid #F0D06A", borderRadius: 10, padding: "10px 13px" }}>
+                                <div key={i} style={{ background: "#fff", border: "1px solid #C4B5FD", borderRadius: 10, padding: "10px 13px" }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
-                                    <span style={{ fontSize: 11, fontWeight: 700, padding: "1px 8px", borderRadius: 8, background: C.amberSoft, color: C.amber }}>MOD</span>
+                                    <span style={{ fontSize: 11, fontWeight: 700, padding: "1px 8px", borderRadius: 8, background: "#EDE9FE", color: "#7C3AED" }}>MOD</span>
                                     <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 13, color: C.ink }}>{tip.mod}</span>
                                     <span style={{ fontSize: 12.5, color: C.txt2 }}>— {tip.desc}</span>
                                   </div>
-                                  <div style={{ fontSize: 12.5, color: "#5a4010", lineHeight: 1.55 }}>{tip.rule}</div>
+                                  <div style={{ fontSize: 12.5, color: "#4C1D95", lineHeight: 1.55 }}>{tip.rule}</div>
                                 </div>
                               ))}
                             </div>
