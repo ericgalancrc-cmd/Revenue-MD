@@ -103,9 +103,9 @@ const T = {
     reviewNow: "Review queue", recent: "Live activity", viewAll: "View all",
     search: "Search claims, codes, payers…", upload: "Upload record", all: "All", highRisk: "High-risk", pending: "Pending", denied: "Denied",
     open: "Open", denialRisk: "Denial risk", compliance: "Compliance", docQuality: "Documentation",
-    riskLow: "Low risk", riskMid: "Moderate", riskHigh: "Likely denied",
-    compGood: "Compliant", compMid: "Review needed", compLow: "Non-compliant",
-    docGood: "Complete", docMid: "Gaps found", docLow: "Incomplete",
+    riskLow: "Ready to submit", riskMid: "Review before sending", riskHigh: "Do not submit",
+    compGood: "No action needed", compMid: "Verify rules", compLow: "Fix before sending",
+    docGood: "No action needed", docMid: "Add missing notes", docLow: "Complete chart first",
     runAnalysis: "Run AI analysis", analyzing: "Analyzing…", issues: "What we found", sugg: "Suggested fixes",
     aiSummary: "AI assessment", markReviewed: "Approve & mark reviewed", apply: "Apply fix", dismiss: "Dismiss", back: "Back to claims",
     lostRevenue: "Lost", toAppeal: "left to appeal", aiStrategy: "AI appeal strategy", buildAppeal: "Build appeal", reviewed: "Reviewed",
@@ -276,9 +276,9 @@ const T = {
     reviewNow: "Ver cola", recent: "Actividad en vivo", viewAll: "Ver todo",
     search: "Buscar reclamos, códigos, pagadores…", upload: "Cargar expediente", all: "Todos", highRisk: "Alto riesgo", pending: "Pendiente", denied: "Denegado",
     open: "Abrir", denialRisk: "Riesgo de denegación", compliance: "Cumplimiento", docQuality: "Documentación",
-    riskLow: "Bajo riesgo", riskMid: "Moderado", riskHigh: "Probable denegación",
-    compGood: "Cumple", compMid: "Revisar", compLow: "No cumple",
-    docGood: "Completa", docMid: "Con vacíos", docLow: "Incompleta",
+    riskLow: "Listo para enviar", riskMid: "Revisar antes de enviar", riskHigh: "No enviar",
+    compGood: "Sin acción requerida", compMid: "Verificar reglas", compLow: "Corregir antes de enviar",
+    docGood: "Sin acción requerida", docMid: "Agregar notas faltantes", docLow: "Completar expediente",
     runAnalysis: "Ejecutar análisis IA", analyzing: "Analizando…", issues: "Lo que encontramos", sugg: "Correcciones sugeridas",
     aiSummary: "Evaluación IA", markReviewed: "Aprobar y marcar revisado", apply: "Aplicar", dismiss: "Descartar", back: "Volver a reclamos",
     lostRevenue: "Perdido", toAppeal: "para apelar", aiStrategy: "Estrategia de apelación IA", buildAppeal: "Crear apelación", reviewed: "Revisado",
@@ -2908,14 +2908,11 @@ function Score({ label, value, invert, delay, type, t }) {
   const Icon = good ? CheckCircle2 : mid ? AlertTriangle : CircleAlert;
 
   return (
-    <div className="rise" style={{ animationDelay: `${delay}s`, background: bgColor, border: `1.5px solid ${border}`, borderRadius: 16, padding: 17 }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: C.txt3, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>{label}</div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-        <Icon size={20} color={color} strokeWidth={2.5} />
-        <span style={{ fontSize: 17, fontWeight: 700, color }}>{statusText}</span>
-      </div>
-      <div style={{ height: 5, background: "rgba(0,0,0,.08)", borderRadius: 4, overflow: "hidden" }}>
-        <div style={{ width: `${value}%`, height: "100%", background: color, borderRadius: 4, transition: "width .8s cubic-bezier(.2,.7,.3,1)" }} />
+    <div className="rise" style={{ animationDelay: `${delay}s`, background: bgColor, border: `1.5px solid ${border}`, borderRadius: 16, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+      <Icon size={22} color={color} strokeWidth={2.5} flexShrink={0} />
+      <div>
+        <div style={{ fontSize: 11, fontWeight: 600, color, textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 2 }}>{label}</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: C.txt }}>{statusText}</div>
       </div>
     </div>
   );
