@@ -2897,6 +2897,7 @@ function Score({ label, value, invert, delay, type, t }) {
   const mid  = invert ? value < 60 : value >= 50;
   const color   = good ? C.teal  : mid ? C.amber  : C.red;
   const bgColor = good ? C.tealSoft : mid ? C.amberSoft : C.redSoft;
+  const border  = good ? C.tealMute : mid ? "#F0C97A" : "#EAA49F";
 
   const statusText = type === "risk"
     ? (good ? t.riskLow  : mid ? t.riskMid  : t.riskHigh)
@@ -2907,17 +2908,13 @@ function Score({ label, value, invert, delay, type, t }) {
   const Icon = good ? CheckCircle2 : mid ? AlertTriangle : CircleAlert;
 
   return (
-    <div className="rise" style={{ animationDelay: `${delay}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 17 }}>
-      <div style={{ fontSize: 12.5, color: C.txt2, marginBottom: 10 }}>{label}</div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 10 }}>
-        <div style={{ fontSize: 25, fontWeight: 500, color, fontFamily: FONT_DISPLAY }}>{value}</div>
-        <div style={{ fontSize: 14, color, fontWeight: 500 }}>%</div>
+    <div className="rise" style={{ animationDelay: `${delay}s`, background: bgColor, border: `1.5px solid ${border}`, borderRadius: 16, padding: 17 }}>
+      <div style={{ fontSize: 12, fontWeight: 600, color: C.txt3, textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 12 }}>{label}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <Icon size={20} color={color} strokeWidth={2.5} />
+        <span style={{ fontSize: 17, fontWeight: 700, color }}>{statusText}</span>
       </div>
-      <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: bgColor, borderRadius: 20, padding: "4px 10px", marginBottom: 10 }}>
-        <Icon size={12} color={color} />
-        <span style={{ fontSize: 12, fontWeight: 600, color }}>{statusText}</span>
-      </div>
-      <div style={{ height: 6, background: C.lineSoft, borderRadius: 4, overflow: "hidden" }}>
+      <div style={{ height: 5, background: "rgba(0,0,0,.08)", borderRadius: 4, overflow: "hidden" }}>
         <div style={{ width: `${value}%`, height: "100%", background: color, borderRadius: 4, transition: "width .8s cubic-bezier(.2,.7,.3,1)" }} />
       </div>
     </div>
