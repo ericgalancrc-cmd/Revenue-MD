@@ -1484,7 +1484,7 @@ export default function App({ auth0 = null }) {
     { id: "batch",      icon: Layers,          label: t.nav_batch },      // 2 — primary daily workspace
     { id: "intake",     icon: FileScan,        label: t.nav_intake },     // 3 — import new claims
     { id: "claims",     icon: ClipboardList,   label: t.nav_claims },     // 4 — individual claim work
-    { id: "analysis",   icon: Brain,           label: t.nav_analysis },   // 5 — AI deep-dive on flagged claims
+
     { id: "denials",    icon: ReceiptText,     label: t.nav_denials },    // 6 — denial tracking & appeals
     { id: "payers",     icon: Building2,       label: t.nav_payers },     // 7 — payer rules reference
     { id: "learn",      icon: GraduationCap,   label: t.nav_learn },      // 8 — code lookup reference
@@ -1946,18 +1946,6 @@ export default function App({ auth0 = null }) {
             );
           })()}
 
-          {/* AI ANALYSIS */}
-          {tab === "analysis" && (
-            <div>
-              <Head title={t.nav_analysis} sub={lang === "en" ? "Every claim, ranked by AI-assessed denial risk." : "Cada reclamo, ordenado por riesgo de denegación evaluado por IA."} />
-              {[...claims].sort((a, b) => b.risk - a.risk).map((c, i) => (
-                <div key={c.id} className="lift rise" style={{ animationDelay: `${i * 0.05}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20, marginBottom: 12, cursor: "pointer" }} onClick={() => { setTab("claims"); setOpenClaim(c.id); if (!analyzed[c.id]) runAnalysis(c.id); }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}><div><span style={{ fontSize: 14.5, fontWeight: 500 }}>#{c.id}</span><span style={{ fontSize: 12.5, color: C.txt2, marginLeft: 10 }}>{c.codes} · {c.payer}</span></div><RiskPill r={c.risk} big t={t} /></div>
-                  <div style={{ fontSize: 13.5, color: C.txt2, lineHeight: 1.6 }}>{lang === "en" ? c.sEn : c.sEs}</div>
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* DENIALS */}
           {tab === "denials" && (
