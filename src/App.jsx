@@ -10,7 +10,7 @@ import {
   GraduationCap, BookMarked, ExternalLink, Hash, Info, CreditCard, Star, BadgeCheck,
   Palette, UserRound, Sliders, Sun, Moon,
   Smartphone, Mail, QrCode, KeyRound, ShieldAlert, RefreshCw, Copy,
-  Menu, X,
+  Menu, X, ChevronDown,
 } from "lucide-react";
 
 // ============================================================================
@@ -69,6 +69,8 @@ const T = {
     learnCode: "Code", learnDesc: "Description", learnNotes: "Billing notes", learnUnits: "Units",
     learnMod: "Modifier", learnModDesc: "Description", learnModPayer: "Payer", learnModRule: "Rule",
     learnNoResults: "No codes found. Try a different keyword or code number.",
+    learnTypeAll: "All", learnCopy: "Copy", learnCopied: "Copied!",
+    learnProTipT: "Pro tip — codes on this claim", learnProTipSub: "Quick reference for the codes and modifiers you're working with right now.",
     learnCmsTitle: "CMS & Federal references", learnPrTitle: "Puerto Rico — payer & ASES resources",
     learnOpen: "Open", learnVerify: "Verify before production use",
     batchTitle: "Batch queue", batchSub: "Import one file, work many claims. We scrub and triage every claim so your attention goes where it matters.",
@@ -242,6 +244,8 @@ const T = {
     learnCode: "Código", learnDesc: "Descripción", learnNotes: "Notas de facturación", learnUnits: "Unidades",
     learnMod: "Modificador", learnModDesc: "Descripción", learnModPayer: "Pagador", learnModRule: "Regla",
     learnNoResults: "No se encontraron códigos. Intente con otra palabra clave o número de código.",
+    learnTypeAll: "Todos", learnCopy: "Copiar", learnCopied: "¡Copiado!",
+    learnProTipT: "Pro tip — códigos en este reclamo", learnProTipSub: "Referencia rápida para los códigos y modificadores que estás trabajando ahora mismo.",
     learnCmsTitle: "CMS y referencias federales", learnPrTitle: "Puerto Rico — recursos de pagadores y ASES",
     learnOpen: "Abrir", learnVerify: "Verificar antes de uso en producción",
     batchTitle: "Cola por lote", batchSub: "Importa un archivo, trabaja muchos reclamos. Revisamos y clasificamos cada uno para que tu atención vaya donde importa.",
@@ -757,6 +761,29 @@ const LEARN_CODES = [
   { type:"ICD-10", code:"F33.9", desc:"Major depressive disorder, recurrent, unspecified", units:"—", notes:"Code severity when documented. Add F33.4 for MDD in remission." },
   { type:"ICD-10", code:"F17.210", desc:"Nicotine dependence, cigarettes, uncomplicated", units:"—", notes:"Required for smoking cessation counseling billing (99406, 99407). Common in PR; document pack-years." },
   { type:"ICD-10", code:"Z87.891", desc:"Personal history of nicotine dependence", units:"—", notes:"Use for former smokers (quit >1 year) — relevant for preventive care documentation." },
+  // CPT — Laboratory (High-volume in PR primary care)
+  { type:"CPT", code:"80048", desc:"Basic metabolic panel", units:"1", notes:"Includes glucose, BUN, creatinine, electrolytes, CO2, calcium. Medicare and ASES: covered as ordered diagnostic. Common in DM and HTN follow-up." },
+  { type:"CPT", code:"80053", desc:"Comprehensive metabolic panel", units:"1", notes:"BMP + liver function tests (albumin, total protein, ALT, AST, bilirubin, ALP). Bill 80053 OR 80048 — not both, CCI bundles them." },
+  { type:"CPT", code:"85025", desc:"Complete blood count (CBC) with differential", units:"1", notes:"Includes WBC differential. Bill 85025 (with diff) or 85027 (without diff) — not both. Very high volume in PR primary care." },
+  { type:"CPT", code:"83036", desc:"Hemoglobin A1c", units:"1", notes:"Required for HEDIS measure for diabetes management. ASES Mi Salud: covered for DM members. Document the diagnosis code (E11.x) on the claim." },
+  { type:"CPT", code:"80061", desc:"Lipid panel", units:"1", notes:"Total cholesterol, HDL, LDL (calculated), triglycerides. Medicare: covered annually for cardiovascular risk screening. ASES: covered as ordered diagnostic." },
+  { type:"CPT", code:"84443", desc:"Thyroid stimulating hormone (TSH)", units:"1", notes:"Primary screening test for thyroid disorders. High prevalence of thyroid disease in PR women. Document the clinical indication (e.g., R00.8, Z13.88)." },
+  { type:"CPT", code:"82043", desc:"Urine microalbumin (quantitative)", units:"1", notes:"Annual screening for diabetic nephropathy. Pair with creatinine (82570) to calculate albumin/creatinine ratio. Required for HEDIS kidney health measure." },
+  // CPT — Physical Therapy / Rehabilitation
+  { type:"CPT", code:"97110", desc:"Therapeutic exercises — each 15 minutes", units:"1–8 per day", notes:"Strengthening, flexibility, endurance. Requires direct one-on-one contact. Document functional goal and time. Medicare: KX modifier required once therapy threshold met." },
+  { type:"CPT", code:"97530", desc:"Therapeutic activities — each 15 minutes", units:"1–8 per day", notes:"Dynamic activities to improve functional performance. Must be one-on-one. Use when activities are task-specific (vs. rote exercise). Most frequently audited PT code." },
+  { type:"CPT", code:"97140", desc:"Manual therapy techniques — each 15 minutes", units:"1–4 per day", notes:"Manipulation, mobilization, manual lymphatic drainage. One-on-one required. Cannot be billed same time unit as 97110. Most payers limit concurrent time-based units to total treatment time." },
+  { type:"CPT", code:"97012", desc:"Mechanical traction — each 15 minutes", units:"1–2 per day", notes:"Mechanical spinal traction. Medicare: covered for disc disease with radiculopathy. ASES: verify prior auth for extended series. Document spinal level." },
+  // ICD-10 — Pain
+  { type:"ICD-10", code:"G89.29", desc:"Other chronic pain", units:"—", notes:"Use when chronic pain is not elsewhere classified. Code the underlying cause first when known. Cannot be used as primary diagnosis for most payers if an underlying etiology is documented." },
+  { type:"ICD-10", code:"M54.4", desc:"Lumbago with sciatica, unspecified side", units:"—", notes:"Use M54.41 (right) or M54.42 (left) when documented. High-volume code in PR orthopedics and neurology. Often paired with M51.16/M51.17 for disc herniation." },
+  { type:"ICD-10", code:"M25.511", desc:"Pain in right shoulder", units:"—", notes:"Use M25.512 for left shoulder. Document laterality. Common precursor to rotator cuff imaging (77040/77041). Supports PT referral documentation." },
+  // ICD-10 — Women's Health / OB
+  { type:"ICD-10", code:"Z34.00", desc:"Encounter for supervision of normal pregnancy, unspecified trimester", units:"—", notes:"Use Z34.01 (first), Z34.02 (second), Z34.03 (third) when trimester is documented. Primary diagnosis for routine OB visits. Do not use when a pregnancy complication is present." },
+  { type:"ICD-10", code:"N39.0", desc:"Urinary tract infection, site not specified", units:"—", notes:"High-frequency code in PR primary care and OB. Always try to code the specific organism (B96.20 for E. coli) as secondary when culture results are available." },
+  // ICD-10 — Behavioral Health (Additional)
+  { type:"ICD-10", code:"F40.10", desc:"Social phobia, unspecified", units:"—", notes:"Code social anxiety disorder. Specify generalized (F40.11) when documented. Common comorbidity with MDD and PTSD in PR population." },
+  { type:"ICD-10", code:"F42.2", desc:"Mixed obsessional thoughts and acts (OCD)", units:"—", notes:"Use F42.2 when both obsessions and compulsions are present (most common presentation). Pair with appropriate CPT BH code (90837 or 90834)." },
 ];
 
 const LEARN_MODS = [
@@ -780,7 +807,6 @@ const LEARN_MODS = [
   { mod:"XU", desc:"Unusual non-overlapping service, the use of a service that is distinct because it does not overlap usual components of the main service", payer:"Medicare (preferred over 59)", rule:"Use when the service does not overlap with the main procedure. Least commonly applicable of the X-modifiers." },
   { mod:"22", desc:"Increased procedural services", payer:"All", rule:"Use when the work required to provide service is substantially greater than usual. Must include documentation; expect review." },
   { mod:"24", desc:"Unrelated E&M service by same physician during post-operative period", payer:"All", rule:"Allows billing an E&M during the global period for an unrelated condition — document the unrelated diagnosis separately." },
-  { mod:"25", desc:"Significant, separately identifiable E&M service, same day as procedure or other service", payer:"All", rule:"Required when E&M and add-on psychotherapy (90833) or a procedure are billed on the same date. Document separately." },
   { mod:"26", desc:"Professional component", payer:"All", rule:"Bill the interpretation portion when the facility owns the equipment (e.g., reading an EKG or X-ray performed at a hospital)." },
   { mod:"TC", desc:"Technical component", payer:"All", rule:"Bill when the provider owns the equipment and performs the technical portion but not the interpretation. Paired with Modifier 26." },
   { mod:"57", desc:"Decision for surgery — E&M on day of or day before major surgery", payer:"All", rule:"Allows billing of E&M on the same day as a major procedure (90-day global) when the decision to operate was made at that visit." },
@@ -793,7 +819,26 @@ const LEARN_MODS = [
   { mod:"NU", desc:"New equipment", payer:"Medicaid / HCPCS", rule:"Used with HCPCS DME codes to indicate new equipment is being provided. Required by ASES for DME claims." },
   { mod:"RR", desc:"Rental", payer:"Medicaid / HCPCS", rule:"Indicates DME is being rented rather than purchased. Monthly rental claims require this modifier on HCPCS equipment codes." },
   { mod:"97", desc:"Rehabilitative services", payer:"Medicare", rule:"Distinguishes rehabilitative therapy (goals aimed at improving function) from maintenance therapy. Required for certain Medicare therapy claims." },
+  { mod:"LT", desc:"Left side", payer:"All", rule:"Identifies a procedure performed on the left side of the body. Must match the clinical documentation. Do NOT use with bilateral procedures billed under modifier 50." },
+  { mod:"RT", desc:"Right side", payer:"All", rule:"Identifies a procedure performed on the right side of the body. Both LT and RT may appear on the same claim when bilateral work is billed as two line items." },
+  { mod:"50", desc:"Bilateral procedure", payer:"All", rule:"Bill as a single line with modifier 50 when the same procedure is performed on both sides. Medicare reimburses at 150% of the single-side rate." },
+  { mod:"51", desc:"Multiple procedures", payer:"All", rule:"Append to the second (and subsequent) procedures when multiple distinct procedures are performed at the same session. Some payers apply a reduction (e.g., 50%) to the lower-valued service." },
+  { mod:"33", desc:"Preventive service", payer:"Medicare / ACA", rule:"Waives patient cost-sharing when a service that would otherwise carry cost-sharing is rendered as a preventive benefit under the ACA. Common with colonoscopy (G0121) and depression screening." },
+  { mod:"AH", desc:"Clinical psychologist", payer:"Medicare / All", rule:"Identifies a licensed clinical psychologist rendering the service. Required by Medicare for psychologist-billed BH services. Higher reimbursement rate than AJ on most Medicare fee schedules." },
+  { mod:"AJ", desc:"Clinical social worker", payer:"Medicare / All", rule:"Identifies a licensed clinical social worker. Required on Medicare BH claims. Reimbursed at 75% of the psychologist rate for most codes." },
+  { mod:"SA", desc:"Nurse practitioner rendering service in collaboration with physician", payer:"Medicare / All", rule:"Use when an NP provides the service. Some payers require this to distinguish NP from MD billing. Check payer-specific requirements." },
+  { mod:"GQ", desc:"Via asynchronous telecommunications system (store-and-forward)", payer:"Medicare", rule:"For telehealth services transmitted as stored data (e.g., dermatology photo review). Allowed only in federally designated telehealth demonstration programs." },
+  { mod:"77", desc:"Repeat procedure by different physician on same day", payer:"All", rule:"Use when a different provider repeats the same procedure on the same date. Pair with supporting documentation." },
 ];
+
+// Returns Learning Center entries that match the codes/modifiers on a given claim.
+function getProTips(codesStr) {
+  if (!codesStr || codesStr === "—") return { codes: [], mods: [] };
+  const tokens = codesStr.toUpperCase().replace(/[×x·]/g, " ").split(/[\s,+]+/).filter(tok => /^[A-Z0-9.]+$/.test(tok));
+  const codeTips = LEARN_CODES.filter(c => tokens.includes(c.code.toUpperCase()) && c.notes && c.notes.length > 3);
+  const modTips = LEARN_MODS.filter(m => tokens.includes(m.mod.toUpperCase()));
+  return { codes: codeTips, mods: modTips };
+}
 
 const LEARN_GUIDES = [
   { cat:"cms", title:"CMS ICD-10-CM Official Guidelines", desc:"Diagnosis coding guidelines updated annually by CMS and NCHS.", url:"https://www.cms.gov/medicare/coding-billing/icd-10-codes" },
@@ -822,6 +867,8 @@ const LEARN_GUIDES = [
   { cat:"pr", title:"Assertus Health — RCM y Facturacion", desc:"Plataforma de gestion del ciclo de ingresos (RCM) utilizada por practicas medicas en Puerto Rico.", url:"https://www.assertushealth.com" },
   { cat:"pr", title:"PR Medicaid MMIS — Eligibility Verification", desc:"Sistema de informacion de gestion de Medicaid de PR. Verificacion de elegibilidad en tiempo real para proveedores.", url:"https://www.medicaid.pr.gov" },
 ];
+
+const TYPE_COLOR = { "ICD-10": ["#7C3AED", "#EDE9FE"], "CPT": ["#2563EB", "#DBEAFE"], "HCPCS": ["#0D9488", "#CCFBF1"] };
 
 const fmt = (n) => "$" + n.toLocaleString("en-US");
 
@@ -1199,6 +1246,9 @@ export default function App({ auth0 = null }) {
   const [csvResult, setCsvResult] = useState(null);
   const [learnTab, setLearnTab] = useState("codes");
   const [learnSearch, setLearnSearch] = useState("");
+  const [learnTypeFilter, setLearnTypeFilter] = useState("all");
+  const [learnExpanded, setLearnExpanded] = useState({});
+  const [copiedCode, setCopiedCode] = useState(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifSeen, setNotifSeen] = useState(false);
@@ -1856,6 +1906,34 @@ export default function App({ auth0 = null }) {
                         <div style={{ fontSize: 13.5, fontWeight: 500, marginBottom: 10, fontFamily: FONT_DISPLAY }}>{t.issues}</div>
                         {c.issues.map((iss, i) => { const s = SEV[iss.sev]; return <div key={i} className="rise" style={{ animationDelay: `${i * 0.06}s`, display: "flex", gap: 11, padding: 13, borderRadius: 12, background: s.bg, marginBottom: 8 }}><s.icon size={17} color={s.c} style={{ flexShrink: 0, marginTop: 1 }} /><div><div style={{ fontSize: 13, fontWeight: 500, color: s.c }}>{lang === "en" ? iss.tEn : iss.tEs}</div><div style={{ fontSize: 12.5, color: s.c, opacity: 0.82, marginTop: 2, lineHeight: 1.5 }}>{lang === "en" ? iss.dEn : iss.dEs}</div></div></div>; })}
                         {c.fix.length > 0 && <><div style={{ fontSize: 13.5, fontWeight: 500, margin: "18px 0 10px", fontFamily: FONT_DISPLAY }}>{t.sugg}</div>{c.fix.map((f, i) => <div key={i} style={{ border: `1px solid ${C.tealMute}`, background: C.tealSoft, borderRadius: 12, padding: 13 }}><div style={{ fontSize: 13, fontWeight: 500, color: C.tealDk }}>{lang === "en" ? f.tEn : f.tEs}</div><div style={{ fontSize: 12.5, color: "#0a5c47", marginTop: 3, lineHeight: 1.5 }}>{lang === "en" ? f.wEn : f.wEs}</div><div style={{ display: "flex", gap: 8, marginTop: 11 }}><button className="btnp" style={{ ...btnP, padding: "7px 15px", fontSize: 12.5 }}>{t.apply}</button><button style={{ ...btnG, fontSize: 12.5 }}>{t.dismiss}</button></div></div>)}</>}
+                        {(() => { const tips = getProTips(c.codes); return (tips.codes.length + tips.mods.length > 0) ? (
+                          <div className="rise" style={{ marginTop: 18, background: "#FFFBEB", border: "1.5px solid #F0D06A", borderRadius: 14, padding: 16 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#92601A", marginBottom: 10, display: "flex", alignItems: "center", gap: 6, textTransform: "uppercase", letterSpacing: ".07em" }}><Lightbulb size={14} /> {t.learnProTipT}</div>
+                            <div style={{ fontSize: 12, color: "#7A5214", marginBottom: 12, lineHeight: 1.5 }}>{t.learnProTipSub}</div>
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                              {tips.codes.map((tip, i) => (
+                                <div key={i} style={{ background: "#fff", border: "1px solid #F0D06A", borderRadius: 10, padding: "10px 13px" }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
+                                    <span style={{ fontSize: 11, fontWeight: 700, padding: "1px 8px", borderRadius: 8, background: (TYPE_COLOR[tip.type] || [C.txt2, C.lineSoft])[1], color: (TYPE_COLOR[tip.type] || [C.txt2, C.lineSoft])[0] }}>{tip.type}</span>
+                                    <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 13, color: C.ink }}>{tip.code}</span>
+                                    <span style={{ fontSize: 12.5, color: C.txt2 }}>— {tip.desc}</span>
+                                  </div>
+                                  {tip.notes && <div style={{ fontSize: 12.5, color: "#5a4010", lineHeight: 1.55 }}>{tip.notes}</div>}
+                                </div>
+                              ))}
+                              {tips.mods.map((tip, i) => (
+                                <div key={i} style={{ background: "#fff", border: "1px solid #F0D06A", borderRadius: 10, padding: "10px 13px" }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 4 }}>
+                                    <span style={{ fontSize: 11, fontWeight: 700, padding: "1px 8px", borderRadius: 8, background: C.amberSoft, color: C.amber }}>MOD</span>
+                                    <span style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 13, color: C.ink }}>{tip.mod}</span>
+                                    <span style={{ fontSize: 12.5, color: C.txt2 }}>— {tip.desc}</span>
+                                  </div>
+                                  <div style={{ fontSize: 12.5, color: "#5a4010", lineHeight: 1.55 }}>{tip.rule}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : null; })()}
                         <button className="btnp" onClick={() => { setReviewed((p) => [...new Set([...p, c.id])]); setOpenClaim(null); }} style={{ ...btnP, width: "100%", justifyContent: "center", padding: 13, marginTop: 18 }}><CheckCircle2 size={16} /> {t.markReviewed}</button>
                       </div>
                     )}
@@ -2336,12 +2414,12 @@ export default function App({ auth0 = null }) {
           {tab === "learn" && (() => {
             const q = learnSearch.toLowerCase();
             const filteredCodes = LEARN_CODES.filter(c =>
-              !q || c.code.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q) || c.notes.toLowerCase().includes(q) || c.type.toLowerCase().includes(q)
+              (learnTypeFilter === "all" || c.type === learnTypeFilter) &&
+              (!q || c.code.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q) || c.notes.toLowerCase().includes(q) || c.type.toLowerCase().includes(q))
             );
             const filteredMods = LEARN_MODS.filter(m =>
               !q || m.mod.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q) || m.rule.toLowerCase().includes(q) || m.payer.toLowerCase().includes(q)
             );
-            const typeColor = { "ICD-10": [C.purple, C.purpleSoft], "CPT": [C.blue, C.blueSoft], "HCPCS": [C.teal, C.tealSoft] };
             return (
               <div>
                 <Head title={t.learnTitle} sub={t.learnSub} />
@@ -2369,29 +2447,55 @@ export default function App({ auth0 = null }) {
                 {/* CODE LOOKUP TAB */}
                 {learnTab === "codes" && (
                   <div className="rise">
+                    {/* Type filter chips */}
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 14 }}>
+                      {[["all", t.learnTypeAll, C.ink], ["ICD-10", "ICD-10", C.purple], ["CPT", "CPT", C.blue], ["HCPCS", "HCPCS", C.teal]].map(([k, label, color]) => (
+                        <button key={k} onClick={() => setLearnTypeFilter(k)} style={{ fontSize: 12, padding: "5px 14px", borderRadius: 16, cursor: "pointer", border: `1px solid ${learnTypeFilter === k ? color : C.line}`, background: learnTypeFilter === k ? color + "18" : C.paper2, color: learnTypeFilter === k ? color : C.txt2, fontFamily: FONT_SANS, fontWeight: learnTypeFilter === k ? 600 : 400 }}>
+                          {label} {learnTypeFilter === k && filteredCodes.length > 0 && <span style={{ fontSize: 10, opacity: 0.7 }}>({filteredCodes.length})</span>}
+                        </button>
+                      ))}
+                    </div>
                     {filteredCodes.length === 0 ? (
                       <div style={{ textAlign: "center", padding: "40px 20px", color: C.txt3, fontSize: 14 }}>{t.learnNoResults}</div>
                     ) : (
                       <div style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, overflow: "hidden" }}>
                         <div style={{ overflowX: "auto" }}>
                         {/* Table header */}
-                        <div style={{ display: "grid", gridTemplateColumns: "110px 110px 1fr 100px", minWidth: 420, gap: 0, background: C.lineSoft, padding: "10px 18px", borderBottom: `1px solid ${C.line}` }}>
-                          {[t.learnCode, "Type", t.learnNotes, t.learnUnits].map(h => (
+                        <div style={{ display: "grid", gridTemplateColumns: "110px 110px 1fr 100px 36px", minWidth: 420, gap: 0, background: C.lineSoft, padding: "10px 18px", borderBottom: `1px solid ${C.line}` }}>
+                          {[t.learnCode, "Type", t.learnNotes, t.learnUnits, ""].map(h => (
                             <div key={h} style={{ fontSize: 11.5, fontWeight: 600, color: C.txt2, textTransform: "uppercase", letterSpacing: ".06em" }}>{h}</div>
                           ))}
                         </div>
                         {filteredCodes.map((c, i) => {
-                          const [tc, tbg] = typeColor[c.type] || [C.txt2, C.lineSoft];
+                          const [tc, tbg] = TYPE_COLOR[c.type] || [C.txt2, C.lineSoft];
+                          const isExp = !!learnExpanded[c.code];
                           return (
-                            <div key={c.code} style={{ display: "grid", gridTemplateColumns: "110px 110px 1fr 100px", minWidth: 420, gap: 0, padding: "13px 18px", borderBottom: i < filteredCodes.length - 1 ? `1px solid ${C.lineSoft}` : "none", alignItems: "start" }}>
-                              <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 13.5, color: C.ink }}>{c.code}</div>
-                              <div>
-                                <span style={{ fontSize: 10.5, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: tbg, color: tc }}>{c.type}</span>
+                            <div key={c.code} style={{ minWidth: 420, borderBottom: i < filteredCodes.length - 1 ? `1px solid ${C.lineSoft}` : "none" }}>
+                              <div onClick={() => setLearnExpanded(p => ({ ...p, [c.code]: !p[c.code] }))} style={{ display: "grid", gridTemplateColumns: "110px 110px 1fr 100px 36px", gap: 0, padding: "13px 18px", alignItems: "start", cursor: "pointer", background: isExp ? C.tealSoft : "transparent" }}>
+                                <div style={{ fontFamily: FONT_DISPLAY, fontWeight: 600, fontSize: 13.5, color: C.ink }}>{c.code}</div>
+                                <div><span style={{ fontSize: 10.5, fontWeight: 600, padding: "2px 8px", borderRadius: 10, background: tbg, color: tc }}>{c.type}</span></div>
+                                <div style={{ fontSize: 13, color: C.txt2, lineHeight: 1.45 }}>{c.desc}</div>
+                                <div style={{ fontSize: 12.5, color: C.txt2 }}>{c.units}</div>
+                                <div><ChevronDown size={14} color={C.txt3} style={{ transform: isExp ? "rotate(180deg)" : "none", transition: "transform .2s" }} /></div>
                               </div>
-                              <div style={{ fontSize: 13, color: c.notes ? C.txt : C.txt3, lineHeight: 1.45, display: "flex", alignItems: "flex-start", gap: 5 }}>
-                                {c.notes ? <><Info size={11} color={C.amber} style={{ flexShrink: 0, marginTop: 2 }} />{c.notes}</> : <em>{lang === "en" ? "See AMA CPT manual" : "Ver manual AMA CPT"}</em>}
-                              </div>
-                              <div style={{ fontSize: 12.5, color: C.txt2 }}>{c.units}</div>
+                              {isExp && (
+                                <div className="rise" style={{ padding: "12px 18px 16px", background: C.tealSoft, borderTop: `1px solid ${C.tealMute}` }}>
+                                  {c.notes ? (
+                                    <div style={{ fontSize: 13, color: "#0a5c47", lineHeight: 1.6, display: "flex", gap: 8, alignItems: "flex-start" }}>
+                                      <Info size={14} color={C.tealDk} style={{ flexShrink: 0, marginTop: 2 }} />
+                                      <span>{c.notes}</span>
+                                    </div>
+                                  ) : (
+                                    <div style={{ fontSize: 13, color: C.txt3, fontStyle: "italic" }}>{lang === "en" ? "See AMA CPT manual for full guidelines." : "Ver manual AMA CPT para guías completas."}</div>
+                                  )}
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(c.code); setCopiedCode(c.code); setTimeout(() => setCopiedCode(null), 1800); }}
+                                    style={{ marginTop: 10, display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11.5, padding: "4px 12px", borderRadius: 10, border: `1px solid ${C.tealMute}`, background: "#fff", color: C.tealDk, cursor: "pointer", fontFamily: FONT_SANS }}
+                                  >
+                                    <Copy size={11} /> {copiedCode === c.code ? t.learnCopied : `${t.learnCopy} ${c.code}`}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
