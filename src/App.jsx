@@ -103,6 +103,9 @@ const T = {
     reviewNow: "Review queue", recent: "Live activity", viewAll: "View all",
     search: "Search claims, codes, payers…", upload: "Upload record", all: "All", highRisk: "High-risk", pending: "Pending", denied: "Denied",
     open: "Open", denialRisk: "Denial risk", compliance: "Compliance", docQuality: "Documentation",
+    riskLow: "Low risk", riskMid: "Moderate", riskHigh: "Likely denied",
+    compGood: "Compliant", compMid: "Review needed", compLow: "Non-compliant",
+    docGood: "Complete", docMid: "Gaps found", docLow: "Incomplete",
     runAnalysis: "Run AI analysis", analyzing: "Analyzing…", issues: "What we found", sugg: "Suggested fixes",
     aiSummary: "AI assessment", markReviewed: "Approve & mark reviewed", apply: "Apply fix", dismiss: "Dismiss", back: "Back to claims",
     lostRevenue: "Lost", toAppeal: "left to appeal", aiStrategy: "AI appeal strategy", buildAppeal: "Build appeal", reviewed: "Reviewed",
@@ -273,6 +276,9 @@ const T = {
     reviewNow: "Ver cola", recent: "Actividad en vivo", viewAll: "Ver todo",
     search: "Buscar reclamos, códigos, pagadores…", upload: "Cargar expediente", all: "Todos", highRisk: "Alto riesgo", pending: "Pendiente", denied: "Denegado",
     open: "Abrir", denialRisk: "Riesgo de denegación", compliance: "Cumplimiento", docQuality: "Documentación",
+    riskLow: "Bajo riesgo", riskMid: "Moderado", riskHigh: "Probable denegación",
+    compGood: "Cumple", compMid: "Revisar", compLow: "No cumple",
+    docGood: "Completa", docMid: "Con vacíos", docLow: "Incompleta",
     runAnalysis: "Ejecutar análisis IA", analyzing: "Analizando…", issues: "Lo que encontramos", sugg: "Correcciones sugeridas",
     aiSummary: "Evaluación IA", markReviewed: "Aprobar y marcar revisado", apply: "Aplicar", dismiss: "Descartar", back: "Volver a reclamos",
     lostRevenue: "Perdido", toAppeal: "para apelar", aiStrategy: "Estrategia de apelación IA", buildAppeal: "Crear apelación", reviewed: "Revisado",
@@ -1855,7 +1861,7 @@ export default function App({ auth0 = null }) {
                     )}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                    <Score label={t.denialRisk} value={c.risk} invert delay={0} /><Score label={t.compliance} value={c.comp} delay={0.08} /><Score label={t.docQuality} value={c.doc} delay={0.16} />
+                    <Score label={t.denialRisk} value={c.risk} invert type="risk" delay={0} t={t} /><Score label={t.compliance} value={c.comp} type="comp" delay={0.08} t={t} /><Score label={t.docQuality} value={c.doc} type="doc" delay={0.16} t={t} />
                   </div>
                 </div>
               </div>
@@ -2886,14 +2892,34 @@ function RiskPill({ r, big, label }) {
   const t = T.en;
   return <span style={{ fontSize: big ? 13 : 12, fontWeight: 500, padding: big ? "5px 13px" : "4px 11px", borderRadius: 20, background: rbg(r), color: rc(r), display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: rc(r) }} />{r}%{label ? " " + t.denialRisk : ""}</span>;
 }
-function Score({ label, value, invert, delay }) {
-  const good = invert ? value < 30 : value >= 70; const mid = invert ? value < 60 : value >= 50;
-  const color = good ? C.teal : mid ? C.amber : C.red;
+function Score({ label, value, invert, delay, type, t }) {
+  const good = invert ? value < 30 : value >= 70;
+  const mid  = invert ? value < 60 : value >= 50;
+  const color   = good ? C.teal  : mid ? C.amber  : C.red;
+  const bgColor = good ? C.tealSoft : mid ? C.amberSoft : C.redSoft;
+
+  const statusText = type === "risk"
+    ? (good ? t.riskLow  : mid ? t.riskMid  : t.riskHigh)
+    : type === "comp"
+    ? (good ? t.compGood : mid ? t.compMid  : t.compLow)
+    : (good ? t.docGood  : mid ? t.docMid   : t.docLow);
+
+  const Icon = good ? CheckCircle2 : mid ? AlertTriangle : CircleAlert;
+
   return (
     <div className="rise" style={{ animationDelay: `${delay}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 17 }}>
       <div style={{ fontSize: 12.5, color: C.txt2, marginBottom: 10 }}>{label}</div>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}><div style={{ fontSize: 25, fontWeight: 500, color, fontFamily: FONT_DISPLAY }}>{value}</div><div style={{ fontSize: 14, color, fontWeight: 500 }}>%</div></div>
-      <div style={{ height: 7, background: C.lineSoft, borderRadius: 4, marginTop: 9, overflow: "hidden" }}><div style={{ width: `${value}%`, height: "100%", background: color, borderRadius: 4, transition: "width .8s cubic-bezier(.2,.7,.3,1)" }} /></div>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 4, marginBottom: 10 }}>
+        <div style={{ fontSize: 25, fontWeight: 500, color, fontFamily: FONT_DISPLAY }}>{value}</div>
+        <div style={{ fontSize: 14, color, fontWeight: 500 }}>%</div>
+      </div>
+      <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: bgColor, borderRadius: 20, padding: "4px 10px", marginBottom: 10 }}>
+        <Icon size={12} color={color} />
+        <span style={{ fontSize: 12, fontWeight: 600, color }}>{statusText}</span>
+      </div>
+      <div style={{ height: 6, background: C.lineSoft, borderRadius: 4, overflow: "hidden" }}>
+        <div style={{ width: `${value}%`, height: "100%", background: color, borderRadius: 4, transition: "width .8s cubic-bezier(.2,.7,.3,1)" }} />
+      </div>
     </div>
   );
 }
