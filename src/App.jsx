@@ -19,19 +19,6 @@ import {
 // staggered reveals · polished micro-interactions. Bilingual EN/ES.
 // ============================================================================
 
-// Custom logo mark — EKG pulse line representing healthcare + revenue monitoring.
-// Drop-in replacement for the generic stethoscope icon in all brand placements.
-function LogoMark({ size = 24, color = "#fff" }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <polyline
-        points="2,20 10,20 14,28 18,6 22,28 26,20 38,20"
-        stroke={color} strokeWidth="3.2" fill="none"
-        strokeLinecap="round" strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
 
 // ---- Design tokens (RevenueMD — navy + teal, matched to logo) ----
 const C = {
@@ -1106,7 +1093,7 @@ function HelpModal({ t, lang, onClose }) {
         <div style={{ background: `linear-gradient(140deg, ${C.ink} 0%, ${C.ink2} 100%)`, borderRadius: "22px 22px 0 0", padding: "26px 32px 22px", position: "sticky", top: 0, zIndex: 1 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
-              <div style={{ width: 42, height: 42, borderRadius: 13, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 20px -6px rgba(22,182,201,.6)", flexShrink: 0 }}><LogoMark size={22} color="#fff" /></div>
+              <div style={{ width: 42, height: 42, borderRadius: 13, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 20px -6px rgba(22,182,201,.6)", flexShrink: 0 }}><Stethoscope size={22} color="#fff" /></div>
               <div>
                 <div style={{ color: "#fff", fontSize: 19, fontFamily: FONT_DISPLAY, fontWeight: 500, lineHeight: 1.2 }}>Revenue<span style={{ color: C.teal }}>MD</span> <span style={{ fontWeight: 300, opacity: .75 }}>— {t.helpTitle}</span></div>
                 <div style={{ color: "rgba(255,255,255,.58)", fontSize: 12.5, marginTop: 3 }}>{t.helpSub}</div>
@@ -1450,11 +1437,11 @@ export default function App({ auth0 = null }) {
           <div style={{ position: "absolute", width: 520, height: 520, borderRadius: "50%", background: "radial-gradient(circle, rgba(14,140,107,.18), transparent 70%)", top: -120, right: -160 }} />
           <div style={{ position: "absolute", width: 360, height: 360, borderRadius: "50%", background: "radial-gradient(circle, rgba(201,162,75,.10), transparent 70%)", bottom: -80, left: -100 }} />
           <div className="rise" style={{ display: "flex", alignItems: "center", gap: 16, position: "relative" }}>
-            <div style={{ width: 68, height: 68, borderRadius: 18, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 12px 32px -8px rgba(14,140,107,.65)" }}><LogoMark size={36} color="#fff" /></div>
+            <div style={{ width: 68, height: 68, borderRadius: 18, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 12px 32px -8px rgba(14,140,107,.65)" }}><Stethoscope size={36} color="#fff" /></div>
             <div style={{ color: "#fff", fontSize: 30, fontWeight: 400, fontFamily: FONT_DISPLAY, letterSpacing: ".5px" }}>Revenue<span style={{ color: C.teal }}>MD</span></div>
           </div>
           {/* stethoscope silhouette — login panel */}
-          <div style={{ position: "absolute", bottom: -60, right: -60, opacity: .06, pointerEvents: "none", lineHeight: 0 }}><LogoMark size={420} color="#fff" /></div>
+          <div style={{ position: "absolute", bottom: -60, right: -60, opacity: .06, pointerEvents: "none", lineHeight: 0 }}><Stethoscope size={420} color="#fff" strokeWidth={1} /></div>
           <div className="rise" style={{ position: "relative", animationDelay: ".08s" }}>
             <div style={{ color: C.gold, fontSize: 13, letterSpacing: 2, textTransform: "uppercase", marginBottom: 18, fontWeight: 600 }}>Revenue Intelligence Software</div>
             <h1 style={{ color: "#fff", fontFamily: FONT_DISPLAY, fontSize: 40, lineHeight: 1.15, fontWeight: 400, margin: 0, maxWidth: 440 }}>{t.tagline}</h1>
@@ -1521,7 +1508,7 @@ export default function App({ auth0 = null }) {
       <div style={{ minHeight: "100vh", background: C.ink, fontFamily: FONT_SANS, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 28, textAlign: "center" }}>
         {FONTS}
         <div style={{ width: 72, height: 72, borderRadius: 22, background: C.teal, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 22, boxShadow: `0 12px 36px -8px ${C.teal}88` }}>
-          <LogoMark size={36} color="#fff" />
+          <Stethoscope size={36} color="#fff" />
         </div>
         <div style={{ color: "#fff", fontFamily: FONT_DISPLAY, fontSize: 26, fontWeight: 400, marginBottom: 12 }}>Revenue<span style={{ color: C.teal }}>MD</span></div>
         <div style={{ color: "rgba(255,255,255,.92)", fontSize: 17, fontWeight: 600, marginBottom: 10 }}>{t.mobileManagerOnly}</div>
@@ -1686,7 +1673,7 @@ export default function App({ auth0 = null }) {
       {/* SIDEBAR */}
       <aside style={{ width: 236, background: C.ink, padding: "22px 14px", display: "flex", flexDirection: "column", flexShrink: 0, ...(isMobile ? { position: "fixed", top: 0, left: 0, height: "100vh", zIndex: 950, transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)", transition: "transform .26s cubic-bezier(.2,.8,.2,1)", boxShadow: sidebarOpen ? "6px 0 32px rgba(16,36,92,.35)" : "none" } : { position: "relative" }) }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11, padding: "0 10px 22px" }}>
-          <div style={{ width: 34, height: 34, borderRadius: 10, background: acc.hex, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 6px 18px -6px ${acc.hex}99` }}><LogoMark size={19} color="#fff" /></div>
+          <div style={{ width: 34, height: 34, borderRadius: 10, background: acc.hex, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: `0 6px 18px -6px ${acc.hex}99` }}><Stethoscope size={19} color="#fff" /></div>
           <div><div style={{ color: "#fff", fontSize: 16, fontWeight: 600, fontFamily: FONT_DISPLAY }}>Revenue<span style={{ color: C.teal }}>MD</span></div></div>
         </div>
         <nav style={{ flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
@@ -1709,7 +1696,7 @@ export default function App({ auth0 = null }) {
       {/* MAIN */}
       <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, position: "relative", overflow: "hidden" }}>
         {/* stethoscope silhouette — all app pages */}
-        <div style={{ position: "absolute", bottom: -80, right: -80, opacity: .035, pointerEvents: "none", lineHeight: 0, zIndex: 0 }}><LogoMark size={480} color={C.ink} /></div>
+        <div style={{ position: "absolute", bottom: -80, right: -80, opacity: .035, pointerEvents: "none", lineHeight: 0, zIndex: 0 }}><Stethoscope size={480} color={C.ink} strokeWidth={.9} /></div>
         <header style={{ background: C.paper2, borderBottom: `1px solid ${C.line}`, padding: isMobile ? "12px 16px" : "15px 30px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 1, flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             {isMobile && (
@@ -2697,7 +2684,7 @@ export default function App({ auth0 = null }) {
                         <div style={{ borderTop: `1px solid ${C.lineSoft}`, paddingTop: 20, marginBottom: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 500, color: C.txt2, marginBottom: 12 }}>{lang === "en" ? "Preview" : "Vista previa"}</div>
                           <div style={{ background: C.ink, borderRadius: 14, padding: "14px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-                            <div style={{ width: 28, height: 28, borderRadius: 8, background: acc.hex, display: "flex", alignItems: "center", justifyContent: "center" }}><LogoMark size={15} color="#fff" /></div>
+                            <div style={{ width: 28, height: 28, borderRadius: 8, background: acc.hex, display: "flex", alignItems: "center", justifyContent: "center" }}><Stethoscope size={15} color="#fff" /></div>
                             <span style={{ color: "#fff", fontSize: 14, fontFamily: FONT_DISPLAY }}>Revenue<span style={{ color: acc.hex }}>MD</span></span>
                             <div style={{ flex: 1 }} />
                             <div style={{ background: acc.soft, color: acc.hex, fontSize: 11.5, fontWeight: 600, padding: "4px 12px", borderRadius: 20 }}>● Live</div>
