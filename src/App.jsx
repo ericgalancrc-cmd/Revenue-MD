@@ -1409,7 +1409,7 @@ export default function App({ auth0 = null }) {
     reader.readAsText(file);
   };
 
-  const filtered = useMemo(() => claims.filter((c) => (filter === "all" || (filter === "high" ? c.risk >= 60 : c.status === filter)) && (!search || c.id.toLowerCase().includes(search.toLowerCase()) || c.codes.toLowerCase().includes(search.toLowerCase()))), [filter, search, claims]);
+  const filtered = useMemo(() => claims.filter((c) => (filter === "all" || (filter === "high" ? c.risk >= 30 : c.status === filter)) && (!search || c.id.toLowerCase().includes(search.toLowerCase()) || c.codes.toLowerCase().includes(search.toLowerCase()))), [filter, search, claims]);
   const needsCount = [...PAYERS.flatMap((p) => p.facts), ...BILLING_RULES, ...PRIVACY_RULES, ...SECURITY_RULES].filter((x) => x.v === "needs").length;
 
   const FONTS = (
