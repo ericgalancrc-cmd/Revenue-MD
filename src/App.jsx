@@ -167,7 +167,7 @@ const T = {
     helpM10T: "Learning Center", helpM10D: "Look up any ICD-10, CPT, or HCPCS code, check modifier rules, and open CMS guidelines without leaving RevenueMD.",
     helpNumsT: "Understanding the claim cards",
     helpN1T: "Denial Risk", helpN1Range: "",
-    helpN1D: "How likely this claim is to be denied. Shown as a colored label on every claim row and as an action card inside the claim detail. 'Ready to submit' (teal): low risk, go ahead and send it. 'Review before sending' (amber): there are warnings worth checking before you transmit. 'Do not submit' (red): one or more errors that will almost certainly cause a denial — fix them first.",
+    helpN1D: "How likely this claim is to be denied. Shown as a colored label on every claim row and as an action card inside the claim detail. 'Ready to submit' (teal): low risk, go ahead and send it. 'Do not submit' (red): one or more issues were found — fix them before sending to avoid a denial.",
     helpN2T: "Payer Rules", helpN2Range: "",
     helpN2D: "Checks whether the claim follows the specific rules of the payer — ASES, Medicare, Plan Vital, Triple-S, MMM. Shown as an action card inside the claim detail. 'No action needed': the claim passes all payer rules. 'Verify rules': there is at least one warning worth reviewing against the payer's manual. 'Fix before sending': a rule violation was found that this payer is known to deny.",
     helpN3T: "Documentation", helpN3Range: "",
@@ -343,7 +343,7 @@ const T = {
     helpM10T: "Centro de aprendizaje", helpM10D: "Busca cualquier código ICD-10, CPT o HCPCS, revisa modificadores y abre guías CMS sin salir de RevenueMD.",
     helpNumsT: "Entendiendo las tarjetas del reclamo",
     helpN1T: "Riesgo de denegación", helpN1Range: "",
-    helpN1D: "Qué tan probable es que este reclamo sea denegado. Aparece como etiqueta de color en cada fila de la lista y como tarjeta de acción dentro del detalle del reclamo. 'Listo para enviar' (verde): bajo riesgo, puedes someterlo. 'Revisar antes de enviar' (ámbar): hay advertencias que conviene revisar antes de enviar. 'No enviar' (rojo): hay uno o más errores que casi con certeza causarán una denegación — corrígelos primero.",
+    helpN1D: "Qué tan probable es que este reclamo sea denegado. Aparece como etiqueta de color en cada fila de la lista y como tarjeta de acción dentro del detalle del reclamo. 'Listo para enviar' (verde): bajo riesgo, puedes someterlo. 'No enviar' (rojo): se encontraron uno o más problemas — corrígelos antes de enviar para evitar una denegación.",
     helpN2T: "Reglas del pagador", helpN2Range: "",
     helpN2D: "Verifica si el reclamo cumple con las reglas específicas del pagador — ASES, Medicare, Plan Vital, Triple-S, MMM. Aparece como tarjeta de acción dentro del detalle del reclamo. 'Sin acción requerida': el reclamo pasa todas las reglas del pagador. 'Verificar reglas': hay al menos una advertencia que vale revisar en el manual del pagador. 'Corregir antes de enviar': se encontró una violación de regla que este pagador suele denegar.",
     helpN3T: "Documentación", helpN3Range: "",
@@ -1218,8 +1218,8 @@ function HelpModal({ t, lang, onClose }) {
 }
 const SEV = { error: { c: C.red, bg: C.redSoft, icon: AlertTriangle }, warning: { c: C.amber, bg: C.amberSoft, icon: FileWarning }, info: { c: C.blue, bg: C.blueSoft, icon: Lightbulb } };
 const VB = { statutory: { c: C.teal, bg: C.tealSoft, icon: Scale }, published: { c: C.blue, bg: C.blueSoft, icon: BookOpen }, needs: { c: C.amber, bg: C.amberSoft, icon: CircleAlert } };
-const rc = (r) => (r >= 60 ? C.red : r >= 30 ? C.amber : C.teal);
-const rbg = (r) => (r >= 60 ? C.redSoft : r >= 30 ? C.amberSoft : C.tealSoft);
+const rc = (r) => (r >= 30 ? C.red : C.teal);
+const rbg = (r) => (r >= 30 ? C.redSoft : C.tealSoft);
 const SCAN = ["Reading document", "Detecting language", "Parsing codes"];
 
 export default function App({ auth0 = null }) {
@@ -2994,18 +2994,18 @@ function Metric({ label, value, sub, trend, up, accent, i = 0 }) {
 function Field({ label, value }) { return <div><div style={{ fontSize: 11, color: C.txt3, marginBottom: 3 }}>{label}</div><div style={{ fontSize: 13.5, fontWeight: 500 }}>{value}</div></div>; }
 function RiskPill({ r, big, t: tProp }) {
   const t = tProp || T.en;
-  const txt = r >= 60 ? t.riskHigh : r >= 30 ? t.riskMid : t.riskLow;
+  const txt = r >= 30 ? t.riskHigh : t.riskLow;
   return <span style={{ fontSize: big ? 13 : 12, fontWeight: 500, padding: big ? "5px 13px" : "4px 11px", borderRadius: 20, background: rbg(r), color: rc(r), display: "inline-flex", alignItems: "center", gap: 5, whiteSpace: "nowrap" }}><span style={{ width: 7, height: 7, borderRadius: "50%", background: rc(r) }} />{txt}</span>;
 }
 function Score({ label, value, invert, delay, type, t }) {
   const good = invert ? value < 30 : value >= 70;
-  const mid  = invert ? value < 60 : value >= 50;
+  const mid  = type === "risk" ? false : (invert ? value < 60 : value >= 50);
   const color   = good ? C.teal  : mid ? C.amber  : C.red;
   const bgColor = good ? C.tealSoft : mid ? C.amberSoft : C.redSoft;
   const border  = good ? C.tealMute : mid ? "#F0C97A" : "#EAA49F";
 
   const statusText = type === "risk"
-    ? (good ? t.riskLow  : mid ? t.riskMid  : t.riskHigh)
+    ? (good ? t.riskLow : t.riskHigh)
     : type === "comp"
     ? (good ? t.compGood : mid ? t.compMid  : t.compLow)
     : (good ? t.docGood  : mid ? t.docMid   : t.docLow);
