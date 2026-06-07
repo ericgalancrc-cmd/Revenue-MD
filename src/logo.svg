@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 56" fill="none">
+  <!-- Icon mark -->
+  <rect width="56" height="56" rx="14" fill="#10245C"/>
+  <polyline
+    points="6,28 18,28 22,38 28,10 32,38 38,28 50,28"
+    stroke="#16B6C9" stroke-width="4" fill="none"
+    stroke-linecap="round" stroke-linejoin="round"
+  />
+  <!-- Wordmark -->
+  <text x="72" y="22" font-family="Georgia, 'Times New Roman', serif" font-size="15" font-weight="400" fill="#10245C" letter-spacing="0.5">Revenue</text>
+  <text x="72" y="43" font-family="Georgia, 'Times New Roman', serif" font-size="22" font-weight="700" fill="#16B6C9" letter-spacing="1">MD</text>
+  <!-- Tagline -->
+  <text x="114" y="43" font-family="system-ui, sans-serif" font-size="10" font-weight="300" fill="#10245C" opacity="0.45" letter-spacing="1.5">REVENUE INTELLIGENCE</text>
+</svg>
