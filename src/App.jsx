@@ -147,8 +147,8 @@ const T = {
     helpM1T: "Overview", helpM1D: "Your daily dashboard — revenue recovered, denial rate, approval rate, and today's priority claims at a glance.",
     helpM2T: "Intake", helpM2D: "Bring claims in from any billing system or scan a paper record. Files are normalized and routed for scrubbing automatically.",
     helpM3T: "Batch Queue", helpM3D: "Your main workspace. Import one file with hundreds of claims; we sort every single one by risk level so you work the right ones first.",
-    helpM4T: "Claims", helpM4D: "Drill into any single claim to see every code, modifier, diagnosis, authorization number, and the exact payer-specific issues flagged.",
-    helpM5T: "AI Analysis", helpM5D: "Run a deeper AI review on any claim. The AI checks documentation gaps and suggests exact wording fixes you can apply in seconds.",
+    helpM4T: "Claims", helpM4D: "Your pre-submission workspace. Filter by status (Do not submit / Ready to send / Denied) or by health plan. Use the Group by payer toggle to instantly sort a batch of claims into payer sections — each section shows claim count, total billed, and a badge for any that need attention. Denied claims show whether they were scrubbed through RevenueMD before submission or sent without it.",
+    helpM5T: "AI Analysis", helpM5D: "Embedded inside every claim detail. Click 'Run analysis' on any claim to get a plain-language AI summary, a list of exact issues found, and suggested fixes with one-click apply. No separate tab needed.",
     helpM6T: "Payer Intelligence", helpM6D: "Every Puerto Rico payer's billing rules in one place — timely filing deadlines, prior auth, modifier requirements, MSP, and more.",
     helpM7T: "Compliance Center", helpM7D: "CMS, ASES, Medicare, and HIPAA rules — each linked to its exact regulatory source so you can verify before submission.",
     helpM8T: "Denials", helpM8D: "Track denied claims, see patterns over time, and build AI-assisted appeal letters for claims worth fighting.",
@@ -171,6 +171,11 @@ const T = {
     helpN7D: "The percentage of claims approved on the very first submission — no corrections, no resubmissions, no follow-up calls. Target is 90% or higher. Every claim that clears on the first try saves your team days of rework and speeds up cash flow.",
     helpN8T: "Undercoding caught", helpN8Range: "$ recoverable",
     helpN8D: "Money left on the table by billing a code that doesn't reflect the full complexity of the service provided. RevenueMD flags when your documentation supports a higher-level code. Correcting undercoding is completely legal and ethical — it just means billing for what you actually did, at the right level.",
+    helpN9T: "Do not submit", helpN9D: "The claim was scrubbed and the risk score is high — one or more payer-specific issues were found. Fix them before sending. Submitting anyway risks a denial and wastes your timely-filing window.",
+    helpN10T: "Ready to send", helpN10D: "The claim passed the scrubber with a low risk score. No blocking issues found. It's ready to transmit to the clearinghouse.",
+    helpN11T: "Denied — submitted without RevenueMD", helpN11D: "This claim went straight to the payer before being scrubbed. It came back denied. The issues panel shows what RevenueMD would have caught before it left your desk.",
+    helpN12T: "Denied — flagged before submission", helpN12D: "RevenueMD flagged this claim as Do not submit before it was sent. It was submitted anyway and denied by the payer for the exact reasons that were flagged. Use the suggested fixes to correct and resubmit.",
+    helpN13T: "Group by payer", helpN13D: "A toggle in the Claims workspace that organizes all visible claims into sections — one section per health plan (ASES, Plan Vital, Triple-S, MMM, MCS). Each section shows the claim count, total amount billed, and a red badge if any claims in that group need attention. Useful when a biller imports a batch with multiple payers and wants to work through them plan by plan.",
     helpRulesT: "Three things to always keep in mind",
     helpR1: "RevenueMD scrubs claims — it does NOT submit them. You send the clean file to your clearinghouse (e.g. Inmediata) after approving.",
     helpR2: "AI is decision support only. Every claim must be reviewed and approved by a human before it goes out.",
@@ -325,8 +330,8 @@ const T = {
     helpM1T: "Resumen", helpM1D: "Tu tablero diario — ingresos recuperados, tasa de denegación, aprobación y los reclamos prioritarios de hoy.",
     helpM2T: "Recepción", helpM2D: "Importa reclamos de cualquier sistema de facturación o escanea un expediente. Los archivos se normalizan y clasifican automáticamente.",
     helpM3T: "Cola por lote", helpM3D: "Tu espacio de trabajo principal. Importa un archivo con cientos de reclamos; los clasificamos por nivel de riesgo para que trabajes los más urgentes primero.",
-    helpM4T: "Reclamos", helpM4D: "Profundiza en cualquier reclamo — ve cada código, modificador, diagnóstico, autorización y el problema exacto marcado por el pagador.",
-    helpM5T: "Análisis IA", helpM5D: "Ejecuta una revisión IA más profunda. La IA verifica brechas de documentación y sugiere correcciones exactas que puedes aplicar en segundos.",
+    helpM4T: "Reclamos", helpM4D: "Tu espacio de trabajo pre-envío. Filtra por estado (No enviar / Listo para enviar / Denegado) o por plan de salud. Usa el toggle Agrupar por pagador para organizar un lote de reclamos en secciones por pagador — cada sección muestra el conteo, total facturado y una alerta si algún reclamo requiere atención. Los reclamos denegados indican si pasaron por RevenueMD antes del envío o fueron sometidos sin revisión.",
+    helpM5T: "Análisis IA", helpM5D: "Integrado dentro del detalle de cada reclamo. Haz clic en 'Ejecutar análisis' para obtener un resumen en lenguaje claro, la lista exacta de problemas y correcciones sugeridas con un clic. No requiere pestaña separada.",
     helpM6T: "Inteligencia de pagadores", helpM6D: "Las reglas de cada pagador de Puerto Rico en un lugar — plazos, autorizaciones previas, modificadores, MSP y más.",
     helpM7T: "Cumplimiento", helpM7D: "Reglas de CMS, ASES, Medicare e HIPAA — cada una con su fuente regulatoria exacta para que puedas verificar antes de someter.",
     helpM8T: "Denegaciones", helpM8D: "Rastrea reclamos denegados, identifica patrones a lo largo del tiempo y crea cartas de apelación asistidas por IA.",
@@ -349,6 +354,11 @@ const T = {
     helpN7D: "El porcentaje de reclamos aprobados en el primer intento — sin correcciones, sin reenvíos, sin llamadas de seguimiento. La meta es 90% o más. Cada reclamo que pasa al primer intento le ahorra días de trabajo a tu equipo y acelera el flujo de caja.",
     helpN8T: "Subcodificación detectada", helpN8Range: "$ recuperable",
     helpN8D: "Dinero dejado sobre la mesa al facturar un código que no refleja la complejidad total del servicio. RevenueMD marca cuando tu documentación respalda un código de nivel más alto. Corregir la subcodificación es completamente legal y ético — simplemente significa facturar por lo que realmente hiciste, al nivel correcto.",
+    helpN9T: "No enviar", helpN9D: "El reclamo fue revisado y el puntaje de riesgo es alto — se encontraron uno o más problemas específicos del pagador. Corrígelos antes de enviar. Someterlo de todas formas arriesga una denegación y consume tu ventana de presentación oportuna.",
+    helpN10T: "Listo para enviar", helpN10D: "El reclamo pasó la revisión con un puntaje de riesgo bajo. No se encontraron problemas bloqueantes. Está listo para transmitir a la clearinghouse.",
+    helpN11T: "Denegado — sometido sin RevenueMD", helpN11D: "Este reclamo fue enviado directamente al pagador sin pasar por la revisión previa. Regresó denegado. El panel de problemas muestra lo que RevenueMD habría detectado antes de que saliera de tu escritorio.",
+    helpN12T: "Denegado — marcado antes del envío", helpN12D: "RevenueMD marcó este reclamo como No enviar antes de ser sometido. Fue enviado de todas formas y el pagador lo denegó exactamente por las razones señaladas. Usa las correcciones sugeridas para corregir y volver a someter.",
+    helpN13T: "Agrupar por pagador", helpN13D: "Un toggle en el espacio de reclamos que organiza todos los reclamos visibles en secciones — una por plan de salud (ASES, Plan Vital, Triple-S, MMM, MCS). Cada sección muestra el conteo, total facturado y una alerta roja si algún reclamo necesita atención. Útil cuando un facturador importa un lote con varios pagadores y quiere trabajarlos plan por plan.",
     helpRulesT: "Tres cosas que siempre debes recordar",
     helpR1: "RevenueMD revisa reclamos — NO los somete. Tú envías el archivo limpio a tu clearinghouse (ej. Inmediata) después de aprobar.",
     helpR2: "La IA solo apoya decisiones. Cada reclamo debe ser revisado y aprobado por un humano antes de salir.",
@@ -1183,6 +1193,13 @@ function HelpModal({ t, lang, onClose }) {
     { range: "%",     rangeColor: C.teal,  icon: CheckCircle2,  title: t.helpN7T, desc: t.helpN7D },
     { range: "$",     rangeColor: C.amber, icon: Lightbulb,     title: t.helpN8T, desc: t.helpN8D },
   ];
+  const claimsFeatures = [
+    { icon: CircleAlert,   color: C.red,    title: t.helpN9T,  desc: t.helpN9D  },
+    { icon: CheckCircle2,  color: C.teal,   title: t.helpN10T, desc: t.helpN10D },
+    { icon: CircleAlert,   color: C.amber,  title: t.helpN11T, desc: t.helpN11D },
+    { icon: AlertTriangle, color: C.red,    title: t.helpN12T, desc: t.helpN12D },
+    { icon: Layers,        color: C.blue,   title: t.helpN13T, desc: t.helpN13D },
+  ];
   const modules = [
     { icon: LayoutDashboard, color: C.ink,    title: t.helpM1T,  desc: t.helpM1D  },
     { icon: FileScan,        color: C.teal,   title: t.helpM2T,  desc: t.helpM2D  },
@@ -1271,6 +1288,26 @@ function HelpModal({ t, lang, onClose }) {
                     <span style={{ fontSize: 10, fontWeight: 700, color: m.rangeColor, letterSpacing: ".3px", textAlign: "center", lineHeight: 1.2 }}>{m.range}</span>
                   </div>
                   {/* text */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: C.ink, marginBottom: 5 }}>{m.title}</div>
+                    <p style={{ margin: 0, fontSize: 13, color: C.txt2, lineHeight: 1.65 }}>{m.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* ── Claims workspace features ── */}
+          <div style={{ marginBottom: 34 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 9, marginBottom: 14 }}>
+              <ClipboardList size={17} color={C.ink} />
+              <h3 style={{ fontFamily: FONT_DISPLAY, fontSize: 17, color: C.ink, margin: 0, fontWeight: 500 }}>{lang === "en" ? "Claims workspace — status labels & tools" : "Espacio de reclamos — etiquetas y herramientas"}</h3>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {claimsFeatures.map((m, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 14, background: C.paper2, border: `1.5px solid ${C.line}`, borderRadius: 13, padding: "15px 18px" }}>
+                  <div style={{ flexShrink: 0, width: 36, height: 36, borderRadius: 10, background: m.color + "18", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <m.icon size={17} color={m.color} />
+                  </div>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 700, fontSize: 13, color: C.ink, marginBottom: 5 }}>{m.title}</div>
                     <p style={{ margin: 0, fontSize: 13, color: C.txt2, lineHeight: 1.65 }}>{m.desc}</p>
