@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1920" width="1080" height="1920">
+  <defs>
+    <!-- Background gradient -->
+    <linearGradient id="bg" x1="0.2" y1="0" x2="0.8" y2="1">
+      <stop offset="0%"   stop-color="#050E20"/>
+      <stop offset="40%"  stop-color="#0D1C46"/>
+      <stop offset="100%" stop-color="#071230"/>
+    </linearGradient>
+
+    <!-- Teal radial glow behind the icon -->
+    <radialGradient id="glow" cx="50%" cy="43%" r="28%">
+      <stop offset="0%"   stop-color="#16B6C9" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#16B6C9" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Subtle dot grid texture -->
+    <pattern id="dots" x="0" y="0" width="48" height="48" patternUnits="userSpaceOnUse">
+      <circle cx="24" cy="24" r="1.2" fill="#ffffff" fill-opacity="0.035"/>
+    </pattern>
+
+    <!-- Glow filter on the icon -->
+    <filter id="iconGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="22" flood-color="#16B6C9" flood-opacity="0.4"/>
+    </filter>
+
+    <!-- Soft glow on the MD text -->
+    <filter id="textGlow" x="-20%" y="-40%" width="140%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#16B6C9" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+
+  <!-- ── Background ───────────────────────────────────────────────────── -->
+  <rect width="1080" height="1920" fill="url(#bg)"/>
+  <rect width="1080" height="1920" fill="url(#dots)"/>
+  <rect width="1080" height="1920" fill="url(#glow)"/>
+
+  <!-- ── Background ECG lines (decorative, very faint) ──────────────── -->
+  <!-- Upper band -->
+  <polyline
+    points="
+      -10,260  90,260  118,260  140,200  160,320  180,200  208,260
+      330,260  358,260  380,200  400,320  420,200  448,260
+      570,260  598,260  620,200  640,320  660,200  688,260
+      810,260  838,260  860,200  880,320  900,200  928,260
+      1050,260 1090,260"
+    stroke="#16B6C9" stroke-width="2.5" fill="none"
+    stroke-linecap="round" stroke-linejoin="round" opacity="0.08"/>
+
+  <!-- Lower band -->
+  <polyline
+    points="
+      -10,1660  90,1660  118,1660  140,1600  160,1720  180,1600  208,1660
+      330,1660  358,1660  380,1600  400,1720  420,1600  448,1660
+      570,1660  598,1660  620,1600  640,1720  660,1600  688,1660
+      810,1660  838,1660  860,1600  880,1720  900,1600  928,1660
+      1050,1660 1090,1660"
+    stroke="#16B6C9" stroke-width="2.5" fill="none"
+    stroke-linecap="round" stroke-linejoin="round" opacity="0.08"/>
+
+  <!-- Horizontal accent lines -->
+  <line x1="0" y1="480" x2="1080" y2="480" stroke="#16B6C9" stroke-width="1" opacity="0.05"/>
+  <line x1="0" y1="1440" x2="1080" y2="1440" stroke="#16B6C9" stroke-width="1" opacity="0.05"/>
+
+  <!-- ── Icon mark — centered 280×280 at y=600 ─────────────────────── -->
+  <!-- Background teal circle glow -->
+  <circle cx="540" cy="740" r="180" fill="#16B6C9" fill-opacity="0.06"/>
+
+  <g transform="translate(400, 600)" filter="url(#iconGlow)">
+    <!-- Rounded square -->
+    <rect width="280" height="280" rx="70"
+      fill="#0F224E"
+      stroke="#16B6C9" stroke-width="2.5" stroke-opacity="0.55"/>
+    <!-- ECG waveform — scaled 280/56 = 5× from original -->
+    <!-- Original: 6,28 18,28 22,38 28,10 32,38 38,28 50,28 → ×5 = 30,140 90,140 110,190 140,50 160,190 190,140 250,140 -->
+    <polyline
+      points="30,140 90,140 110,190 140,50 160,190 190,140 250,140"
+      stroke="#16B6C9" stroke-width="20" fill="none"
+      stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- ── Thin separator ──────────────────────────────────────────────── -->
+  <line x1="400" y1="914" x2="680" y2="914" stroke="#16B6C9" stroke-width="1" stroke-opacity="0.25"/>
+
+  <!-- ── Wordmark ────────────────────────────────────────────────────── -->
+  <text x="540" y="1006"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="80" font-weight="400"
+    fill="#ffffff" fill-opacity="0.90"
+    text-anchor="middle" letter-spacing="3">Revenue</text>
+
+  <text x="540" y="1118"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="126" font-weight="700"
+    fill="#16B6C9"
+    text-anchor="middle" letter-spacing="8"
+    filter="url(#textGlow)">MD</text>
+
+  <!-- ── Tagline ─────────────────────────────────────────────────────── -->
+  <text x="540" y="1178"
+    font-family="-apple-system, system-ui, 'Segoe UI', sans-serif"
+    font-size="27" font-weight="300"
+    fill="#ffffff" fill-opacity="0.35"
+    text-anchor="middle" letter-spacing="10">REVENUE INTELLIGENCE</text>
+
+  <!-- ── Dot divider ─────────────────────────────────────────────────── -->
+  <circle cx="510" cy="1228" r="3.5" fill="#16B6C9" fill-opacity="0.25"/>
+  <circle cx="540" cy="1228" r="3.5" fill="#16B6C9" fill-opacity="0.45"/>
+  <circle cx="570" cy="1228" r="3.5" fill="#16B6C9" fill-opacity="0.25"/>
+
+  <!-- ── Bottom fine print ───────────────────────────────────────────── -->
+  <text x="540" y="1858"
+    font-family="-apple-system, system-ui, 'Segoe UI', sans-serif"
+    font-size="22" font-weight="300"
+    fill="#ffffff" fill-opacity="0.14"
+    text-anchor="middle" letter-spacing="3.5">Puerto Rico · Healthcare Billing Intelligence</text>
+</svg>
