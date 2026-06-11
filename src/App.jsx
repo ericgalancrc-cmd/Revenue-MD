@@ -104,7 +104,7 @@ const T = {
     thisMonth: "this month", target: "toward 90% target", opportunity: "recoverable",
     priorityTitle: "Needs review now", priorityBody: "7 high-risk claims · $9,400 at risk before timely-filing closes",
     reviewNow: "Review queue", recent: "Live activity", viewAll: "View all",
-    search: "Search claims, codes, payers…", upload: "Upload record", all: "All", highRisk: "High-risk", pending: "Pending", denied: "Denied", allPayers: "All payers",
+    search: "Search claims, codes, payers…", upload: "Upload record", all: "All", highRisk: "High-risk", pending: "Pending", denied: "Denied", allPayers: "All payers", groupByPayer: "Group by payer",
     open: "Open", denialRisk: "Denial risk", compliance: "Payer rules", docQuality: "Documentation",
     riskLow: "Ready to submit", riskMid: "Review before sending", riskHigh: "Do not submit",
     compGood: "No action needed", compMid: "Verify rules", compLow: "Fix before sending",
@@ -279,7 +279,7 @@ const T = {
     thisMonth: "este mes", target: "hacia la meta de 90%", opportunity: "recuperable",
     priorityTitle: "Requiere revisión ahora", priorityBody: "7 reclamos de alto riesgo · $9,400 en riesgo antes del cierre",
     reviewNow: "Ver cola", recent: "Actividad en vivo", viewAll: "Ver todo",
-    search: "Buscar reclamos, códigos, pagadores…", upload: "Cargar expediente", all: "Todos", highRisk: "Alto riesgo", pending: "Pendiente", denied: "Denegado", allPayers: "Todos los pagadores",
+    search: "Buscar reclamos, códigos, pagadores…", upload: "Cargar expediente", all: "Todos", highRisk: "Alto riesgo", pending: "Pendiente", denied: "Denegado", allPayers: "Todos los pagadores", groupByPayer: "Agrupar por pagador",
     open: "Abrir", denialRisk: "Riesgo de denegación", compliance: "Reglas del pagador", docQuality: "Documentación",
     riskLow: "Listo para enviar", riskMid: "Revisar antes de enviar", riskHigh: "No enviar",
     compGood: "Sin acción requerida", compMid: "Verificar reglas", compLow: "Corregir antes de enviar",
@@ -1250,6 +1250,7 @@ export default function App({ auth0 = null }) {
   const [tab, setTab] = useState("dash");
   const [filter, setFilter] = useState("all");
   const [payerFilter, setPayerFilter] = useState("all");
+  const [groupByPayer, setGroupByPayer] = useState(false);
   const [search, setSearch] = useState("");
   const [openClaim, setOpenClaim] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -1890,47 +1891,84 @@ export default function App({ auth0 = null }) {
           )}
 
           {/* CLAIMS LIST */}
-          {tab === "claims" && !openClaim && (
-            <div>
-              <div className="rise" style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-                <div style={{ position: "relative", flex: 1, minWidth: 220 }}><Search size={16} color={C.txt3} style={{ position: "absolute", left: 14, top: 13 }} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} style={{ ...inp, paddingLeft: 40, marginBottom: 0 }} /></div>
+          {tab === "claims" && !openClaim && (() => {
+            const PAYER_COLOR = { "ASES / Mi Salud": C.teal, "Plan Vital": C.teal, "Triple-S": C.blue, "MMM": "#7C3AED", "MCS": "#D97706" };
+            const claimCard = (c, i, hidePayerBadge) => (
+              <div key={c.id} className="lift rise" style={{ animationDelay: `${i * 0.05}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 14, padding: "15px 18px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer" }} onClick={() => setOpenClaim(c.id)}>
+                <div style={{ width: 42, height: 42, borderRadius: 11, background: rbg(c.risk), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><FileText size={19} color={rc(c.risk)} /></div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 14, fontWeight: 500 }}>#{c.id}</span>
+                    {reviewed.includes(c.id) && <span style={{ fontSize: 11, color: C.teal, display: "flex", alignItems: "center", gap: 3 }}><CheckCircle2 size={13} /> {t.reviewed}</span>}
+                    {!hidePayerBadge && <span style={{ fontSize: 11, color: C.txt2, padding: "2px 9px", background: C.lineSoft, borderRadius: 12 }}>{c.payer}</span>}
+                  </div>
+                  <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 3 }}>{c.codes} · {c.provider} · {c.dos}</div>
+                </div>
+                <RiskPill r={c.risk} big t={t} />
+                <ChevronRight size={18} color={C.txt3} />
               </div>
-              <div className="rise" style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap", animationDelay: ".05s" }}>
-                {[["all", t.all], ["high", t.highRisk], ["pending", t.pending], ["denied", t.denied]].map(([k, l]) => <button key={k} className="chip" onClick={() => setFilter(k)} style={{ fontSize: 12.5, padding: "7px 15px", borderRadius: 20, cursor: "pointer", border: `1px solid ${filter === k ? C.ink : C.line}`, background: filter === k ? C.ink : C.paper2, color: filter === k ? "#fff" : C.txt2, fontWeight: filter === k ? 500 : 400 }}>{l}</button>)}
-              </div>
-              <div className="rise" style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", animationDelay: ".08s" }}>
-                {[["all", t.allPayers], ...Array.from(new Set(claims.map(c => c.payer))).sort().map(p => [p, p])].map(([k, l]) => {
-                  const active = payerFilter === k;
-                  const PAYER_DOT = { "ASES / Mi Salud": C.teal, "Plan Vital": C.teal, "Triple-S": C.blue, "MMM": "#7C3AED", "MCS": "#D97706" };
-                  const dot = k !== "all" ? PAYER_DOT[k] || C.txt2 : null;
-                  return (
-                    <button key={k} className="chip" onClick={() => setPayerFilter(k)} style={{ fontSize: 12, padding: "5px 13px", borderRadius: 20, cursor: "pointer", border: `1.5px solid ${active ? (dot || C.ink) : C.line}`, background: active ? (dot ? dot + "18" : C.paper2) : "transparent", color: active ? (dot || C.ink) : C.txt3, fontWeight: active ? 600 : 400, display: "flex", alignItems: "center", gap: 5 }}>
-                      {dot && <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, flexShrink: 0 }} />}
-                      {l}
-                    </button>
-                  );
-                })}
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            );
+            const groupedPayers = Array.from(new Set(filtered.map(c => c.payer))).sort();
+            return (
+              <div>
+                <div className="rise" style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
+                  <div style={{ position: "relative", flex: 1, minWidth: 220 }}><Search size={16} color={C.txt3} style={{ position: "absolute", left: 14, top: 13 }} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} style={{ ...inp, paddingLeft: 40, marginBottom: 0 }} /></div>
+                  <button onClick={() => setGroupByPayer(g => !g)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 16px", borderRadius: 10, border: `1.5px solid ${groupByPayer ? C.ink : C.line}`, background: groupByPayer ? C.ink : "transparent", color: groupByPayer ? "#fff" : C.txt2, fontSize: 13, fontWeight: groupByPayer ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}><Layers size={15} /> {t.groupByPayer}</button>
+                </div>
+                <div className="rise" style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap", animationDelay: ".05s" }}>
+                  {[["all", t.all], ["high", t.highRisk], ["pending", t.pending], ["denied", t.denied]].map(([k, l]) => <button key={k} className="chip" onClick={() => setFilter(k)} style={{ fontSize: 12.5, padding: "7px 15px", borderRadius: 20, cursor: "pointer", border: `1px solid ${filter === k ? C.ink : C.line}`, background: filter === k ? C.ink : C.paper2, color: filter === k ? "#fff" : C.txt2, fontWeight: filter === k ? 500 : 400 }}>{l}</button>)}
+                </div>
+                {!groupByPayer && (
+                  <div className="rise" style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", animationDelay: ".08s" }}>
+                    {[["all", t.allPayers], ...Array.from(new Set(claims.map(c => c.payer))).sort().map(p => [p, p])].map(([k, l]) => {
+                      const active = payerFilter === k;
+                      const dot = k !== "all" ? PAYER_COLOR[k] || C.txt2 : null;
+                      return (
+                        <button key={k} className="chip" onClick={() => setPayerFilter(k)} style={{ fontSize: 12, padding: "5px 13px", borderRadius: 20, cursor: "pointer", border: `1.5px solid ${active ? (dot || C.ink) : C.line}`, background: active ? (dot ? dot + "18" : C.paper2) : "transparent", color: active ? (dot || C.ink) : C.txt3, fontWeight: active ? 600 : 400, display: "flex", alignItems: "center", gap: 5 }}>
+                          {dot && <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, flexShrink: 0 }} />}
+                          {l}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
                 {filtered.length === 0 && (
                   <div style={{ textAlign: "center", padding: "40px 20px", color: C.txt3, fontSize: 14 }}>
                     {lang === "en" ? "No claims match the current filter." : "No hay reclamos que coincidan con el filtro actual."}
                   </div>
                 )}
-                {filtered.map((c, i) => (
-                  <div key={c.id} className="lift rise" style={{ animationDelay: `${i * 0.05}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 14, padding: "15px 18px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer" }} onClick={() => setOpenClaim(c.id)}>
-                    <div style={{ width: 42, height: 42, borderRadius: 11, background: rbg(c.risk), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><FileText size={19} color={rc(c.risk)} /></div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}><span style={{ fontSize: 14, fontWeight: 500 }}>#{c.id}</span>{reviewed.includes(c.id) && <span style={{ fontSize: 11, color: C.teal, display: "flex", alignItems: "center", gap: 3 }}><CheckCircle2 size={13} /> {t.reviewed}</span>}<span style={{ fontSize: 11, color: C.txt2, padding: "2px 9px", background: C.lineSoft, borderRadius: 12 }}>{c.payer}</span></div>
-                      <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 3 }}>{c.codes} · {c.provider} · {c.dos}</div>
-                    </div>
-                    <RiskPill r={c.risk} big t={t} />
-                    <ChevronRight size={18} color={C.txt3} />
+                {groupByPayer ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                    {groupedPayers.map(payer => {
+                      const payerClaims = filtered.filter(c => c.payer === payer).sort((a, b) => b.risk - a.risk);
+                      const totalBilled = payerClaims.reduce((s, c) => s + c.billed, 0);
+                      const highRiskCount = payerClaims.filter(c => c.risk >= 30).length;
+                      const dotColor = PAYER_COLOR[payer] || C.txt2;
+                      return (
+                        <div key={payer}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, paddingBottom: 10, borderBottom: `2px solid ${dotColor}22` }}>
+                            <span style={{ width: 10, height: 10, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+                            <span style={{ fontSize: 15, fontWeight: 600, color: C.ink, fontFamily: FONT_DISPLAY }}>{payer}</span>
+                            <span style={{ fontSize: 12, color: C.txt3, marginLeft: 2 }}>{payerClaims.length} {lang === "en" ? "claim" : "reclamo"}{payerClaims.length !== 1 ? "s" : ""}</span>
+                            <span style={{ fontSize: 12, color: C.txt3 }}>·</span>
+                            <span style={{ fontSize: 12, color: C.txt3 }}>{fmt(totalBilled)} {lang === "en" ? "billed" : "facturado"}</span>
+                            {highRiskCount > 0 && <span style={{ marginLeft: "auto", fontSize: 11.5, fontWeight: 600, color: C.red, background: C.redSoft, padding: "3px 10px", borderRadius: 20 }}>{highRiskCount} {lang === "en" ? "need attention" : "requiere atención"}</span>}
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {payerClaims.map((c, i) => claimCard(c, i, true))}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {filtered.map((c, i) => claimCard(c, i, false))}
+                  </div>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* CLAIM DETAIL */}
           {tab === "claims" && openClaim && (() => {
