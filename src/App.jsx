@@ -474,6 +474,86 @@ const CLAIMS_DEMO = [
     comp: 88, doc: 85,
     issues: [{ sev: "info", tEn: "Clean claim", tEs: "Reclamo limpio", dEn: "All MCS requirements met for 99213. Ready to submit.", dEs: "Todos los requisitos de MCS para 99213 cumplidos. Listo para enviar." }],
     fix: [] },
+
+  // ── Additional Plan Vital ────────────────────────────────────────────────
+  { id: "PV-2024-0856", patient: "Patient #4501", codes: "90791", payer: "Plan Vital", provider: "Dr. Rivera, LCSW", dos: "Apr 30", risk: 9, status: "pending", billed: 280,
+    sEn: "Low risk. Psychiatric diagnostic evaluation is clean — intake note present, ICD-10 at highest specificity, prior auth number on file. Ready to submit.",
+    sEs: "Bajo riesgo. Evaluación diagnóstica psiquiátrica limpia — nota de ingreso presente, ICD-10 con máxima especificidad, número de autorización en el expediente. Lista para enviar.",
+    comp: 95, doc: 93,
+    issues: [{ sev: "info", tEn: "Clean claim", tEs: "Reclamo limpio", dEn: "All Plan Vital requirements met for 90791.", dEs: "Todos los requisitos de Plan Vital para 90791 cumplidos." }],
+    fix: [] },
+  { id: "PV-2024-0859", patient: "Patient #4519", codes: "90837 GT", payer: "Plan Vital", provider: "Dr. Torres, PsyD", dos: "May 2", risk: 71, status: "denied", billed: 245,
+    sEn: "Claim denied. Telehealth psychotherapy — Plan Vital denied for missing prior authorization. The authorization number is absent from the claim and the treatment series was not pre-approved for this episode.",
+    sEs: "Reclamo denegado. Psicoterapia por telesalud — Plan Vital denegó por falta de autorización previa. El número de autorización está ausente y la serie de tratamiento no fue pre-aprobada.",
+    comp: 38, doc: 72,
+    issues: [
+      { sev: "error", tEn: "Prior authorization missing", tEs: "Falta autorización previa", dEn: "Plan Vital requires a prior authorization number on every 90837 claim. None found on this submission.", dEs: "Plan Vital requiere un número de autorización previa en cada reclamo de 90837. No se encontró en esta presentación." },
+      { sev: "warning", tEn: "Auth request not on file", tEs: "Solicitud de autorización no archivada", dEn: "No pre-authorization request was submitted before the date of service.", dEs: "No se presentó solicitud de preautorización antes de la fecha de servicio." },
+    ],
+    fix: [{ tEn: "Obtain retroactive authorization and resubmit", tEs: "Obtener autorización retroactiva y volver a someter", wEn: "Contact Plan Vital utilization management to request a retroactive auth. If approved, resubmit the claim with the auth number in box 23.", wEs: "Contactar manejo de utilización de Plan Vital para solicitar autorización retroactiva. Si aprobada, resometer el reclamo con el número de autorización en la casilla 23." }] },
+
+  // ── Additional Triple-S ──────────────────────────────────────────────────
+  { id: "TS-2024-0613", patient: "Patient #5134", codes: "99215 + 25", payer: "Triple-S", provider: "Dr. Méndez, MD", dos: "Apr 25", risk: 61, status: "high", billed: 390,
+    sEn: "Elevated risk. Level 5 E&M with Modifier 25 — Triple-S requires the note to document both medical decision making at high complexity and a separately identified, significant E&M. Documentation gaps found.",
+    sEs: "Riesgo elevado. E&M nivel 5 con Modificador 25 — Triple-S requiere documentar complejidad médica de decisión alta y un E&M significativo y separado. Se encontraron deficiencias en la documentación.",
+    comp: 52, doc: 55,
+    issues: [
+      { sev: "error", tEn: "MDM complexity not documented at high level", tEs: "Complejidad MDM no documentada al nivel alto", dEn: "99215 requires high-complexity medical decision making. The note does not sufficiently document all three MDM elements.", dEs: "99215 requiere decisión médica de alta complejidad. La nota no documenta suficientemente los tres elementos de MDM." },
+      { sev: "warning", tEn: "Modifier 25 justification thin", tEs: "Justificación del Modificador 25 débil", dEn: "The separately identifiable E&M must be documented as distinct from any procedure performed on the same day.", dEs: "El E&M significativo y separado debe estar documentado como distinto de cualquier procedimiento realizado el mismo día." },
+    ],
+    fix: [
+      { tEn: "Strengthen MDM documentation to high complexity", tEs: "Reforzar documentación MDM a alta complejidad", wEn: "Ensure the note addresses all three MDM elements: number and complexity of problems, amount of data reviewed, and risk of complications.", wEs: "Asegurar que la nota aborde los tres elementos de MDM: número y complejidad de problemas, cantidad de datos revisados y riesgo de complicaciones." },
+      { tEn: "Add a distinct paragraph for the Modifier 25 E&M", tEs: "Añadir párrafo distinto para el E&M del Modificador 25", wEn: "Document the separately identifiable evaluation as its own section, separate from any procedure note.", wEs: "Documentar la evaluación separada como su propia sección, independiente de la nota del procedimiento." },
+    ] },
+  { id: "TS-2024-0616", patient: "Patient #5148", codes: "90837", payer: "Triple-S", provider: "Dr. Colón, PhD", dos: "May 3", risk: 14, status: "pending", billed: 245,
+    sEn: "Low risk. Individual psychotherapy is well documented — 53+ minutes confirmed, diagnosis supported, no Triple-S commercial flags. Ready to submit.",
+    sEs: "Bajo riesgo. Psicoterapia individual bien documentada — 53+ minutos confirmados, diagnóstico respaldado, sin banderas comerciales de Triple-S. Lista para enviar.",
+    comp: 91, doc: 89,
+    issues: [{ sev: "info", tEn: "Clean claim", tEs: "Reclamo limpio", dEn: "All Triple-S commercial requirements met for 90837.", dEs: "Todos los requisitos comerciales de Triple-S para 90837 cumplidos." }],
+    fix: [] },
+
+  // ── Additional MMM ───────────────────────────────────────────────────────
+  { id: "MMM-2024-0414", patient: "Patient #7041", codes: "H0036 ×8", payer: "MMM", provider: "Dr. Rosado, LCSW", dos: "May 1", risk: 76, status: "high", billed: 640,
+    sEn: "High denial risk. Community psychiatric support billed at 8 units — MMM requires prior authorization for H0036 and no authorization number is present. Units may also exceed the approved daily limit.",
+    sEs: "Alto riesgo de denegación. Apoyo psiquiátrico comunitario a 8 unidades — MMM requiere autorización previa para H0036 y no hay número de autorización. Las unidades también pueden exceder el límite diario aprobado.",
+    comp: 33, doc: 61,
+    issues: [
+      { sev: "error", tEn: "Prior authorization required for H0036", tEs: "Autorización previa requerida para H0036", dEn: "MMM requires prior auth for all H0036 community psychiatric support services. Authorization number missing from claim.", dEs: "MMM requiere autorización previa para todos los servicios H0036 de apoyo psiquiátrico comunitario. Falta el número de autorización." },
+      { sev: "warning", tEn: "Verify daily unit limit under authorization", tEs: "Verificar límite diario de unidades bajo autorización", dEn: "Confirm the approved daily unit cap in the authorization letter before resubmitting at 8 units.", dEs: "Confirmar el tope diario de unidades aprobado en la carta de autorización antes de volver a someter con 8 unidades." },
+    ],
+    fix: [{ tEn: "Obtain authorization and add number to claim", tEs: "Obtener autorización y añadir número al reclamo", wEn: "Call MMM utilization management for H0036. Once approved, enter the authorization number in box 23 and confirm the approved unit count.", wEs: "Llamar a manejo de utilización de MMM para H0036. Una vez aprobado, ingresar el número de autorización en la casilla 23 y confirmar las unidades aprobadas." }] },
+  { id: "MMM-2024-0417", patient: "Patient #7055", codes: "90834", payer: "MMM", provider: "Dr. Torres, PsyD", dos: "May 5", risk: 11, status: "pending", billed: 195,
+    sEn: "Low risk. 45-minute psychotherapy session is clean — documentation complete, diagnosis at highest specificity. Ready to submit to MMM.",
+    sEs: "Bajo riesgo. Sesión de psicoterapia de 45 minutos limpia — documentación completa, diagnóstico con máxima especificidad. Lista para enviar a MMM.",
+    comp: 92, doc: 90,
+    issues: [{ sev: "info", tEn: "Clean claim", tEs: "Reclamo limpio", dEn: "All MMM requirements met for 90834.", dEs: "Todos los requisitos de MMM para 90834 cumplidos." }],
+    fix: [] },
+
+  // ── Additional MCS ───────────────────────────────────────────────────────
+  { id: "MCS-2024-0324", patient: "Patient #6028", codes: "99214 + 96127", payer: "MCS", provider: "Dr. Vega, MD", dos: "Apr 22", risk: 44, status: "high", billed: 230,
+    sEn: "Moderate risk. Office visit with behavioral health screening — MCS requires the standardized screening tool name and result score documented in the note for 96127. Currently missing.",
+    sEs: "Riesgo moderado. Visita de oficina con tamizaje de salud conductual — MCS requiere el nombre de la herramienta y la puntuación documentados en la nota para 96127. Actualmente ausentes.",
+    comp: 63, doc: 57,
+    issues: [
+      { sev: "warning", tEn: "Screening tool and score missing", tEs: "Falta herramienta de tamizaje y puntuación", dEn: "MCS requires the instrument name (e.g., PHQ-9, GAD-7) and numerical score in the note for 96127.", dEs: "MCS requiere el nombre del instrumento (ej. PHQ-9, GAD-7) y la puntuación numérica en la nota para 96127." },
+    ],
+    fix: [{ tEn: "Add screening tool name and score to the note", tEs: "Añadir nombre de herramienta y puntuación a la nota", wEn: "Document the instrument used and the patient's score (e.g., GAD-7 score: 11) to satisfy MCS requirements for 96127.", wEs: "Documentar el instrumento usado y la puntuación del paciente (ej. GAD-7: 11) para cumplir con los requisitos de MCS para 96127." }] },
+  { id: "MCS-2024-0327", patient: "Patient #6041", codes: "90837", payer: "MCS", provider: "Dr. Colón, PhD", dos: "May 6", risk: 16, status: "pending", billed: 245,
+    sEn: "Low risk. Individual psychotherapy is well documented — time documented at 55 minutes, treatment plan on file, ICD-10 specific. No MCS flags.",
+    sEs: "Bajo riesgo. Psicoterapia individual bien documentada — tiempo documentado a 55 minutos, plan de tratamiento archivado, ICD-10 específico. Sin banderas de MCS.",
+    comp: 90, doc: 88,
+    issues: [{ sev: "info", tEn: "Clean claim", tEs: "Reclamo limpio", dEn: "All MCS requirements met for 90837.", dEs: "Todos los requisitos de MCS para 90837 cumplidos." }],
+    fix: [] },
+
+  // ── Additional ASES ──────────────────────────────────────────────────────
+  { id: "ASES-2024-0913", patient: "Patient #5218", codes: "90834 GT", payer: "ASES / Mi Salud", provider: "Dr. Rivera, LCSW", dos: "May 5", risk: 38, status: "pending", billed: 195,
+    sEn: "Moderate risk. Telehealth psychotherapy — modifier is correct, but the telehealth platform name is missing from the clinical note, which ASES requires per the 2023 telehealth bulletin.",
+    sEs: "Riesgo moderado. Psicoterapia por telesalud — modificador correcto, pero falta el nombre de la plataforma de telesalud en la nota clínica, que ASES requiere según el boletín de telesalud 2023.",
+    comp: 75, doc: 62,
+    issues: [
+      { sev: "warning", tEn: "Telehealth platform not named in note", tEs: "Plataforma de telesalud no indicada en la nota", dEn: "ASES requires the telehealth platform name (e.g., Doxy.me, Zoom for Healthcare) in the clinical note for all GT claims.", dEs: "ASES requiere el nombre de la plataforma de telesalud (ej. Doxy.me, Zoom for Healthcare) en la nota clínica para todos los reclamos con GT." },
+    ],
+    fix: [{ tEn: "Add telehealth platform name to the note", tEs: "Añadir nombre de plataforma de telesalud a la nota", wEn: "Insert the platform name used for the session (e.g., 'Session conducted via Doxy.me') into the clinical note before resubmitting.", wEs: "Insertar el nombre de la plataforma usada (ej. 'Sesión realizada vía Doxy.me') en la nota clínica antes de volver a someter." }] },
 ];
 
 const DENIALS = [
