@@ -105,6 +105,8 @@ const T = {
     priorityTitle: "Needs review now", priorityBody: "7 high-risk claims · $9,400 at risk before timely-filing closes",
     reviewNow: "Review queue", recent: "Live activity", viewAll: "View all",
     search: "Search claims, codes, payers…", upload: "Upload record", all: "All", highRisk: "Do not submit", pending: "Ready to send", denied: "Denied", allPayers: "All payers", groupByPayer: "Group by payer",
+    deniedNoScrub: "Submitted without RevenueMD", deniedNoScrubBanner: "This claim was submitted directly to the payer — without running through RevenueMD first. The issues below are what our scrubber would have flagged before it left your desk.",
+    deniedScrubbed: "Flagged before submission", deniedScrubbedBanner: "RevenueMD flagged this claim as Do not submit before it was sent. It was submitted anyway and denied by the payer for the exact reasons listed below.",
     open: "Open", denialRisk: "Denial risk", compliance: "Payer rules", docQuality: "Documentation",
     riskLow: "Ready to submit", riskMid: "Review before sending", riskHigh: "Do not submit",
     compGood: "No action needed", compMid: "Verify rules", compLow: "Fix before sending",
@@ -280,6 +282,8 @@ const T = {
     priorityTitle: "Requiere revisión ahora", priorityBody: "7 reclamos de alto riesgo · $9,400 en riesgo antes del cierre",
     reviewNow: "Ver cola", recent: "Actividad en vivo", viewAll: "Ver todo",
     search: "Buscar reclamos, códigos, pagadores…", upload: "Cargar expediente", all: "Todos", highRisk: "No enviar", pending: "Listo para enviar", denied: "Denegado", allPayers: "Todos los pagadores", groupByPayer: "Agrupar por pagador",
+    deniedNoScrub: "Sometido sin RevenueMD", deniedNoScrubBanner: "Este reclamo fue enviado directamente al pagador sin pasar por RevenueMD. Los problemas a continuación son los que nuestro sistema habría detectado antes de que saliera de tu escritorio.",
+    deniedScrubbed: "Marcado antes de enviar", deniedScrubbedBanner: "RevenueMD marcó este reclamo como No enviar antes de ser sometido. Fue enviado de todas formas y el pagador lo denegó exactamente por las razones indicadas a continuación.",
     open: "Abrir", denialRisk: "Riesgo de denegación", compliance: "Reglas del pagador", docQuality: "Documentación",
     riskLow: "Listo para enviar", riskMid: "Revisar antes de enviar", riskHigh: "No enviar",
     compGood: "Sin acción requerida", compMid: "Verificar reglas", compLow: "Corregir antes de enviar",
@@ -410,7 +414,7 @@ const T = {
 };
 
 const CLAIMS_DEMO = [
-  { id: "ASES-2024-0910", patient: "Patient #5201", codes: "90837 + 90785 GT", payer: "ASES / Mi Salud", provider: "Dr. Torres, PsyD", dos: "May 8", risk: 82, status: "denied", billed: 245,
+  { id: "ASES-2024-0910", patient: "Patient #5201", codes: "90837 + 90785 GT", payer: "ASES / Mi Salud", provider: "Dr. Torres, PsyD", dos: "May 8", risk: 82, status: "denied", scrubbed: false, billed: 245,
     sEn: "Claim denied. Telehealth psychotherapy with interactive complexity billed — but GT was applied to both codes incorrectly, the treatment-plan reference required by ASES is missing, and interactive complexity is not separately documented in the note.",
     sEs: "Reclamo denegado. Se facturó psicoterapia por telesalud con complejidad interactiva — pero el modificador GT se aplicó incorrectamente a ambos códigos, falta la referencia al plan de tratamiento requerida por ASES y la complejidad interactiva no está documentada por separado.",
     comp: 28, doc: 38,
@@ -482,7 +486,7 @@ const CLAIMS_DEMO = [
     comp: 95, doc: 93,
     issues: [{ sev: "info", tEn: "Clean claim", tEs: "Reclamo limpio", dEn: "All Plan Vital requirements met for 90791.", dEs: "Todos los requisitos de Plan Vital para 90791 cumplidos." }],
     fix: [] },
-  { id: "PV-2024-0859", patient: "Patient #4519", codes: "90837 GT", payer: "Plan Vital", provider: "Dr. Torres, PsyD", dos: "May 2", risk: 71, status: "denied", billed: 245,
+  { id: "PV-2024-0859", patient: "Patient #4519", codes: "90837 GT", payer: "Plan Vital", provider: "Dr. Torres, PsyD", dos: "May 2", risk: 71, status: "denied", scrubbed: true, billed: 245,
     sEn: "Claim denied. Telehealth psychotherapy — Plan Vital denied for missing prior authorization. The authorization number is absent from the claim and the treatment series was not pre-approved for this episode.",
     sEs: "Reclamo denegado. Psicoterapia por telesalud — Plan Vital denegó por falta de autorización previa. El número de autorización está ausente y la serie de tratamiento no fue pre-aprobada.",
     comp: 38, doc: 72,
@@ -1981,6 +1985,8 @@ export default function App({ auth0 = null }) {
                     <span style={{ fontSize: 14, fontWeight: 500 }}>#{c.id}</span>
                     {reviewed.includes(c.id) && <span style={{ fontSize: 11, color: C.teal, display: "flex", alignItems: "center", gap: 3 }}><CheckCircle2 size={13} /> {t.reviewed}</span>}
                     {!hidePayerBadge && <span style={{ fontSize: 11, color: C.txt2, padding: "2px 9px", background: C.lineSoft, borderRadius: 12 }}>{c.payer}</span>}
+                    {c.status === "denied" && c.scrubbed === true  && <span style={{ fontSize: 11, fontWeight: 500, color: C.red,   background: C.redSoft,   padding: "2px 9px", borderRadius: 12, display: "flex", alignItems: "center", gap: 4 }}><AlertTriangle size={11} /> {t.deniedScrubbed}</span>}
+                    {c.status === "denied" && c.scrubbed === false && <span style={{ fontSize: 11, fontWeight: 500, color: C.amber, background: C.amberSoft, padding: "2px 9px", borderRadius: 12, display: "flex", alignItems: "center", gap: 4 }}><CircleAlert size={11} /> {t.deniedNoScrub}</span>}
                   </div>
                   <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 3 }}>{c.codes} · {c.provider} · {c.dos}</div>
                 </div>
@@ -2069,6 +2075,24 @@ export default function App({ auth0 = null }) {
                       <button className="btnp" onClick={() => runAnalysis(c.id)} disabled={analyzing} style={{ ...btnP, width: "100%", justifyContent: "center", padding: 14, opacity: analyzing ? 0.7 : 1, fontSize: 14.5 }}>{analyzing ? <Loader2 size={17} className="spin" /> : <Brain size={17} />} {analyzing ? t.analyzing : t.runAnalysis}</button>
                     ) : (
                       <div className="rise">
+                        {c.status === "denied" && c.scrubbed === false && (
+                          <div className="rise" style={{ marginBottom: 16, background: "#FFFBEB", border: "1.5px solid #F59E0B", borderRadius: 13, padding: "13px 16px", display: "flex", gap: 12, alignItems: "flex-start" }}>
+                            <CircleAlert size={18} color="#D97706" style={{ flexShrink: 0, marginTop: 1 }} />
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: "#92400E", marginBottom: 3 }}>{t.deniedNoScrub}</div>
+                              <div style={{ fontSize: 12.5, color: "#78350F", lineHeight: 1.55 }}>{t.deniedNoScrubBanner}</div>
+                            </div>
+                          </div>
+                        )}
+                        {c.status === "denied" && c.scrubbed === true && (
+                          <div className="rise" style={{ marginBottom: 16, background: C.redSoft, border: `1.5px solid #EAA49F`, borderRadius: 13, padding: "13px 16px", display: "flex", gap: 12, alignItems: "flex-start" }}>
+                            <AlertTriangle size={18} color={C.red} style={{ flexShrink: 0, marginTop: 1 }} />
+                            <div>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: C.red, marginBottom: 3 }}>{t.deniedScrubbed}</div>
+                              <div style={{ fontSize: 12.5, color: "#7F1D1D", lineHeight: 1.55 }}>{t.deniedScrubbedBanner}</div>
+                            </div>
+                          </div>
+                        )}
                         <div style={{ background: `linear-gradient(120deg,${C.ink},${C.ink2})`, borderRadius: 14, padding: 16, marginBottom: 18 }}><div style={{ fontSize: 12, fontWeight: 500, color: C.gold, marginBottom: 6, display: "flex", alignItems: "center", gap: 6, letterSpacing: 1, textTransform: "uppercase" }}><Brain size={13} /> {t.aiSummary}</div><div style={{ fontSize: 14, lineHeight: 1.65, color: "rgba(255,255,255,.92)" }}>{lang === "en" ? c.sEn : c.sEs}</div></div>
                         <div style={{ fontSize: 13.5, fontWeight: 500, marginBottom: 10, fontFamily: FONT_DISPLAY }}>{t.issues}</div>
                         {c.issues.map((iss, i) => { const s = SEV[iss.sev]; return <div key={i} className="rise" style={{ animationDelay: `${i * 0.06}s`, display: "flex", gap: 11, padding: 13, borderRadius: 12, background: s.bg, marginBottom: 8 }}><s.icon size={17} color={s.c} style={{ flexShrink: 0, marginTop: 1 }} /><div><div style={{ fontSize: 13, fontWeight: 500, color: s.c }}>{lang === "en" ? iss.tEn : iss.tEs}</div><div style={{ fontSize: 12.5, color: s.c, opacity: 0.82, marginTop: 2, lineHeight: 1.5 }}>{lang === "en" ? iss.dEn : iss.dEs}</div></div></div>; })}
