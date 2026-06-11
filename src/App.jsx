@@ -410,6 +410,21 @@ const T = {
 };
 
 const CLAIMS_DEMO = [
+  { id: "ASES-2024-0910", patient: "Patient #5201", codes: "90837 + 90785 GT", payer: "ASES / Mi Salud", provider: "Dr. Torres, PsyD", dos: "May 8", risk: 82, status: "denied", billed: 245,
+    sEn: "Claim denied. Telehealth psychotherapy with interactive complexity billed — but GT was applied to both codes incorrectly, the treatment-plan reference required by ASES is missing, and interactive complexity is not separately documented in the note.",
+    sEs: "Reclamo denegado. Se facturó psicoterapia por telesalud con complejidad interactiva — pero el modificador GT se aplicó incorrectamente a ambos códigos, falta la referencia al plan de tratamiento requerida por ASES y la complejidad interactiva no está documentada por separado.",
+    comp: 28, doc: 38,
+    issues: [
+      { sev: "error", tEn: "GT modifier misapplied to add-on code", tEs: "Modificador GT aplicado incorrectamente al add-on", dEn: "GT must be on 90837 only — not on the add-on 90785. ASES denied both lines because of this.", dEs: "GT va solo en 90837, no en el add-on 90785. ASES denegó ambas líneas por esto." },
+      { sev: "error", tEn: "Treatment plan reference missing", tEs: "Falta referencia al plan de tratamiento", dEn: "ASES requires a treatment-plan date and clinician signature in the note for every 90837 claim. None found.", dEs: "ASES requiere fecha y firma del plan de tratamiento en la nota para cada reclamo de 90837. No se encontró." },
+      { sev: "error", tEn: "Interactive complexity (90785) undocumented", tEs: "Complejidad interactiva (90785) sin documentar", dEn: "90785 requires a separate paragraph describing caregiver involvement or communication complexity — not present in this note.", dEs: "90785 requiere un párrafo separado describiendo participación del cuidador o complejidad de comunicación — no está en esta nota." },
+      { sev: "warning", tEn: "Telehealth platform not named", tEs: "Plataforma de telesalud no indicada", dEn: "ASES requires the telehealth platform name (e.g., Doxy.me, Zoom for Healthcare) documented in the clinical note.", dEs: "ASES requiere el nombre de la plataforma de telesalud (ej. Doxy.me, Zoom for Healthcare) documentado en la nota clínica." },
+    ],
+    fix: [
+      { tEn: "Remove GT from 90785", tEs: "Quitar GT del 90785", wEn: "GT is a primary-service modifier — apply it to 90837 only. Leave 90785 without any telehealth modifier per ASES billing rules.", wEs: "GT es modificador de servicio principal — aplícalo solo al 90837. Deja el 90785 sin modificador de telesalud según las reglas de ASES." },
+      { tEn: "Add treatment-plan date and signature to the note", tEs: "Añadir fecha del plan y firma a la nota", wEn: "Without a valid treatment-plan reference, ASES will not reimburse 90837. Add the date the plan was last updated and the supervising clinician's signature.", wEs: "Sin referencia válida al plan de tratamiento, ASES no reembolsará 90837. Agrega la fecha de última actualización del plan y la firma del clínico supervisor." },
+      { tEn: "Document interactive complexity separately", tEs: "Documentar complejidad interactiva por separado", wEn: "Add a dedicated section to the note describing the specific complexity factors (caregiver present, language barrier, safety concerns) that justified billing 90785.", wEs: "Añade una sección dedicada en la nota describiendo los factores específicos de complejidad (cuidador presente, barrera de idioma, problemas de seguridad) que justifican el 90785." },
+    ] },
   { id: "PV-2024-0851", patient: "Patient #4471", codes: "H0004 ×10", payer: "Plan Vital", provider: "Dr. Rivera, LCSW", dos: "Apr 21", risk: 78, status: "high", billed: 1850,
     sEn: "High denial risk. Billed 10 units of H0004 — Plan Vital caps this at 8/day. Missing prior authorization for the extended counseling series.",
     sEs: "Alto riesgo. Se facturaron 10 unidades de H0004 — Plan Vital limita a 8/día. Falta autorización previa para la serie extendida.",
