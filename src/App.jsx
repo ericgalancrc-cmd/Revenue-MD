@@ -104,7 +104,7 @@ const T = {
     thisMonth: "this month", target: "toward 90% target", opportunity: "recoverable",
     priorityTitle: "Needs review now", priorityBody: "7 high-risk claims · $9,400 at risk before timely-filing closes",
     reviewNow: "Review queue", recent: "Live activity", viewAll: "View all",
-    search: "Search claims, codes, payers…", upload: "Upload record", all: "All", highRisk: "High-risk", pending: "Pending", denied: "Denied",
+    search: "Search claims, codes, payers…", upload: "Upload record", all: "All", highRisk: "High-risk", pending: "Pending", denied: "Denied", allPayers: "All payers",
     open: "Open", denialRisk: "Denial risk", compliance: "Payer rules", docQuality: "Documentation",
     riskLow: "Ready to submit", riskMid: "Review before sending", riskHigh: "Do not submit",
     compGood: "No action needed", compMid: "Verify rules", compLow: "Fix before sending",
@@ -279,7 +279,7 @@ const T = {
     thisMonth: "este mes", target: "hacia la meta de 90%", opportunity: "recuperable",
     priorityTitle: "Requiere revisión ahora", priorityBody: "7 reclamos de alto riesgo · $9,400 en riesgo antes del cierre",
     reviewNow: "Ver cola", recent: "Actividad en vivo", viewAll: "Ver todo",
-    search: "Buscar reclamos, códigos, pagadores…", upload: "Cargar expediente", all: "Todos", highRisk: "Alto riesgo", pending: "Pendiente", denied: "Denegado",
+    search: "Buscar reclamos, códigos, pagadores…", upload: "Cargar expediente", all: "Todos", highRisk: "Alto riesgo", pending: "Pendiente", denied: "Denegado", allPayers: "Todos los pagadores",
     open: "Abrir", denialRisk: "Riesgo de denegación", compliance: "Reglas del pagador", docQuality: "Documentación",
     riskLow: "Listo para enviar", riskMid: "Revisar antes de enviar", riskHigh: "No enviar",
     compGood: "Sin acción requerida", compMid: "Verificar reglas", compLow: "Corregir antes de enviar",
@@ -458,6 +458,21 @@ const CLAIMS_DEMO = [
     sEs: "Bajo riesgo. Psicoterapia por telesalud bien documentada — plataforma indicada, modificador correcto. Reclamo limpio, listo.",
     comp: 94, doc: 91,
     issues: [{ sev: "info", tEn: "Clean claim", tEs: "Reclamo limpio", dEn: "All Plan Vital telehealth requirements met.", dEs: "Todos los requisitos de telesalud cumplidos." }],
+    fix: [] },
+  { id: "MMM-2024-0411", patient: "Patient #7033", codes: "90832 + 96127", payer: "MMM", provider: "Dr. Rosado, LCSW", dos: "Apr 28", risk: 52, status: "high", billed: 165,
+    sEn: "Elevated risk. Psychotherapy with depression screening — MMM requires the screening tool used (PHQ-9, PHQ-2) to be named in the note, and 96127 must be documented separately from the therapy note.",
+    sEs: "Riesgo elevado. Psicoterapia con tamizaje de depresión — MMM requiere identificar la herramienta usada (PHQ-9, PHQ-2) en la nota, y el 96127 debe documentarse por separado.",
+    comp: 55, doc: 58,
+    issues: [
+      { sev: "warning", tEn: "Screening tool not named", tEs: "Herramienta de tamizaje no indicada", dEn: "MMM requires the screening instrument (e.g., PHQ-9) and score to be documented in the clinical note for 96127.", dEs: "MMM requiere el nombre del instrumento de tamizaje (ej. PHQ-9) y la puntuación en la nota clínica para 96127." },
+      { sev: "info", tEn: "Add-on documentation check", tEs: "Verificar documentación del complemento", dEn: "96127 must be documented separately from the 90832 psychotherapy note.", dEs: "96127 debe documentarse aparte de la nota de psicoterapia 90832." },
+    ],
+    fix: [{ tEn: "Name the screening tool and score in the note", tEs: "Nombrar la herramienta de tamizaje y puntuación en la nota", wEn: "Add the instrument name and score (e.g., PHQ-9 score: 14) to satisfy MMM documentation requirements for 96127.", wEs: "Añade el nombre del instrumento y la puntuación (ej. PHQ-9: 14) para cumplir con los requisitos de MMM para 96127." }] },
+  { id: "MCS-2024-0321", patient: "Patient #6012", codes: "99213", payer: "MCS", provider: "Dr. Vega, MD", dos: "Apr 15", risk: 18, status: "pending", billed: 145,
+    sEn: "Low risk. Office visit is well documented — E&M level supported by the note, diagnosis coded at highest specificity. No MCS-specific flags found.",
+    sEs: "Bajo riesgo. Visita de oficina bien documentada — nivel de E&M respaldado por la nota, diagnóstico codificado con máxima especificidad. Sin banderas específicas de MCS.",
+    comp: 88, doc: 85,
+    issues: [{ sev: "info", tEn: "Clean claim", tEs: "Reclamo limpio", dEn: "All MCS requirements met for 99213. Ready to submit.", dEs: "Todos los requisitos de MCS para 99213 cumplidos. Listo para enviar." }],
     fix: [] },
 ];
 
@@ -1234,6 +1249,7 @@ export default function App({ auth0 = null }) {
   const [role, setRole] = useState("manager");
   const [tab, setTab] = useState("dash");
   const [filter, setFilter] = useState("all");
+  const [payerFilter, setPayerFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [openClaim, setOpenClaim] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -1411,7 +1427,7 @@ export default function App({ auth0 = null }) {
     reader.readAsText(file);
   };
 
-  const filtered = useMemo(() => claims.filter((c) => (filter === "all" || (filter === "high" ? c.risk >= 30 : c.status === filter)) && (!search || c.id.toLowerCase().includes(search.toLowerCase()) || c.codes.toLowerCase().includes(search.toLowerCase()))), [filter, search, claims]);
+  const filtered = useMemo(() => claims.filter((c) => (filter === "all" || (filter === "high" ? c.risk >= 30 : c.status === filter)) && (payerFilter === "all" || c.payer === payerFilter) && (!search || c.id.toLowerCase().includes(search.toLowerCase()) || c.codes.toLowerCase().includes(search.toLowerCase()) || c.payer.toLowerCase().includes(search.toLowerCase()))), [filter, payerFilter, search, claims]);
   const needsCount = [...PAYERS.flatMap((p) => p.facts), ...BILLING_RULES, ...PRIVACY_RULES, ...SECURITY_RULES].filter((x) => x.v === "needs").length;
 
   const FONTS = (
@@ -1758,7 +1774,7 @@ export default function App({ auth0 = null }) {
                 <div style={{ position: "absolute", width: 240, height: 240, borderRadius: "50%", background: "radial-gradient(circle,rgba(201,162,75,.14),transparent 70%)", right: -60, top: -90 }} />
                 <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(201,162,75,.16)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Zap size={21} color={C.gold} /></div>
                 <div style={{ flex: 1, position: "relative" }}><div style={{ fontWeight: 500, fontSize: 15, color: "#fff" }}>{t.priorityTitle}</div><div style={{ fontSize: 13.5, color: "rgba(255,255,255,.66)", marginTop: 3 }}>{t.priorityBody}</div></div>
-                <button className="btnp" onClick={() => { setTab("claims"); setFilter("high"); setOpenClaim(null); setSearch(""); }} style={{ ...btnP, flexShrink: 0, background: C.gold, color: C.ink }}>{t.reviewNow} <ArrowRight size={15} /></button>
+                <button className="btnp" onClick={() => { setTab("claims"); setFilter("high"); setPayerFilter("all"); setOpenClaim(null); setSearch(""); }} style={{ ...btnP, flexShrink: 0, background: C.gold, color: C.ink }}>{t.reviewNow} <ArrowRight size={15} /></button>
               </div>
               <div className="rise" style={{ animationDelay: ".22s", background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 22 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}><div style={{ fontSize: 15, fontWeight: 500, fontFamily: FONT_DISPLAY, display: "flex", alignItems: "center", gap: 8 }}><Activity size={17} color={C.teal} /> {t.recent}</div></div>
@@ -1879,8 +1895,21 @@ export default function App({ auth0 = null }) {
               <div className="rise" style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
                 <div style={{ position: "relative", flex: 1, minWidth: 220 }}><Search size={16} color={C.txt3} style={{ position: "absolute", left: 14, top: 13 }} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} style={{ ...inp, paddingLeft: 40, marginBottom: 0 }} /></div>
               </div>
-              <div className="rise" style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", animationDelay: ".05s" }}>
+              <div className="rise" style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap", animationDelay: ".05s" }}>
                 {[["all", t.all], ["high", t.highRisk], ["pending", t.pending], ["denied", t.denied]].map(([k, l]) => <button key={k} className="chip" onClick={() => setFilter(k)} style={{ fontSize: 12.5, padding: "7px 15px", borderRadius: 20, cursor: "pointer", border: `1px solid ${filter === k ? C.ink : C.line}`, background: filter === k ? C.ink : C.paper2, color: filter === k ? "#fff" : C.txt2, fontWeight: filter === k ? 500 : 400 }}>{l}</button>)}
+              </div>
+              <div className="rise" style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap", animationDelay: ".08s" }}>
+                {[["all", t.allPayers], ...Array.from(new Set(claims.map(c => c.payer))).sort().map(p => [p, p])].map(([k, l]) => {
+                  const active = payerFilter === k;
+                  const PAYER_DOT = { "ASES / Mi Salud": C.teal, "Plan Vital": C.teal, "Triple-S": C.blue, "MMM": "#7C3AED", "MCS": "#D97706" };
+                  const dot = k !== "all" ? PAYER_DOT[k] || C.txt2 : null;
+                  return (
+                    <button key={k} className="chip" onClick={() => setPayerFilter(k)} style={{ fontSize: 12, padding: "5px 13px", borderRadius: 20, cursor: "pointer", border: `1.5px solid ${active ? (dot || C.ink) : C.line}`, background: active ? (dot ? dot + "18" : C.paper2) : "transparent", color: active ? (dot || C.ink) : C.txt3, fontWeight: active ? 600 : 400, display: "flex", alignItems: "center", gap: 5 }}>
+                      {dot && <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, flexShrink: 0 }} />}
+                      {l}
+                    </button>
+                  );
+                })}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {filtered.length === 0 && (
