@@ -1705,6 +1705,60 @@ export default function App({ auth0 = null }) {
     setAnalyzing(false);
     setAnalyzed((p) => ({ ...p, [id]: true }));
   };
+
+  const downloadClaimPDF = (c) => {
+    const riskColor = c.risk >= 30 ? "#DC2626" : "#0D9488";
+    const riskLabel = c.risk >= 30 ? (lang === "en" ? "Do not submit" : "No enviar") : (lang === "en" ? "Ready to submit" : "Listo para enviar");
+    const compColor = c.comp >= 70 ? "#0D9488" : c.comp >= 50 ? "#D97706" : "#DC2626";
+    const compLabel = c.comp >= 70 ? (lang === "en" ? "No action needed" : "Sin acción") : c.comp >= 50 ? (lang === "en" ? "Verify rules" : "Verificar reglas") : (lang === "en" ? "Fix before sending" : "Corregir antes de enviar");
+    const docColor  = c.doc  >= 70 ? "#0D9488" : c.doc  >= 50 ? "#D97706" : "#DC2626";
+    const docLabel  = c.doc  >= 70 ? (lang === "en" ? "No action needed" : "Sin acción") : c.doc  >= 50 ? (lang === "en" ? "Add missing notes" : "Agregar notas") : (lang === "en" ? "Complete chart first" : "Completar expediente");
+    const sevStyle  = (sev) => sev === "error" ? "background:#FEF2F2;border-color:#FECACA" : sev === "warning" ? "background:#FFFBEB;border-color:#FDE68A" : "background:#F0FDFA;border-color:#99F6E4";
+    const sevLabel  = (sev) => sev === "error" ? `<span style="color:#DC2626;font-weight:700">● ${lang==="en"?"Error":"Error"}</span>` : sev === "warning" ? `<span style="color:#D97706;font-weight:700">▲ ${lang==="en"?"Warning":"Advertencia"}</span>` : `<span style="color:#0D9488;font-weight:700">ℹ ${lang==="en"?"Info":"Info"}</span>`;
+    const issuesHtml = c.issues.map(iss => `<div style="margin-bottom:9px;padding:11px 15px;border-radius:8px;border:1px solid;${sevStyle(iss.sev)}"><div style="font-size:13px;font-weight:600;margin-bottom:3px">${sevLabel(iss.sev)} — ${lang==="en"?iss.tEn:iss.tEs}</div><div style="font-size:12px;color:#555;line-height:1.55">${lang==="en"?iss.dEn:iss.dEs}</div></div>`).join("");
+    const fixesHtml  = c.fix.map((f, i) => `<div style="margin-bottom:9px;padding:11px 15px;border-radius:8px;background:#F0FDFA;border:1px solid #6EE7B7"><div style="font-size:13px;font-weight:600;color:#065F46;margin-bottom:3px">${lang==="en"?"Fix":"Corrección"} ${i+1} — ${lang==="en"?f.tEn:f.tEs}</div><div style="font-size:12px;color:#047857;line-height:1.55">${lang==="en"?f.wEn:f.wEs}</div></div>`).join("");
+    const dateStr = new Date().toLocaleDateString(lang==="en"?"en-US":"es-PR",{year:"numeric",month:"long",day:"numeric"});
+    const errCount = c.issues.filter(i=>i.sev==="error").length;
+    const warnCount = c.issues.filter(i=>i.sev==="warning").length;
+    const html = `<!DOCTYPE html><html lang="${lang}"><head><meta charset="UTF-8"><title>RevenueMD — ${c.id}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#111827;background:#fff}
+.page{max-width:740px;margin:0 auto;padding:36px 44px}
+table{width:100%;border-collapse:collapse;margin-bottom:22px}td,th{padding:9px 13px;border:1px solid #e5e7eb;font-size:13px}th{background:#f9fafb;font-weight:600;text-align:left;color:#374151}
+h2{font-size:16px;font-weight:700;color:#10245C;margin:22px 0 11px;padding-bottom:6px;border-bottom:2px solid #e5e7eb}
+.scores{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:22px}
+.sc{border:1px solid #e5e7eb;border-radius:10px;padding:14px;text-align:center}.sc-n{font-size:30px;font-weight:700}.sc-l{font-size:11px;color:#9ca3af;margin-top:2px}.sc-s{font-size:11px;font-weight:700;margin-top:4px}
+footer{margin-top:28px;padding-top:14px;border-top:1px solid #e5e7eb;font-size:11px;color:#9ca3af;line-height:1.6}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body>
+<div style="background:#10245C;color:#fff;padding:24px 44px;display:flex;justify-content:space-between;align-items:center">
+  <div><div style="font-size:22px;font-weight:300">Revenue<span style="color:#16B6C9;font-weight:700">MD</span></div><div style="font-size:10px;color:rgba(255,255,255,.45);letter-spacing:1.5px;margin-top:3px">REVENUE INTELLIGENCE · PUERTO RICO</div></div>
+  <div style="text-align:right;font-size:12px;color:rgba(255,255,255,.65)"><div>${lang==="en"?"Claim Verification Report":"Reporte de Verificación de Reclamo"}</div><div style="margin-top:3px">${dateStr}</div></div>
+</div>
+<div class="page">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #e5e7eb">
+  <div><div style="font-size:22px;font-weight:700;color:#10245C">#${c.id}</div><div style="font-size:13px;color:#6b7280;margin-top:3px">${c.patient} · ${c.provider}</div></div>
+  <span style="padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;background:${riskColor}18;color:${riskColor};border:1.5px solid ${riskColor}40">${riskLabel}</span>
+</div>
+<h2>${lang==="en"?"Claim Summary":"Resumen del Reclamo"}</h2>
+<table><tr><th>${lang==="en"?"Claim ID":"ID del Reclamo"}</th><td>${c.id}</td><th>${lang==="en"?"Patient":"Paciente"}</th><td>${c.patient}</td></tr>
+<tr><th>${lang==="en"?"Provider":"Proveedor"}</th><td>${c.provider}</td><th>${lang==="en"?"Payer":"Pagador"}</th><td>${c.payer}</td></tr>
+<tr><th>CPT / HCPCS</th><td>${c.codes}</td><th>${lang==="en"?"Date of Service":"Fecha de Servicio"}</th><td>${c.dos}</td></tr>
+<tr><th>${lang==="en"?"Amount Billed":"Total Facturado"}</th><td style="font-weight:700">\$${c.billed.toLocaleString()}.00</td><th>${lang==="en"?"Status":"Estado"}</th><td style="font-weight:700;text-transform:capitalize">${c.status}</td></tr></table>
+<h2>${lang==="en"?"Risk Assessment":"Evaluación de Riesgo"}</h2>
+<div class="scores">
+  <div class="sc"><div class="sc-n" style="color:${riskColor}">${c.risk}</div><div class="sc-l">${lang==="en"?"Denial Risk":"Riesgo de Denegación"}</div><div class="sc-s" style="color:${riskColor}">${riskLabel}</div></div>
+  <div class="sc"><div class="sc-n" style="color:${compColor}">${c.comp}</div><div class="sc-l">${lang==="en"?"Payer Rules":"Reglas del Pagador"}</div><div class="sc-s" style="color:${compColor}">${compLabel}</div></div>
+  <div class="sc"><div class="sc-n" style="color:${docColor}">${c.doc}</div><div class="sc-l">${lang==="en"?"Documentation":"Documentación"}</div><div class="sc-s" style="color:${docColor}">${docLabel}</div></div>
+</div>
+${c.issues.length>0?`<h2>${lang==="en"?`Issues Found — ${errCount} Error${errCount!==1?"s":""} · ${warnCount} Warning${warnCount!==1?"s":""}`:`Problemas — ${errCount} Error${errCount!==1?"es":""} · ${warnCount} Advertencia${warnCount!==1?"s":""}`}</h2>${issuesHtml}`:""}
+${c.fix.length>0?`<h2>${lang==="en"?"Suggested Fixes":"Correcciones Sugeridas"}</h2>${fixesHtml}`:""}
+${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background:#f8faff;border:1px solid #dbeafe;border-radius:8px;padding:13px 16px;font-size:13px;color:#374151;line-height:1.65">${lang==="en"?c.sEn:c.sEs}</div>`:""}
+<footer><p>${lang==="en"?"Generated by RevenueMD Pre-Submission Scrubber":"Generado por RevenueMD Pre-Submission Scrubber"} · ${dateStr}</p>
+<p style="margin-top:3px">${lang==="en"?"This report is based on demo data. All rules must be verified against current payer manuals by a certified Puerto Rico coder before production use.":"Este reporte es basado en datos de demostración. Todas las reglas deben verificarse con los manuales actuales del pagador antes del uso en producción."}</p></footer>
+</div></body></html>`;
+    const win = window.open("","_blank","width=900,height=750");
+    if (win) { win.document.write(html); win.document.close(); win.focus(); setTimeout(() => win.print(), 500); }
+  };
   const addSample = () => {
     const f = { id: Date.now() + "", name: "expediente_PV_4452.pdf", status: "scanning", stage: 0, preview: null, isReal: false };
     setFiles((p) => [f, ...p]);
@@ -2098,7 +2152,10 @@ export default function App({ auth0 = null }) {
             const c = claims.find((x) => x.id === openClaim); const A = analyzed[c.id];
             return (
               <div>
-                <button onClick={() => setOpenClaim(null)} style={{ ...btnG, marginBottom: 16 }}><ChevronRight size={15} style={{ transform: "rotate(180deg)" }} /> {t.back}</button>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                  <button onClick={() => setOpenClaim(null)} style={{ ...btnG }}><ChevronRight size={15} style={{ transform: "rotate(180deg)" }} /> {t.back}</button>
+                  <button onClick={() => downloadClaimPDF(claims.find(x => x.id === openClaim))} style={{ ...btnG, marginLeft: "auto", display: "flex", alignItems: "center", gap: 7 }}><Download size={14} /> {lang === "en" ? "Download PDF" : "Descargar PDF"}</button>
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 290px", gap: 18, alignItems: "start" }}>
                   <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 24 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
@@ -2499,7 +2556,16 @@ export default function App({ auth0 = null }) {
             const toggle = (id) => setBatchQueue((p) => p.map((q) => q.id === id && q.st === "pending" ? { ...q, sel: !q.sel } : q));
             const toggleAll = () => setBatchQueue((p) => p.map((q) => q.st === "pending" ? { ...q, sel: !allSel } : q));
             const selectLane = (k) => setBatchQueue((p) => p.map((q) => q.lane === k && q.st === "pending" ? { ...q, sel: true } : q));
-            const bulkApprove = () => { const n = selCount; setBatchQueue((p) => p.map((q) => q.sel && q.st === "pending" ? { ...q, st: "approved", sel: false } : q)); };
+            const bulkApprove = () => { setBatchQueue((p) => p.map((q) => q.sel && q.st === "pending" ? { ...q, st: "approved", sel: false } : q)); };
+            const exportBatchCSV = () => {
+              const rows = batchQueue.filter(q => q.sel && q.st === "pending");
+              if (!rows.length) return;
+              const headers = ["Claim ID","Payer","Provider","Codes","Risk Score","Amount Billed","Lane","Issue"];
+              const lines = [headers, ...rows.map(q => [q.id, q.payer, q.prov, q.codes, q.risk, `$${q.val}`, q.lane, lang==="en"?q.iEn:q.iEs])].map(r => r.map(v => `"${String(v??'').replace(/"/g,'""')}"`).join(",")).join("\n");
+              const url = URL.createObjectURL(new Blob([lines], { type: "text/csv;charset=utf-8;" }));
+              const a = document.createElement("a"); a.href = url; a.download = `revenuemd-batch-${new Date().toISOString().slice(0,10)}.csv`;
+              document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+            };
             // ── Batch helpers ──────────────────────────────────────────────
             const applyBatchResults = (data) => {
               setBatchMeta({ total: data.total, auto_clear: data.auto_clear, needs_attention: data.needs_attention, at_risk: data.at_risk });
@@ -2584,7 +2650,7 @@ export default function App({ auth0 = null }) {
                       <div style={{ flex: 1 }} />
                       <button onClick={bulkApprove} disabled={!selCount} style={{ background: selCount ? C.teal : C.lineSoft, color: selCount ? "#fff" : C.txt3, border: "none", borderRadius: 9, padding: "8px 15px", fontSize: 12.5, fontWeight: 500, cursor: selCount ? "pointer" : "default", display: "flex", alignItems: "center", gap: 6 }}><CheckCircle2 size={14} /> {t.bApprove}</button>
                       <button disabled={!selCount} style={{ background: "transparent", color: selCount ? "#fff" : C.txt3, border: `1px solid ${selCount ? "rgba(255,255,255,.3)" : C.lineSoft}`, borderRadius: 9, padding: "8px 13px", fontSize: 12.5, fontWeight: 500, cursor: selCount ? "pointer" : "default", display: "flex", alignItems: "center", gap: 6 }}><Users size={14} /> {t.bAssign}</button>
-                      <button disabled={!selCount} style={{ background: "transparent", color: selCount ? "#fff" : C.txt3, border: `1px solid ${selCount ? "rgba(255,255,255,.3)" : C.lineSoft}`, borderRadius: 9, padding: "8px 13px", fontSize: 12.5, fontWeight: 500, cursor: selCount ? "pointer" : "default", display: "flex", alignItems: "center", gap: 6 }}><Download size={14} /> {t.bExport}</button>
+                      <button onClick={exportBatchCSV} disabled={!selCount} style={{ background: "transparent", color: selCount ? "#fff" : C.txt3, border: `1px solid ${selCount ? "rgba(255,255,255,.3)" : C.lineSoft}`, borderRadius: 9, padding: "8px 13px", fontSize: 12.5, fontWeight: 500, cursor: selCount ? "pointer" : "default", display: "flex", alignItems: "center", gap: 6 }}><Download size={14} /> {t.bExport}</button>
                     </div>
                     <div className="rise" style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
                       {Object.entries(BATCH_LANES).map(([k, v]) => (
