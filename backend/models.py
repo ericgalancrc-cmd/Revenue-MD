@@ -60,16 +60,18 @@ class ParsedClaim(BaseModel):
 
 
 class ScrubResult(ParsedClaim):
-    lane:   Lane    = Lane.auto_clear
-    risk:   int     = 0
-    comp:   int     = 100
-    doc:    int     = 100
-    sEn:    str     = ""
-    sEs:    str     = ""
-    iEn:    str     = ""    # short issue label EN (batch queue)
-    iEs:    str     = ""    # short issue label ES (batch queue)
-    issues: List[Issue] = []
-    fix:    List[Fix]   = []
+    lane:        Lane    = Lane.auto_clear
+    risk:        int     = 0
+    comp:        int     = 100
+    doc:         int     = 100
+    sEn:         str     = ""
+    sEs:         str     = ""
+    iEn:         str     = ""    # short issue label EN (batch queue)
+    iEs:         str     = ""    # short issue label ES (batch queue)
+    issues:      List[Issue] = []
+    fix:         List[Fix]   = []
+    ai_note:     str     = ""   # biller-facing AI insight beyond the issue list
+    ai_enhanced: bool    = False
 
 
 class BatchResponse(BaseModel):

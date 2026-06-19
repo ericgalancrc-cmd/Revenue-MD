@@ -24,6 +24,7 @@ Set AUTH0_DOMAIN + AUTH0_AUDIENCE to enable JWT auth; omit for demo mode.
 """
 from __future__ import annotations
 
+import logging
 import os
 import uuid
 from datetime import datetime, timezone
@@ -40,6 +41,9 @@ from models import BatchResponse, ParsedClaim, ScrubResult
 from parser import parse_837
 from parsers.csv_claims import parse_csv
 from rules.engine import scrub, scrub_many
+import ai
+
+logger = logging.getLogger(__name__)
 
 # ── App setup ────────────────────────────────────────────────────────────────
 
@@ -248,7 +252,14 @@ async def analyze_claim(
     claim: ParsedClaim,
     user: dict = Depends(get_current_user),
 ):
-    return scrub(claim)
+    result = scrub(claim)
+    if ai.is_available():
+        enhanced = ai.enhance(result.model_dump())
+        try:
+            result = ScrubResult(**enhanced)
+        except Exception as exc:
+            logger.warning("Could not apply AI enhancement: %s", exc)
+    return result
 
 
 # ── BAA endpoints ─────────────────────────────────────────────────────────────
