@@ -10,7 +10,7 @@ import {
   GraduationCap, BookMarked, ExternalLink, Hash, Info, CreditCard, Star, BadgeCheck,
   Palette, UserRound, Sliders, Sun, Moon,
   Smartphone, Mail, QrCode, KeyRound, ShieldAlert, RefreshCw, Copy,
-  Menu, X, ChevronDown,
+  Menu, X, ChevronDown, XCircle, FileSignature,
 } from "lucide-react";
 
 // ============================================================================
@@ -113,7 +113,13 @@ const T = {
     docGood: "No action needed", docMid: "Add missing notes", docLow: "Complete chart first",
     runAnalysis: "Run AI analysis", analyzing: "Analyzing…", issues: "What we found", sugg: "Suggested fixes",
     aiSummary: "AI assessment", markReviewed: "Approve & mark reviewed", apply: "Apply fix", dismiss: "Dismiss", back: "Back to claims",
-    lostRevenue: "Lost", toAppeal: "left to appeal", aiStrategy: "AI appeal strategy", buildAppeal: "Build appeal", reviewed: "Reviewed",
+    lostRevenue: "Lost", toAppeal: "left to appeal", aiStrategy: "AI appeal strategy", buildAppeal: "Generate appeal letter", reviewed: "Reviewed",
+    outcomeTitle: "Record resubmission outcome", outcomeHelp: "What happened after you resubmitted this claim?",
+    outcomePaid: "Paid ✓", outcomeDenied: "Denied again", outcomeAppealed: "Under appeal", outcomeWrittenOff: "Written off",
+    outcomeRecorded: "Outcome recorded",
+    patternTitle: "Denial pattern detected",
+    sendTitle: "Send to clearinghouse", sendConfirm: "Confirm & send to Inmediata", sendSending: "Sending…", sendSent: "Submitted ✓", sendPayer: "Clearinghouse",
+    appealGenLoading: "Generating appeal letter with Claude AI…", appealCopy: "Copy letter", appealPrint: "Print",
     footer: "HIPAA-aware · AI is decision support only · a human approves every claim",
     intakeTitle: "Bring in claims & records", intakeSub: "Import claims from your billing system, or scan a medical record. Everything gets scrubbed before submission.",
     tabImport: "Import claims", tabScan: "Scan record",
@@ -295,7 +301,13 @@ const T = {
     docGood: "Sin acción requerida", docMid: "Agregar notas faltantes", docLow: "Completar expediente",
     runAnalysis: "Ejecutar análisis IA", analyzing: "Analizando…", issues: "Lo que encontramos", sugg: "Correcciones sugeridas",
     aiSummary: "Evaluación IA", markReviewed: "Aprobar y marcar revisado", apply: "Aplicar", dismiss: "Descartar", back: "Volver a reclamos",
-    lostRevenue: "Perdido", toAppeal: "para apelar", aiStrategy: "Estrategia de apelación IA", buildAppeal: "Crear apelación", reviewed: "Revisado",
+    lostRevenue: "Perdido", toAppeal: "para apelar", aiStrategy: "Estrategia de apelación IA", buildAppeal: "Generar carta de apelación", reviewed: "Revisado",
+    outcomeTitle: "Registrar resultado de re-sometimiento", outcomeHelp: "¿Qué pasó después de re-someter este reclamo?",
+    outcomePaid: "Pagado ✓", outcomeDenied: "Denegado nuevamente", outcomeAppealed: "En apelación", outcomeWrittenOff: "Cancelado",
+    outcomeRecorded: "Resultado registrado",
+    patternTitle: "Patrón de denegación detectado",
+    sendTitle: "Enviar al clearinghouse", sendConfirm: "Confirmar y enviar a Inmediata", sendSending: "Enviando…", sendSent: "Enviado ✓", sendPayer: "Clearinghouse",
+    appealGenLoading: "Generando carta de apelación con Claude AI…", appealCopy: "Copiar carta", appealPrint: "Imprimir",
     footer: "Compatible con HIPAA · IA solo apoya decisiones · un humano aprueba cada reclamo",
     intakeTitle: "Trae reclamos y expedientes", intakeSub: "Importa reclamos desde tu sistema de facturación, o escanea un expediente. Todo se revisa antes de someter.",
     tabImport: "Importar reclamos", tabScan: "Escanear expediente",
@@ -999,10 +1011,10 @@ const fmt = (n) => "$" + n.toLocaleString("en-US");
 // ── Notification panel ────────────────────────────────────────────────────────
 const DAYS_TO_RENEW = 7; // demo: subscription renews in 7 days
 
-function NotifPanel({ t, lang, role, onClose }) {
+function NotifPanel({ t, lang, role, onClose, patternAlerts = [] }) {
   const [readIds, setReadIds] = useState(new Set());
   const mark = (id) => setReadIds(p => new Set([...p, id]));
-  const markAll = () => setReadIds(new Set(["sub", "claims", "update"]));
+  const markAll = () => setReadIds(new Set(["sub", "claims", "ases-update", "pv-update", "outcome-win", ...patternAlerts.map((_, i) => `pattern-${i}`)]));
   const isEn = lang === "en";
 
   const notifs = [
@@ -1016,6 +1028,15 @@ function NotifPanel({ t, lang, role, onClose }) {
       date:  isEn ? "Today" : "Hoy",
       cta:   isEn ? "Manage billing" : "Gestionar facturación",
     }] : []),
+    ...patternAlerts.map((pa, i) => ({
+      id: `pattern-${i}`,
+      icon: TrendingDown,
+      color: C.amber, bg: C.amberSoft,
+      title: isEn ? `Denial pattern: ${pa.provider}` : `Patrón detectado: ${pa.provider}`,
+      body:  isEn ? `${pa.claims.length} denials with ${pa.payer} — possible systematic billing issue. Review and correct before the next batch.` : `${pa.claims.length} denegaciones con ${pa.payer} — posible problema sistemático. Revisa antes del próximo lote.`,
+      date:  isEn ? "Today" : "Hoy",
+      cta:   isEn ? "View claims" : "Ver reclamos",
+    })),
     {
       id: "claims",
       icon: ClipboardList,
@@ -1026,13 +1047,31 @@ function NotifPanel({ t, lang, role, onClose }) {
       cta:   isEn ? "Review queue" : "Ver cola",
     },
     {
-      id: "update",
+      id: "ases-update",
       icon: Info,
       color: C.blue, bg: C.blueSoft,
-      title: isEn ? "Plan Vital updated prior auth list" : "Plan Vital actualizó la lista de auth",
-      body:  isEn ? "ASES updated prior authorization requirements effective June 1, 2026. Review Payer Intelligence." : "ASES actualizó requisitos de autorización previa desde el 1 de junio. Revisa el módulo de Pagadores.",
-      date:  isEn ? "Yesterday" : "Ayer",
+      title: isEn ? "ASES updated GT modifier policy" : "ASES actualizó política de modificador GT",
+      body:  isEn ? "GT modifier now restricted to primary service code only. Add-on codes (90785, 90833) must not carry GT. Effective June 1, 2024." : "GT ahora solo va en el código principal. Los add-ons (90785, 90833) no deben llevarlo. Desde el 1 de junio de 2024.",
+      date:  isEn ? "Jun 15" : "15 jun",
       cta:   isEn ? "View payers" : "Ver pagadores",
+    },
+    {
+      id: "pv-update",
+      icon: Info,
+      color: C.blue, bg: C.blueSoft,
+      title: isEn ? "Plan Vital expands prior auth list" : "Plan Vital amplía lista de auth previa",
+      body:  isEn ? "90839 (crisis psychotherapy) added to the prior authorization required list for all Plan Vital members." : "90839 (psicoterapia de crisis) fue añadido a la lista de autorización previa para todos los miembros de Plan Vital.",
+      date:  isEn ? "Jun 8" : "8 jun",
+      cta:   isEn ? "View payers" : "Ver pagadores",
+    },
+    {
+      id: "outcome-win",
+      icon: CheckCircle2,
+      color: C.teal, bg: C.tealSoft,
+      title: isEn ? "Appeal won — PV-2024-0792" : "Apelación ganada — PV-2024-0792",
+      body:  isEn ? "Plan Vital approved the first-level appeal. $680.00 recovered to your account." : "Plan Vital aprobó la apelación de primer nivel. $680.00 recuperados a tu cuenta.",
+      date:  isEn ? "Jun 10" : "10 jun",
+      cta:   isEn ? "View denials" : "Ver denegaciones",
     },
   ];
 
@@ -1377,6 +1416,11 @@ export default function App({ auth0 = null }) {
   const [analyzed, setAnalyzed] = useState({});
   const [reviewed, setReviewed] = useState([]);
   const [appeal, setAppeal] = useState(null);
+  const [outcomes, setOutcomes] = useState({});
+  const [appealLetters, setAppealLetters] = useState({});
+  const [appealLoading, setAppealLoading] = useState(null);
+  const [submitModal, setSubmitModal] = useState(null);
+  const [submissions, setSubmissions] = useState({});
   const [compTab, setCompTab] = useState("billing");
   const [files, setFiles] = useState([]);
   const [selFile, setSelFile] = useState(null);
@@ -1556,6 +1600,16 @@ export default function App({ auth0 = null }) {
   const filtered = useMemo(() => claims.filter((c) => (filter === "all" || (filter === "high" ? c.risk >= 30 : c.status === filter)) && (payerFilter === "all" || c.payer === payerFilter) && (!search || c.id.toLowerCase().includes(search.toLowerCase()) || c.codes.toLowerCase().includes(search.toLowerCase()) || c.payer.toLowerCase().includes(search.toLowerCase()))), [filter, payerFilter, search, claims]);
   const needsCount = [...PAYERS.flatMap((p) => p.facts), ...BILLING_RULES, ...PRIVACY_RULES, ...SECURITY_RULES].filter((x) => x.v === "needs").length;
 
+  const patternAlerts = useMemo(() => {
+    const groups = {};
+    claims.filter(c => c.status === "denied").forEach(c => {
+      const key = `${c.provider}|||${c.payer}`;
+      if (!groups[key]) groups[key] = { provider: c.provider, payer: c.payer, claims: [] };
+      groups[key].claims.push(c);
+    });
+    return Object.values(groups).filter(g => g.claims.length >= 2);
+  }, [claims]);
+
   const FONTS = (
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
@@ -1710,6 +1764,39 @@ export default function App({ auth0 = null }) {
     setAnalyzed((p) => ({ ...p, [id]: true }));
   };
 
+  const generateAppealLetter = async (denial) => {
+    setAppealLoading(denial.id);
+    if (API_URL) {
+      try {
+        const res = await fetch(`${API_URL}/api/appeal`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify({ denial, lang }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setAppealLetters(p => ({ ...p, [denial.id]: data.letter }));
+        }
+      } catch (e) { console.error("Appeal generation failed:", e); }
+    } else {
+      await new Promise(r => setTimeout(r, 2200));
+      const date = new Date().toLocaleDateString(lang === "en" ? "en-US" : "es-PR", { year: "numeric", month: "long", day: "numeric" });
+      const isEn = lang === "en";
+      const letter = isEn
+        ? `${date}\n\nRe: First-Level Appeal — Claim #${denial.id}\nPayer: Plan Vital / ASES Mi Salud\nDenial Reason: ${denial.rEn}\nAmount in Dispute: $${denial.lost?.toLocaleString() || "0"}.00\n\nDear Provider Relations Department,\n\nWe formally appeal the denial of the above claim on behalf of the treating provider. The claim was denied citing: "${denial.rEn}". We respectfully disagree and request reconsideration based on the following:\n\n1. CLINICAL NECESSITY — The services were medically necessary and documented in the clinical record per ASES/Plan Vital behavioral health guidelines (ASES Provider Manual 2024, §5.2).\n\n2. REGULATORY BASIS — Per AMA CPT 2024 guidelines and CMS Pub 100-04 Ch. 12, the submitted codes are appropriate for the documented level of service. The documentation meets all requirements outlined in the ASES Mi Salud EDI Companion Guide 2024.\n\n3. SUPPORTING DOCUMENTATION — Enclosed: (a) complete clinical note for the date of service, (b) active treatment plan with supervising clinician signature and date, (c) prior authorization confirmation (if applicable), and (d) this appeal letter with regulatory citations.\n\nWe request reconsideration and full payment within the regulatory timeframe. If additional information is needed, please contact our billing office.\n\nSincerely,\nBilling Department\n\n— Generated by RevenueMD Pre-Submission Intelligence`
+        : `${date}\n\nRe: Apelación de Primer Nivel — Reclamo #${denial.id}\nPagador: Plan Vital / ASES Mi Salud\nRazón de Denegación: ${denial.rEs}\nMonto en Disputa: $${denial.lost?.toLocaleString() || "0"}.00\n\nEstimado Departamento de Relaciones con Proveedores,\n\nApelamos formalmente la denegación del reclamo arriba referenciado. El reclamo fue denegado citando: "${denial.rEs}". Solicitamos reconsideración basada en:\n\n1. NECESIDAD CLÍNICA — Los servicios fueron médicamente necesarios y están documentados conforme a las guías de salud conductual de ASES/Plan Vital (Manual del Proveedor ASES 2024, §5.2).\n\n2. BASE REGULATORIA — Según las guías CPT AMA 2024 y CMS Pub 100-04 Cap. 12, los códigos sometidos son apropiados para el nivel de servicio documentado. La documentación cumple los requisitos de la Guía EDI Companion de ASES Mi Salud 2024.\n\n3. DOCUMENTACIÓN ADJUNTA — Se incluye: (a) nota clínica completa para la fecha de servicio, (b) plan de tratamiento vigente con firma del clínico supervisor y fecha, (c) confirmación de autorización previa (si aplica), y (d) esta carta de apelación con citas regulatorias.\n\nSolicitamos reconsideración y pago completo dentro del término reglamentario.\n\nAtentamente,\nDepartamento de Facturación\n\n— Generado por RevenueMD Pre-Submission Intelligence`;
+      setAppealLetters(p => ({ ...p, [denial.id]: letter }));
+    }
+    setAppealLoading(null);
+  };
+
+  const submitToClearinghouse = async (claimId) => {
+    setSubmissions(p => ({ ...p, [claimId]: "submitting" }));
+    setSubmitModal(null);
+    await new Promise(r => setTimeout(r, 2000));
+    setSubmissions(p => ({ ...p, [claimId]: "submitted" }));
+  };
+
   const downloadClaimPDF = (c) => {
     const riskColor = c.risk >= 30 ? "#DC2626" : "#0D9488";
     const riskLabel = c.risk >= 30 ? (lang === "en" ? "Do not submit" : "No enviar") : (lang === "en" ? "Ready to submit" : "Listo para enviar");
@@ -1787,7 +1874,34 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
       {FONTS}
       {helpOpen && <HelpModal t={t} lang={lang} onClose={() => setHelpOpen(false)} />}
       {legalModal && <LegalModal type={legalModal} lang={lang} onClose={() => setLegalModal(null)} />}
-      {notifOpen && <NotifPanel t={t} lang={lang} role={role} onClose={() => setNotifOpen(false)} />}
+      {notifOpen && <NotifPanel t={t} lang={lang} role={role} onClose={() => setNotifOpen(false)} patternAlerts={patternAlerts} />}
+      {submitModal && (() => {
+        const sc = claims.find(x => x.id === submitModal);
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(16,36,92,.65)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(3px)" }}>
+            <div className="rise" style={{ background: C.paper2, borderRadius: 20, padding: 28, width: "100%", maxWidth: 400, boxShadow: "0 32px 80px -16px rgba(16,36,92,.35)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center" }}><Send size={20} color={C.tealDk} /></div>
+                <div><div style={{ fontFamily: FONT_DISPLAY, fontSize: 17, fontWeight: 500 }}>{t.sendTitle}</div><div style={{ fontSize: 12.5, color: C.txt2 }}>#{sc?.id}</div></div>
+                <button onClick={() => setSubmitModal(null)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: C.txt3 }}><X size={18} /></button>
+              </div>
+              <div style={{ background: C.paper, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  {[["Claim", `#${sc?.id}`], [lang === "en" ? "Payer" : "Pagador", sc?.payer], [lang === "en" ? "Amount" : "Monto", fmt(sc?.billed)], [t.sendPayer, "Inmediata"]].map(([l, v]) => (
+                    <div key={l}><div style={{ fontSize: 11, color: C.txt3, marginBottom: 2 }}>{l}</div><div style={{ fontSize: 13, fontWeight: 500 }}>{v}</div></div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ background: C.tealSoft, border: `1px solid ${C.tealMute}`, borderRadius: 10, padding: "10px 13px", marginBottom: 18, fontSize: 12.5, color: C.tealDk, display: "flex", gap: 7, alignItems: "flex-start" }}>
+                <ShieldCheck size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                {lang === "en" ? "Claim passed scrubbing — no payer rule violations. Safe to submit." : "El reclamo pasó la revisión — sin violaciones. Seguro para enviar."}
+              </div>
+              <button onClick={() => submitToClearinghouse(submitModal)} style={{ ...btnP, width: "100%", justifyContent: "center", marginBottom: 9 }}><Send size={15} /> {t.sendConfirm}</button>
+              <button onClick={() => setSubmitModal(null)} style={{ ...btnG, width: "100%", justifyContent: "center" }}>{t.dismiss}</button>
+            </div>
+          </div>
+        );
+      })()}
       {/* BAA warning modal — fires before any PHI file upload */}
       {baaModalFile && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(16,36,92,.65)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(3px)" }}>
@@ -1956,6 +2070,20 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                 <div style={{ flex: 1, position: "relative" }}><div style={{ fontWeight: 500, fontSize: 15, color: "#fff" }}>{t.priorityTitle}</div><div style={{ fontSize: 13.5, color: "rgba(255,255,255,.66)", marginTop: 3 }}>{t.priorityBody}</div></div>
                 <button className="btnp" onClick={() => { setTab("claims"); setFilter("high"); setPayerFilter("all"); setOpenClaim(null); setSearch(""); }} style={{ ...btnP, flexShrink: 0, background: C.gold, color: C.ink }}>{t.reviewNow} <ArrowRight size={15} /></button>
               </div>
+              {patternAlerts.length > 0 && (
+                <div className="rise" style={{ animationDelay: ".18s", marginBottom: 16 }}>
+                  {patternAlerts.map((pa, i) => (
+                    <div key={i} style={{ background: C.amberSoft, border: `1px solid #f0dcb0`, borderRadius: 14, padding: "13px 16px", marginBottom: 8, display: "flex", alignItems: "center", gap: 12 }}>
+                      <TrendingDown size={17} color={C.amber} style={{ flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#7a4e10" }}>{t.patternTitle}</div>
+                        <div style={{ fontSize: 12.5, color: "#7a4e10", marginTop: 1 }}>{pa.provider} · {pa.payer} · {pa.claims.length} {lang === "en" ? "denials" : "denegaciones"}</div>
+                      </div>
+                      <button onClick={() => { setTab("claims"); setFilter("denied"); setPayerFilter(pa.payer); }} style={{ ...btnG, fontSize: 12, flexShrink: 0, display: "flex", alignItems: "center", gap: 5 }}>{lang === "en" ? "View" : "Ver"} <ChevronRight size={13} /></button>
+                    </div>
+                  ))}
+                </div>
+              )}
               <div className="rise" style={{ animationDelay: ".22s", background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 22 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}><div style={{ fontSize: 15, fontWeight: 500, fontFamily: FONT_DISPLAY, display: "flex", alignItems: "center", gap: 8 }}><Activity size={17} color={C.teal} /> {t.recent}</div></div>
                 {claims.slice(0, 4).map((c, i) => (
@@ -2082,6 +2210,9 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                     {!hidePayerBadge && <span style={{ fontSize: 11, color: C.txt2, padding: "2px 9px", background: C.lineSoft, borderRadius: 12 }}>{c.payer}</span>}
                     {c.status === "denied" && c.scrubbed === true  && <span style={{ fontSize: 11, fontWeight: 500, color: C.red,   background: C.redSoft,   padding: "2px 9px", borderRadius: 12, display: "flex", alignItems: "center", gap: 4 }}><AlertTriangle size={11} /> {t.deniedScrubbed}</span>}
                     {c.status === "denied" && c.scrubbed === false && <span style={{ fontSize: 11, fontWeight: 500, color: C.amber, background: C.amberSoft, padding: "2px 9px", borderRadius: 12, display: "flex", alignItems: "center", gap: 4 }}><CircleAlert size={11} /> {t.deniedNoScrub}</span>}
+                    {outcomes[c.id] === "paid"       && <span style={{ fontSize: 11, fontWeight: 500, color: C.tealDk, background: C.tealSoft, padding: "2px 9px", borderRadius: 12, display: "flex", alignItems: "center", gap: 4 }}><CheckCircle2 size={11} /> {t.outcomePaid}</span>}
+                    {outcomes[c.id] === "appealed"   && <span style={{ fontSize: 11, fontWeight: 500, color: C.blue,    background: C.blueSoft,  padding: "2px 9px", borderRadius: 12, display: "flex", alignItems: "center", gap: 4 }}><FileSignature size={11} /> {t.outcomeAppealed}</span>}
+                    {submissions[c.id] === "submitted" && c.status !== "denied" && <span style={{ fontSize: 11, fontWeight: 500, color: C.tealDk, background: C.tealSoft, padding: "2px 9px", borderRadius: 12, display: "flex", alignItems: "center", gap: 4 }}><Send size={11} /> {t.sendSent}</span>}
                   </div>
                   <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 3 }}>{c.codes} · {c.provider} · {c.dos}</div>
                 </div>
@@ -2156,9 +2287,17 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
             const c = claims.find((x) => x.id === openClaim); const A = analyzed[c.id];
             return (
               <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, flexWrap: "wrap" }}>
                   <button onClick={() => setOpenClaim(null)} style={{ ...btnG }}><ChevronRight size={15} style={{ transform: "rotate(180deg)" }} /> {t.back}</button>
-                  <button onClick={() => downloadClaimPDF(claims.find(x => x.id === openClaim))} style={{ ...btnG, marginLeft: "auto", display: "flex", alignItems: "center", gap: 7 }}><Download size={14} /> {lang === "en" ? "Download PDF" : "Descargar PDF"}</button>
+                  {submissions[c.id] === "submitted"
+                    ? <span style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 600, color: C.tealDk, background: C.tealSoft, padding: "6px 14px", borderRadius: 10, display: "flex", alignItems: "center", gap: 6 }}><CheckCircle2 size={14} /> {t.sendSent}</span>
+                    : submissions[c.id] === "submitting"
+                      ? <span style={{ marginLeft: "auto", fontSize: 12.5, color: C.teal, display: "flex", alignItems: "center", gap: 6 }}><Loader2 size={14} className="spin" /> {t.sendSending}</span>
+                      : c.status !== "denied" && analyzed[c.id] && (
+                          <button onClick={() => setSubmitModal(c.id)} style={{ ...btnP, marginLeft: "auto", display: "flex", alignItems: "center", gap: 7, fontSize: 13 }}><Send size={14} /> {t.sendTitle}</button>
+                        )
+                  }
+                  <button onClick={() => downloadClaimPDF(claims.find(x => x.id === openClaim))} style={{ ...(submissions[c.id] || !analyzed[c.id] || c.status === "denied" ? { marginLeft: "auto" } : {}), ...btnG, display: "flex", alignItems: "center", gap: 7 }}><Download size={14} /> {lang === "en" ? "Download PDF" : "Descargar PDF"}</button>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 290px", gap: 18, alignItems: "start" }}>
                   <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 24 }}>
@@ -2230,6 +2369,26 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                             </div>
                           </div>
                         ) : null; })()}
+                        {c.status === "denied" && (
+                          <div style={{ marginTop: 18, padding: 16, background: C.paper, borderRadius: 14, border: `1px solid ${C.line}` }}>
+                            <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3 }}>{t.outcomeTitle}</div>
+                            <div style={{ fontSize: 12.5, color: C.txt2, marginBottom: 12 }}>{t.outcomeHelp}</div>
+                            {outcomes[c.id] ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.tealDk, fontWeight: 500 }}>
+                                <CheckCircle2 size={15} /> {t.outcomeRecorded}: {t[`outcome${outcomes[c.id].charAt(0).toUpperCase()}${outcomes[c.id].slice(1)}`]}
+                                <button onClick={() => setOutcomes(p => { const n = {...p}; delete n[c.id]; return n; })} style={{ marginLeft: 8, fontSize: 11, color: C.txt3, background: "none", border: "none", cursor: "pointer" }}>{lang === "en" ? "change" : "cambiar"}</button>
+                              </div>
+                            ) : (
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                                {[["paid", C.teal, C.tealSoft, CheckCircle2], ["denied", C.red, C.redSoft, XCircle], ["appealed", C.blue, C.blueSoft, FileSignature], ["writtenOff", C.txt2, C.lineSoft, ReceiptText]].map(([key, color, bg, Icon]) => (
+                                  <button key={key} onClick={() => setOutcomes(p => ({ ...p, [c.id]: key }))} style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 12px", borderRadius: 10, border: `1px solid ${color}55`, background: bg, color, fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: FONT_SANS }}>
+                                    <Icon size={14} /> {t[`outcome${key.charAt(0).toUpperCase()}${key.slice(1)}`]}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                         <button className="btnp" onClick={() => { setReviewed((p) => [...new Set([...p, c.id])]); setOpenClaim(null); }} style={{ ...btnP, width: "100%", justifyContent: "center", padding: 13, marginTop: 18 }}><CheckCircle2 size={16} /> {t.markReviewed}</button>
                       </div>
                     )}
@@ -2257,8 +2416,27 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                     <div><div style={{ fontSize: 14.5, fontWeight: 500 }}>#{d.id}</div><div style={{ fontSize: 13, color: C.txt2, marginTop: 4 }}>{lang === "en" ? d.rEn : d.rEs}</div><div style={{ fontSize: 12, color: C.amber, marginTop: 8, display: "flex", alignItems: "center", gap: 5 }}><Clock size={13} /> {d.days} {lang === "en" ? "days" : "días"} {t.toAppeal}</div></div>
                     <div style={{ textAlign: "right" }}><div style={{ fontSize: 11.5, color: C.txt3 }}>{t.lostRevenue}</div><div style={{ fontSize: 20, fontWeight: 500, color: C.red, fontFamily: FONT_DISPLAY }}>{fmt(d.lost)}</div></div>
                   </div>
-                  <div style={{ display: "flex", gap: 8, marginTop: 14 }}><button className="btnp" onClick={() => setAppeal(appeal === d.id ? null : d.id)} style={{ ...btnP, fontSize: 12.5 }}><Send size={14} /> {t.aiStrategy}</button><button style={{ ...btnS, fontSize: 12.5 }}>{t.buildAppeal}</button></div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+                    <button className="btnp" onClick={() => setAppeal(appeal === d.id ? null : d.id)} style={{ ...btnP, fontSize: 12.5 }}><Brain size={14} /> {t.aiStrategy}</button>
+                    <button onClick={() => generateAppealLetter(d)} disabled={appealLoading === d.id} style={{ ...btnS, fontSize: 12.5, display: "flex", alignItems: "center", gap: 6, opacity: appealLoading === d.id ? 0.7 : 1 }}>
+                      {appealLoading === d.id ? <><Loader2 size={13} className="spin" /> {t.appealGenLoading}</> : <><FileSignature size={13} /> {t.buildAppeal}</>}
+                    </button>
+                  </div>
                   {appeal === d.id && <div className="rise" style={{ marginTop: 14, background: C.blueSoft, border: `1px solid #cbe0f5`, borderRadius: 12, padding: 14 }}><div style={{ fontSize: 12, fontWeight: 500, color: C.blue, marginBottom: 6, display: "flex", alignItems: "center", gap: 6, letterSpacing: .5, textTransform: "uppercase" }}><Brain size={13} /> {t.aiStrategy}</div><div style={{ fontSize: 13, color: "#1d5a96", lineHeight: 1.6 }}>{lang === "en" ? "File a first-level appeal before the deadline. Attach the prior-authorization confirmation and the clinical note documenting medical necessity. Estimated recovery: 60–75%." : "Presenta una apelación de primer nivel antes del límite. Adjunta la confirmación de autorización y la nota clínica de necesidad médica. Recuperación estimada: 60–75%."}</div></div>}
+                  {appealLetters[d.id] && (
+                    <div className="rise" style={{ marginTop: 14, background: C.paper, border: `1px solid ${C.line}`, borderRadius: 12, overflow: "hidden" }}>
+                      <div style={{ background: `linear-gradient(120deg,${C.ink},${C.ink2})`, padding: "11px 16px", display: "flex", alignItems: "center", gap: 8 }}>
+                        <FileSignature size={14} color={C.gold} />
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: "#fff" }}>{lang === "en" ? "Appeal Letter — " : "Carta de Apelación — "}#{d.id}</span>
+                        {d.ai_generated && <span style={{ marginLeft: 4, fontSize: 10.5, color: C.teal, background: "rgba(22,182,201,.18)", padding: "2px 7px", borderRadius: 7 }}>Claude AI</span>}
+                        <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+                          <button onClick={() => navigator.clipboard?.writeText(appealLetters[d.id])} style={{ fontSize: 11.5, color: "rgba(255,255,255,.75)", background: "rgba(255,255,255,.1)", border: "none", borderRadius: 7, padding: "4px 10px", cursor: "pointer", fontFamily: FONT_SANS, display: "flex", alignItems: "center", gap: 5 }}><Copy size={12} /> {t.appealCopy}</button>
+                          <button onClick={() => { const w = window.open("","_blank"); if(w){ w.document.write(`<pre style="font-family:monospace;white-space:pre-wrap;padding:32px;font-size:13px">${appealLetters[d.id]}</pre>`); w.document.close(); w.print(); }}} style={{ fontSize: 11.5, color: "rgba(255,255,255,.75)", background: "rgba(255,255,255,.1)", border: "none", borderRadius: 7, padding: "4px 10px", cursor: "pointer", fontFamily: FONT_SANS, display: "flex", alignItems: "center", gap: 5 }}><Download size={12} /> {t.appealPrint}</button>
+                        </div>
+                      </div>
+                      <pre style={{ margin: 0, padding: "14px 16px", fontSize: 12, lineHeight: 1.7, whiteSpace: "pre-wrap", fontFamily: "ui-monospace,monospace", color: C.txt, maxHeight: 320, overflow: "auto" }}>{appealLetters[d.id]}</pre>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

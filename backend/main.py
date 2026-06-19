@@ -262,6 +262,17 @@ async def analyze_claim(
     return result
 
 
+@app.post("/api/appeal")
+async def generate_appeal(
+    body: dict,
+    user: dict = Depends(get_current_user),
+):
+    denial = body.get("denial", {})
+    lang   = body.get("lang", "en")
+    letter = ai.appeal_letter(denial, lang)
+    return {"letter": letter}
+
+
 # ── BAA endpoints ─────────────────────────────────────────────────────────────
 
 @app.get("/api/baa/status")
