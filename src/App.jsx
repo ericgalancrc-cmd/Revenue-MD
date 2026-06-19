@@ -118,7 +118,7 @@ const T = {
     intakeTitle: "Bring in claims & records", intakeSub: "Import claims from your billing system, or scan a medical record. Everything gets scrubbed before submission.",
     tabImport: "Import claims", tabScan: "Scan record",
     importSub: "Pull claims from any billing company — upload a CSV export and RevenueMD scrubs it before submission.",
-    fileImport: "File import", fileImportD: "Upload a CSV export. Works with every vendor today.",
+    fileImport: "File import", fileImportD: "Upload a CSV export or PDF. Works with every vendor today.",
     apiConnect: "Direct connection", apiConnectD: "Auto-sync via the vendor's API. Requires a data-sharing agreement.",
     available: "Available now", roadmap: "On the roadmap", connect: "Connect", importBtn: "Import a claim file",
     importedOk: "Imported & ready to scrub", importedFrom: "from", viewImported: "Open in claim workspace",
@@ -300,7 +300,7 @@ const T = {
     intakeTitle: "Trae reclamos y expedientes", intakeSub: "Importa reclamos desde tu sistema de facturación, o escanea un expediente. Todo se revisa antes de someter.",
     tabImport: "Importar reclamos", tabScan: "Escanear expediente",
     importSub: "Importa reclamos de cualquier compañía de facturación — sube un CSV y RevenueMD lo revisa antes de someter.",
-    fileImport: "Importar archivo", fileImportD: "Sube un CSV. Funciona con todos los proveedores hoy.",
+    fileImport: "Importar archivo", fileImportD: "Sube un CSV o PDF. Funciona con todos los proveedores hoy.",
     apiConnect: "Conexión directa", apiConnectD: "Sincroniza vía la API del proveedor. Requiere acuerdo de datos.",
     available: "Disponible ahora", roadmap: "En el plan", connect: "Conectar", importBtn: "Importar un archivo de reclamos",
     importedOk: "Importado y listo para revisar", importedFrom: "desde", viewImported: "Abrir en el área de reclamos",
@@ -1533,6 +1533,11 @@ export default function App({ auth0 = null }) {
   const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
   const handleCSVFile = (file) => {
     if (!file) return;
+    if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+      setIntakeTab("scan");
+      addRealFile(file);
+      return;
+    }
     if (file.size > MAX_UPLOAD_BYTES) { setCsvResult({ error: true, name: file.name, sizeErr: true }); return; }
     if (!baaConfirmed) { setBaaModalFile({ file, target: "csv" }); return; }
     setCsvImporting(true); setCsvResult(null);
@@ -1989,10 +1994,10 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft; }}
                     onMouseLeave={(e) => { if (!csvDrag) { e.currentTarget.style.borderColor = C.tealMute; e.currentTarget.style.background = C.paper2; } }}
                   >
-                    <input id="csv-input" type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={(e) => handleCSVFile(e.target.files[0])} />
+                    <input id="csv-input" type="file" accept=".csv,.txt,.pdf" style={{ display: "none" }} onChange={(e) => handleCSVFile(e.target.files[0])} />
                     <div style={{ width: 52, height: 52, borderRadius: 14, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}><Upload size={24} color={C.teal} /></div>
                     <div style={{ fontSize: 15, fontWeight: 500 }}>{lang === "en" ? "Drop your claims file here" : "Suelta tu archivo de reclamos aquí"}</div>
-                    <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 4 }}>{lang === "en" ? "CSV — columns: id, patient, codes, payer, provider, dos, billed, status, risk" : "CSV — columnas: id, patient, codes, payer, provider, dos, billed, status, risk"}</div>
+                    <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 4 }}>{lang === "en" ? "CSV or PDF · CSV columns: id, patient, codes, payer, provider, dos, billed, status, risk" : "CSV o PDF · columnas CSV: id, patient, codes, payer, provider, dos, billed, status, risk"}</div>
                     <button className="btnp" style={{ ...btnP, marginTop: 14 }} onClick={(e) => { e.stopPropagation(); document.getElementById("csv-input").click(); }}><Upload size={15} /> {lang === "en" ? "Browse file" : "Buscar archivo"}</button>
                   </div>
 
