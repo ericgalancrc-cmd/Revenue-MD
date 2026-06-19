@@ -75,7 +75,7 @@ const T = {
     learnCmsTitle: "CMS & Federal references", learnPrTitle: "Puerto Rico — payer & ASES resources",
     learnOpen: "Open", learnVerify: "Verify before production use",
     batchTitle: "Batch queue", batchSub: "Import one file, work many claims. We scrub and triage every claim so your attention goes where it matters.",
-    batchDrop: "Import a batch file", batchDropSub: "EDI 837 (hundreds of claims) or CSV — try a sample of 42", batchLoad: "Load sample batch", batchReading: "Reading 837 · scrubbing 42 claims · triaging…",
+    batchDrop: "Import a batch file", batchDropSub: "CSV — try a sample of 42 claims", batchLoad: "Load sample batch", batchReading: "Reading and scrubbing 42 claims · triaging…",
     bImported: "Imported", bAutoClear: "Auto-clear", bNeedAtt: "Need attention", bAtRisk: "$ at risk",
     bSelected: "selected", bApprove: "Approve selected", bAssign: "Assign", bExport: "Export",
     bLaneHint: "Tap a lane to select all in it", bNeedsWork: "Needs work", bQuickReview: "Quick review",
@@ -117,12 +117,12 @@ const T = {
     footer: "HIPAA-aware · AI is decision support only · a human approves every claim",
     intakeTitle: "Bring in claims & records", intakeSub: "Import claims from your billing system, or scan a medical record. Everything gets scrubbed before submission.",
     tabImport: "Import claims", tabScan: "Scan record",
-    importSub: "Pull claims from any billing company — we read the standard EDI 837 file every system exports, plus CSV.",
-    fileImport: "File import", fileImportD: "Upload an EDI 837 or CSV export. Works with every vendor today.",
+    importSub: "Pull claims from any billing company — upload a CSV export and RevenueMD scrubs it before submission.",
+    fileImport: "File import", fileImportD: "Upload a CSV export. Works with every vendor today.",
     apiConnect: "Direct connection", apiConnectD: "Auto-sync via the vendor's API. Requires a data-sharing agreement.",
     available: "Available now", roadmap: "On the roadmap", connect: "Connect", importBtn: "Import a claim file",
     importedOk: "Imported & ready to scrub", importedFrom: "from", viewImported: "Open in claim workspace",
-    howWorks: "How it flows", flow1: "Export an 837/CSV from your billing system", flow2: "RevenueMD reads & normalizes the claim", flow3: "Rules engine + AI scrub it for denials", flow4: "Send the clean claim on to your clearinghouse",
+    howWorks: "How it flows", flow1: "Export a CSV from your billing system", flow2: "RevenueMD reads & normalizes the claim", flow3: "Rules engine + AI scrub it for denials", flow4: "Send the clean claim on to your clearinghouse",
     importNote: "RevenueMD sits before your clearinghouse (e.g. Inmediata) — it scrubs claims, it does not submit them.",
     drop: "Drop a record or click to browse", dropSub: "PDF · JPG · PNG — up to 25 MB", loadSample: "Try a sample record",
     scanning: "Reading codes…", extracted: "Extracted billing data", confidence: "OCR confidence", language: "Language",
@@ -136,7 +136,7 @@ const T = {
     verifyBanner: "rules need verification against current manuals before production use",
     disclaimerT: "Not legal advice", disclaimer: "Items marked 'verify first' are placeholders modeled on common patterns and must be confirmed against current ASES and payer manuals by a certified PR coder. Nothing here constitutes legal or compliance advice.",
     helpBtn: "How to use", helpTitle: "How to use RevenueMD", helpSub: "Your complete guide — from importing claims to sending clean ones to your clearinghouse.", helpClose: "Close",
-    helpStep1T: "Import your claims", helpStep1D: "Go to Intake → Import claims. Click your billing system card (Assertus, Inmediata, Practice Fusion, or Any EDI 837 file). Upload the 837 file you exported from that system.",
+    helpStep1T: "Import your claims", helpStep1D: "Go to Intake → Import claims. Click your billing system card (Assertus, Inmediata, or Practice Fusion). Export a CSV from that system and upload it here.",
     helpStep2T: "Review the Batch Queue", helpStep2D: "All your claims land in the Batch Queue, sorted by risk level. Start with the red 'Needs work' lane — those have errors most likely to get a claim denied.",
     helpStep3T: "Fix, approve & export", helpStep3D: "Open any flagged claim, read the AI's suggested fixes, approve the clean ones, and export the scrubbed file back to your clearinghouse.",
     helpLanesT: "The three triage lanes",
@@ -257,7 +257,7 @@ const T = {
     learnCmsTitle: "CMS y referencias federales", learnPrTitle: "Puerto Rico — recursos de pagadores y ASES",
     learnOpen: "Abrir", learnVerify: "Verificar antes de uso en producción",
     batchTitle: "Cola por lote", batchSub: "Importa un archivo, trabaja muchos reclamos. Revisamos y clasificamos cada uno para que tu atención vaya donde importa.",
-    batchDrop: "Importar un archivo de lote", batchDropSub: "EDI 837 (cientos de reclamos) o CSV — prueba una muestra de 42", batchLoad: "Cargar lote de muestra", batchReading: "Leyendo 837 · revisando 42 reclamos · clasificando…",
+    batchDrop: "Importar un archivo de lote", batchDropSub: "CSV — prueba una muestra de 42 reclamos", batchLoad: "Cargar lote de muestra", batchReading: "Leyendo y revisando 42 reclamos · clasificando…",
     bImported: "Importados", bAutoClear: "Auto-aprobables", bNeedAtt: "Requieren atención", bAtRisk: "$ en riesgo",
     bSelected: "seleccionados", bApprove: "Aprobar selección", bAssign: "Asignar", bExport: "Exportar",
     bLaneHint: "Toca un carril para seleccionar todo", bNeedsWork: "Requiere trabajo", bQuickReview: "Revisión rápida",
@@ -299,12 +299,12 @@ const T = {
     footer: "Compatible con HIPAA · IA solo apoya decisiones · un humano aprueba cada reclamo",
     intakeTitle: "Trae reclamos y expedientes", intakeSub: "Importa reclamos desde tu sistema de facturación, o escanea un expediente. Todo se revisa antes de someter.",
     tabImport: "Importar reclamos", tabScan: "Escanear expediente",
-    importSub: "Importa reclamos de cualquier compañía de facturación — leemos el archivo estándar EDI 837 que todo sistema exporta, además de CSV.",
-    fileImport: "Importar archivo", fileImportD: "Sube un EDI 837 o CSV. Funciona con todos los proveedores hoy.",
+    importSub: "Importa reclamos de cualquier compañía de facturación — sube un CSV y RevenueMD lo revisa antes de someter.",
+    fileImport: "Importar archivo", fileImportD: "Sube un CSV. Funciona con todos los proveedores hoy.",
     apiConnect: "Conexión directa", apiConnectD: "Sincroniza vía la API del proveedor. Requiere acuerdo de datos.",
     available: "Disponible ahora", roadmap: "En el plan", connect: "Conectar", importBtn: "Importar un archivo de reclamos",
     importedOk: "Importado y listo para revisar", importedFrom: "desde", viewImported: "Abrir en el área de reclamos",
-    howWorks: "Cómo fluye", flow1: "Exporta un 837/CSV de tu sistema", flow2: "RevenueMD lee y normaliza el reclamo", flow3: "El motor de reglas + IA lo revisan", flow4: "Envía el reclamo limpio a tu clearinghouse",
+    howWorks: "Cómo fluye", flow1: "Exporta un CSV de tu sistema de facturación", flow2: "RevenueMD lee y normaliza el reclamo", flow3: "El motor de reglas + IA lo revisan", flow4: "Envía el reclamo limpio a tu clearinghouse",
     importNote: "RevenueMD va antes de tu clearinghouse (ej. Inmediata) — revisa los reclamos, no los somete.",
     scanRecord: "Escanear expediente",
     drop: "Suelta un expediente o haz clic", dropSub: "PDF · JPG · PNG — hasta 25 MB", loadSample: "Probar expediente de muestra",
@@ -319,7 +319,7 @@ const T = {
     verifyBanner: "reglas necesitan verificación contra manuales vigentes antes de producción",
     disclaimerT: "No es asesoría legal", disclaimer: "Los elementos 'verificar' son marcadores basados en patrones comunes y deben confirmarse contra los manuales vigentes de ASES y pagadores por un codificador certificado de PR. Nada aquí constituye asesoría legal o de cumplimiento.",
     helpBtn: "Cómo usar", helpTitle: "Cómo usar RevenueMD", helpSub: "Tu guía completa — desde importar reclamos hasta enviar los limpios a tu clearinghouse.", helpClose: "Cerrar",
-    helpStep1T: "Importa tus reclamos", helpStep1D: "Ve a Recepción → Importar reclamos. Haz clic en tu sistema de facturación (Assertus, Inmediata, Practice Fusion o Cualquier EDI 837). Sube el archivo 837 que exportaste de ese sistema.",
+    helpStep1T: "Importa tus reclamos", helpStep1D: "Ve a Recepción → Importar reclamos. Haz clic en tu sistema de facturación (Assertus, Inmediata o Practice Fusion). Exporta un CSV de ese sistema y súbelo aquí.",
     helpStep2T: "Revisa la Cola por lote", helpStep2D: "Todos tus reclamos llegan a la Cola por lote, ordenados por riesgo. Comienza con el carril rojo 'Requiere trabajo' — esos tienen errores que pueden causar una denegación.",
     helpStep3T: "Corrige, aprueba y exporta", helpStep3D: "Abre cualquier reclamo marcado, revisa las correcciones de la IA, aprueba los limpios y exporta el archivo revisado a tu clearinghouse.",
     helpLanesT: "Los tres carriles de clasificación",
@@ -754,7 +754,6 @@ const IMPORT_SOURCES = [
   { id: "inmediata", name: "Inmediata", sub: "PR clearinghouse", icon: Building2 },
   { id: "assertus", name: "Assertus", sub: "PR billing / RCM", icon: Building },
   { id: "practice_fusion", name: "Practice Fusion", sub: "EHR / PM", icon: Stethoscope },
-  { id: "edi837", name: "Any EDI 837 file", sub: "National standard", icon: FileText },
 ];
 const API_SOURCES = [
   { name: "Inmediata API" }, { name: "Assertus API" }, { name: "Practice Fusion API" },
@@ -1090,7 +1089,7 @@ function LegalModal({ type, lang, onClose }) {
         title: "Privacy Policy", updated: "Last updated: May 28, 2026",
         sections: [
           { h: "1. Overview", p: "RevenueMD is a pre-submission medical claim scrubbing platform for healthcare providers in Puerto Rico. We take the privacy of protected health information (PHI) and personally identifiable information (PII) seriously. This policy explains what we collect, how we use it, and how we protect it." },
-          { h: "2. Information We Collect", p: "We collect: (a) Account information you provide at registration — name, email, organization. (b) PHI contained in EDI 837 files you upload — patient names, dates of service, diagnosis codes, provider identifiers. (c) Usage data such as log timestamps and feature interactions, which never include raw PHI." },
+          { h: "2. Information We Collect", p: "We collect: (a) Account information you provide at registration — name, email, organization. (b) PHI contained in CSV claim files you upload — patient names, dates of service, diagnosis codes, provider identifiers. (c) Usage data such as log timestamps and feature interactions, which never include raw PHI." },
           { h: "3. How We Use Your Information", p: "PHI is used exclusively to perform claim scrubbing and compliance analysis, and to display results to authorized users in your organization. We do not sell, share, or use PHI for marketing, analytics, or any purpose beyond the services you contracted." },
           { h: "4. HIPAA Business Associate Agreement (BAA)", p: "RevenueMD operates as a HIPAA Business Associate. Before processing real patient data, your organization must execute a signed BAA with RevenueMD. Operating without a BAA is a HIPAA violation. Contact legal@revenuemdpr.com to request a BAA." },
           { h: "5. Data Security", p: "DEMO MODE: The current version of RevenueMD runs as a browser-based demonstration. No PHI is transmitted to or stored on any server in this mode — all data exists only in your browser's memory and is discarded when you close the tab. In a production deployment connected to RevenueMD's backend, all PHI fields are encrypted at rest (AES-256), data in transit is protected by TLS 1.2 or higher, access is controlled by server-enforced role-based authentication with MFA, and tamper-evident audit logs are maintained for all PHI access events. A signed Business Associate Agreement (BAA) is required before any real patient data may be processed." },
@@ -1103,7 +1102,7 @@ function LegalModal({ type, lang, onClose }) {
         title: "Política de Privacidad", updated: "Última actualización: 28 de mayo de 2026",
         sections: [
           { h: "1. Visión general", p: "RevenueMD es una plataforma de revisión previa de reclamos médicos para proveedores de salud en Puerto Rico. Nos tomamos en serio la privacidad de la información de salud protegida (PHI) y la información personalmente identificable (PII). Esta política explica qué recopilamos, cómo lo usamos y cómo lo protegemos." },
-          { h: "2. Información que recopilamos", p: "Recopilamos: (a) Información de cuenta al registrarse — nombre, correo, organización. (b) PHI en archivos EDI 837 que cargue — nombres de pacientes, fechas de servicio, códigos de diagnóstico, identificadores de proveedores. (c) Datos de uso como marcas de tiempo, que nunca incluyen PHI directa." },
+          { h: "2. Información que recopilamos", p: "Recopilamos: (a) Información de cuenta al registrarse — nombre, correo, organización. (b) PHI en archivos CSV que cargue — nombres de pacientes, fechas de servicio, códigos de diagnóstico, identificadores de proveedores. (c) Datos de uso como marcas de tiempo, que nunca incluyen PHI directa." },
           { h: "3. Cómo usamos su información", p: "La PHI se usa exclusivamente para realizar la revisión de reclamos y análisis de cumplimiento, y para mostrar resultados a usuarios autorizados. No vendemos, compartimos ni usamos PHI para mercadeo, analítica ni ningún propósito más allá de los servicios contratados." },
           { h: "4. Acuerdo de Asociado de Negocio HIPAA (BAA)", p: "RevenueMD opera como Asociado de Negocio bajo HIPAA. Antes de procesar datos reales de pacientes, su organización debe firmar un BAA con RevenueMD. Operar sin BAA es una violación de HIPAA. Contacte legal@revenuemdpr.com para solicitar un BAA." },
           { h: "5. Seguridad de datos", p: "MODO DEMO: La versión actual de RevenueMD funciona como una demostración en el navegador. Ningún PHI se transmite ni almacena en ningún servidor en este modo — todos los datos existen solo en la memoria de su navegador y se descartan al cerrar la pestaña. En un despliegue de producción conectado al backend de RevenueMD, todos los campos de PHI están encriptados en reposo (AES-256), los datos en tránsito están protegidos por TLS 1.2 o superior, el acceso está controlado por autenticación basada en roles con MFA aplicada por el servidor, y se mantienen registros de auditoría a prueba de manipulaciones para todos los eventos de acceso a PHI. Se requiere un Acuerdo de Asociado de Negocio (BAA) firmado antes de que se pueda procesar cualquier dato real de pacientes." },
@@ -1118,7 +1117,7 @@ function LegalModal({ type, lang, onClose }) {
         title: "Terms of Use", updated: "Last updated: May 28, 2026",
         sections: [
           { h: "1. Acceptance of Terms", p: "By accessing or using RevenueMD, you agree to these Terms of Use and our Privacy Policy. If you do not agree, do not use the Service. These terms apply to all users — coders/billers and managers — at subscribing organizations." },
-          { h: "2. Service Description", p: "RevenueMD analyzes EDI 837 claim files for payer-specific rule violations, documentation gaps, and coding errors before claims are sent to a clearinghouse. RevenueMD does NOT submit claims to payers or clearinghouses — that remains your organization's responsibility." },
+          { h: "2. Service Description", p: "RevenueMD analyzes claim files for payer-specific rule violations, documentation gaps, and coding errors before claims are sent to a clearinghouse. RevenueMD does NOT submit claims to payers or clearinghouses — that remains your organization's responsibility." },
           { h: "3. Authorized Use Only", p: "The Service is licensed to healthcare provider organizations in Puerto Rico. You must be an authorized representative or employee of a subscribing organization. Sharing credentials, reverse engineering, or reselling the Service is prohibited." },
           { h: "4. HIPAA Compliance Obligations", p: "You agree to execute a BAA with RevenueMD before uploading real patient data. You are responsible for ensuring your use complies with HIPAA, HITECH, PR Act 194-2000, and all applicable federal and Puerto Rico healthcare regulations." },
           { h: "5. AI & Rules Engine Disclaimer", p: "RevenueMD's AI and rules engine provide decision support only. All claims must be reviewed and approved by a licensed human professional before submission. RevenueMD is not responsible for denied claims or audit findings arising from reliance on automated outputs without human review." },
@@ -1131,7 +1130,7 @@ function LegalModal({ type, lang, onClose }) {
         title: "Términos de Uso", updated: "Última actualización: 28 de mayo de 2026",
         sections: [
           { h: "1. Aceptación de términos", p: "Al acceder o usar RevenueMD, usted acepta estos Términos de Uso y nuestra Política de Privacidad. Si no está de acuerdo, no use el Servicio. Estos términos aplican a todos los usuarios — codificadores, facturadores y gerentes." },
-          { h: "2. Descripción del servicio", p: "RevenueMD analiza archivos EDI 837 en busca de violaciones de reglas del pagador, brechas de documentación y errores de codificación antes de enviar al clearinghouse. RevenueMD NO somete reclamos a pagadores ni clearinghouses — esa responsabilidad permanece en su organización." },
+          { h: "2. Descripción del servicio", p: "RevenueMD analiza archivos de reclamos en busca de violaciones de reglas del pagador, brechas de documentación y errores de codificación antes de enviar al clearinghouse. RevenueMD NO somete reclamos a pagadores ni clearinghouses — esa responsabilidad permanece en su organización." },
           { h: "3. Uso autorizado únicamente", p: "El Servicio está licenciado a organizaciones proveedoras de salud en Puerto Rico. Debe ser representante o empleado autorizado de una organización suscriptora. Compartir credenciales, realizar ingeniería inversa o revender el Servicio está prohibido." },
           { h: "4. Obligaciones de cumplimiento HIPAA", p: "Usted acepta firmar un BAA con RevenueMD antes de cargar datos reales de pacientes. Es responsable de garantizar que su uso cumpla con HIPAA, HITECH, la Ley 194-2000 de PR y todas las regulaciones aplicables." },
           { h: "5. Descargo sobre IA y motor de reglas", p: "La IA y el motor de reglas de RevenueMD son herramientas de apoyo a decisiones únicamente. Todos los reclamos deben ser revisados y aprobados por un profesional humano con licencia antes de someterlos. RevenueMD no es responsable por reclamos denegados o hallazgos de auditoría derivados de confiar en salidas automatizadas sin revisión humana." },
@@ -1990,10 +1989,10 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft; }}
                     onMouseLeave={(e) => { if (!csvDrag) { e.currentTarget.style.borderColor = C.tealMute; e.currentTarget.style.background = C.paper2; } }}
                   >
-                    <input id="csv-input" type="file" accept=".csv,.txt,.edi,.837" style={{ display: "none" }} onChange={(e) => handleCSVFile(e.target.files[0])} />
+                    <input id="csv-input" type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={(e) => handleCSVFile(e.target.files[0])} />
                     <div style={{ width: 52, height: 52, borderRadius: 14, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}><Upload size={24} color={C.teal} /></div>
                     <div style={{ fontSize: 15, fontWeight: 500 }}>{lang === "en" ? "Drop your claims file here" : "Suelta tu archivo de reclamos aquí"}</div>
-                    <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 4 }}>{lang === "en" ? "CSV · EDI 837 — columns: id, patient, codes, payer, provider, dos, billed, status, risk" : "CSV · EDI 837 — columnas: id, patient, codes, payer, provider, dos, billed, status, risk"}</div>
+                    <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 4 }}>{lang === "en" ? "CSV — columns: id, patient, codes, payer, provider, dos, billed, status, risk" : "CSV — columnas: id, patient, codes, payer, provider, dos, billed, status, risk"}</div>
                     <button className="btnp" style={{ ...btnP, marginTop: 14 }} onClick={(e) => { e.stopPropagation(); document.getElementById("csv-input").click(); }}><Upload size={15} /> {lang === "en" ? "Browse file" : "Buscar archivo"}</button>
                   </div>
 
@@ -2625,15 +2624,15 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
               <div>
                 <Head title={t.batchTitle} sub={t.batchSub} />
                 {/* hidden file input — triggers when API_URL is set */}
-                <input ref={batchFileRef} type="file" accept=".edi,.837,.txt,.csv" style={{ display: "none" }} onChange={(e) => uploadBatchFile(e.target.files?.[0])} />
+                <input ref={batchFileRef} type="file" accept=".csv,.txt" style={{ display: "none" }} onChange={(e) => uploadBatchFile(e.target.files?.[0])} />
                 {!batchLoaded ? (
                   <div className="rise">
                     {!batchReading ? (
                       <div onClick={loadBatch} style={{ border: `2px dashed ${C.tealMute}`, background: C.paper2, borderRadius: 18, padding: "44px 24px", textAlign: "center", cursor: "pointer", transition: "all .2s" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.tealMute; e.currentTarget.style.background = C.paper2; }}>
                         <div style={{ width: 60, height: 60, borderRadius: 16, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}><Layers size={30} color={C.teal} /></div>
-                        <div style={{ fontSize: 16, fontWeight: 500 }}>{API_URL ? (lang === "en" ? "Upload an EDI 837 batch file" : "Subir un archivo EDI 837 de lote") : t.batchDrop}</div>
+                        <div style={{ fontSize: 16, fontWeight: 500 }}>{API_URL ? (lang === "en" ? "Upload a CSV batch file" : "Subir un archivo CSV de lote") : t.batchDrop}</div>
                         <div style={{ fontSize: 13, color: C.txt2, marginTop: 5 }}>{t.batchDropSub}</div>
-                        <button className="btnp" style={{ ...btnP, marginTop: 18 }}><Upload size={15} /> {API_URL ? (lang === "en" ? "Select 837 file" : "Seleccionar archivo 837") : t.batchLoad}</button>
+                        <button className="btnp" style={{ ...btnP, marginTop: 18 }}><Upload size={15} /> {API_URL ? (lang === "en" ? "Select CSV file" : "Seleccionar archivo CSV") : t.batchLoad}</button>
                         {!API_URL && <div style={{ marginTop: 10, fontSize: 11.5, color: C.txt3 }}>{lang === "en" ? "No VITE_API_URL set — loading sample data" : "Sin VITE_API_URL — cargando datos de muestra"}</div>}
                       </div>
                     ) : (
