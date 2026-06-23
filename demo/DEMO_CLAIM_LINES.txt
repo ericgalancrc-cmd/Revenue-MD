@@ -1,0 +1,49 @@
+=========================================================
+  DEMO CLAIM LINES — Copy & Paste into Smart Entry Zone 2
+=========================================================
+
+Patient:    Demo, Patient A.
+Provider:   Dr. María E. González, MD  |  NPI: 1457823690
+Payer:      ASES / Mi Salud — Plan Vital
+Date of Service: 06/20/2026
+Place of Service: 02 (Telehealth)
+
+---------------------------------------------------------
+CPT      ICD-10    Modifier  Units   Billed Amount
+---------------------------------------------------------
+90837    F32.1     GT        1       $175.00
+99213    F41.1     25        1       $125.00
+---------------------------------------------------------
+
+Total Billed: $300.00
+
+=========================================================
+WHAT TO EXPECT when you scrub this:
+=========================================================
+
+The platform will flag TWO issues:
+
+1. Modifier GT (telehealth) — ASES / Plan Vital require
+   explicit telehealth platform documentation on file.
+   The note says Doxy.me was used — that must be in the
+   claim record too.
+
+2. Modifier 25 with psych (90837 + 99213-25) — when an
+   E&M is billed same day as psychotherapy, it must be
+   documented as separate and medically distinct.
+   The clinical note does document this correctly
+   (see Plan section) — the biller just needs to confirm
+   it's captured in the claim.
+
+HOW TO TEST:
+  1. Open RevenueMD → Intake → Smart Entry tab
+  2. Zone 1: Upload DEMO_CLINICAL_NOTE.html (or print
+     it to PDF first from your browser)
+  3. Zone 2: Copy the two lines below and paste them
+
+---- PASTE THESE TWO LINES INTO ZONE 2 ----------------
+
+90837  F32.1  GT  1  $175.00
+99213  F41.1  25  1  $125.00
+
+--------------------------------------------------------

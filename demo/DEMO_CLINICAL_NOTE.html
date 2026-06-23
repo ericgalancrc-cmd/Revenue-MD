@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Clinical Progress Note — Demo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Times New Roman", Times, serif; font-size: 11pt; color: #1a1a1a; background: #fff; padding: 32px 48px; max-width: 760px; margin: 0 auto; }
+  h1 { font-size: 13pt; font-weight: bold; text-align: center; letter-spacing: .04em; margin-bottom: 2px; }
+  .sub { font-size: 10pt; text-align: center; color: #444; margin-bottom: 16px; }
+  hr { border: none; border-top: 1.5px solid #1a1a1a; margin: 10px 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; margin: 10px 0; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px 16px; margin: 10px 0; }
+  .field { font-size: 10.5pt; }
+  .label { font-weight: bold; font-size: 9.5pt; text-transform: uppercase; letter-spacing: .05em; }
+  .section { margin: 14px 0 6px; }
+  .section-title { font-weight: bold; font-size: 11pt; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #888; padding-bottom: 2px; margin-bottom: 6px; }
+  p { font-size: 10.5pt; line-height: 1.65; margin-bottom: 6px; }
+  .sig-area { margin-top: 32px; display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .sig-line { border-top: 1px solid #333; padding-top: 4px; font-size: 10pt; }
+  .watermark { text-align: center; font-size: 9pt; color: #aaa; margin-top: 28px; border-top: 1px dashed #ccc; padding-top: 8px; letter-spacing: .05em; }
+  .dx-table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 10.5pt; }
+  .dx-table td, .dx-table th { border: 1px solid #ccc; padding: 4px 8px; }
+  .dx-table th { background: #f0f0f0; font-weight: bold; font-size: 9.5pt; text-transform: uppercase; }
+  @media print { body { padding: 16px 32px; } }
+</style>
+</head>
+<body>
+
+<h1>CENTRO DE SALUD CONDUCTUAL DEL SUR</h1>
+<div class="sub">Behavioral Health Progress Note &nbsp;·&nbsp; Confidential — HIPAA Protected</div>
+<div class="sub">Calle Betances 204, Ponce, Puerto Rico 00730 &nbsp;·&nbsp; Tel: (787) 555-0192 &nbsp;·&nbsp; NPI: 1457823690</div>
+<hr />
+
+<!-- Patient Header -->
+<div class="grid3" style="margin-top:10px;">
+  <div><span class="label">Patient:</span><br /><span class="field">Demo, Patient A.</span></div>
+  <div><span class="label">DOB:</span><br /><span class="field">03/14/1985 (Age 41)</span></div>
+  <div><span class="label">MRN:</span><br /><span class="field">PR-2024-00847</span></div>
+</div>
+<div class="grid3">
+  <div><span class="label">Date of Service:</span><br /><span class="field">06/20/2026</span></div>
+  <div><span class="label">Visit Type:</span><br /><span class="field">Telehealth (Video)</span></div>
+  <div><span class="label">POS:</span><br /><span class="field">02 — Telehealth</span></div>
+</div>
+<div class="grid3">
+  <div><span class="label">Rendering Provider:</span><br /><span class="field">Dr. María E. González, MD</span></div>
+  <div><span class="label">Provider NPI:</span><br /><span class="field">1457823690</span></div>
+  <div><span class="label">Payer / Plan:</span><br /><span class="field">ASES / Mi Salud — Plan Vital</span></div>
+</div>
+<div class="grid2">
+  <div><span class="label">Authorization #:</span><br /><span class="field" style="color:#c00;">NOT ON FILE — Pending verification</span></div>
+  <div><span class="label">Telehealth Consent Signed:</span><br /><span class="field">Yes — on file 04/10/2026</span></div>
+</div>
+<hr />
+
+<!-- Diagnoses -->
+<div class="section">
+  <div class="section-title">Diagnoses</div>
+  <table class="dx-table">
+    <tr><th>#</th><th>ICD-10-CM Code</th><th>Description</th><th>Type</th></tr>
+    <tr><td>1</td><td><strong>F32.1</strong></td><td>Major depressive disorder, single episode, moderate</td><td>Primary</td></tr>
+    <tr><td>2</td><td><strong>F41.1</strong></td><td>Generalized anxiety disorder</td><td>Secondary</td></tr>
+  </table>
+</div>
+
+<!-- Subjective -->
+<div class="section">
+  <div class="section-title">S — Subjective</div>
+  <p>Patient presents via secure video telehealth platform (Doxy.me) for follow-up individual psychotherapy. Patient reports persistent low mood over the past two weeks, difficulty concentrating at work, and early morning awakening approximately 3–4 times per week. Denies suicidal ideation, homicidal ideation, or active hallucinations. Reports mild improvement in anxiety symptoms since last session.</p>
+  <p>Patient states: <em>"I feel a little better about the anxiety but the sadness is still there in the mornings."</em> Social support remains limited; patient lives alone and reports minimal contact with family in Ponce.</p>
+</div>
+
+<!-- Objective -->
+<div class="section">
+  <div class="section-title">O — Objective</div>
+  <p><strong>Mental Status Exam:</strong> Alert and oriented ×4. Appearance appropriate; grooming adequate via video. Speech: normal rate and rhythm. Mood: "sad." Affect: constricted, somewhat reactive. Thought process: linear and goal-directed. Thought content: no delusions. Perception: denies AH/VH. Cognition: intact to interview. Insight: fair. Judgment: fair. Impulse control: adequate.</p>
+  <p><strong>PHQ-9 score:</strong> 14 (Moderate depression — documented in chart).</p>
+  <p><strong>GAD-7 score:</strong> 9 (Mild–moderate anxiety — documented in chart).</p>
+</div>
+
+<!-- Assessment -->
+<div class="section">
+  <div class="section-title">A — Assessment</div>
+  <p>Patient continues to meet diagnostic criteria for <strong>Major Depressive Disorder, Single Episode, Moderate (F32.1)</strong> and <strong>Generalized Anxiety Disorder (F41.1)</strong>. Partial response to psychotherapy. PHQ-9 improved from 17 at intake to 14 today. GAD-7 stable. Ongoing psychosocial stressors (employment, social isolation) contributing to symptom persistence.</p>
+</div>
+
+<!-- Plan -->
+<div class="section">
+  <div class="section-title">P — Plan</div>
+  <p>1. Continue weekly individual psychotherapy using Cognitive Behavioral Therapy (CBT) techniques, focusing on behavioral activation and worry management protocols.</p>
+  <p>2. Medication management review conducted today: current SSRI (Escitalopram 10 mg QD) dosage adequate; no changes made. Patient tolerating medication well with no reported side effects.</p>
+  <p>3. Referral to group therapy discussed — patient receptive, will consider for next cycle.</p>
+  <p>4. Safety plan reviewed; patient has active safety plan on file. No acute risk identified.</p>
+  <p>5. Return for follow-up in one week. Authorization renewal to be initiated by billing office prior to next visit.</p>
+  <p><strong>Time spent in psychotherapy:</strong> 60 minutes (55 minutes face-to-face therapeutic contact + 5 minutes documentation). More than 50% of encounter dedicated to psychotherapy.</p>
+  <p><strong>Medical decision-making (E&amp;M):</strong> Moderate complexity. Two chronic conditions reviewed, medication reconciliation performed, one prescription reviewed. Independently documented and medically necessary, separate from the psychotherapy service (Modifier 25 applies).</p>
+</div>
+
+<!-- Signature -->
+<div class="sig-area">
+  <div>
+    <div class="sig-line">Electronically signed: Dr. María E. González, MD</div>
+    <div style="font-size:9.5pt;color:#555;margin-top:2px;">Psychiatrist · License PR-MED-08821 · NPI 1457823690</div>
+  </div>
+  <div>
+    <div class="sig-line">Date &amp; Time: 06/20/2026 — 14:32 AST</div>
+    <div style="font-size:9.5pt;color:#555;margin-top:2px;">Signed via EHR — RevenueMD Demo System</div>
+  </div>
+</div>
+
+<div class="watermark">DEMO RECORD — FOR TESTING PURPOSES ONLY — NOT A REAL PATIENT RECORD — RevenueMD Pre-Submission Intelligence</div>
+
+</body>
+</html>
