@@ -120,6 +120,7 @@ const T = {
     patternTitle: "Denial pattern detected",
     sendTitle: "Send to clearinghouse", sendConfirm: "Confirm & send to Inmediata", sendSending: "Sending…", sendSent: "Submitted ✓", sendPayer: "Clearinghouse",
     deleteClaim: "Remove claim", deleteConfirmTitle: "Remove this claim?", deleteConfirmBody: "This will remove claim", deleteConfirmBody2: "from the platform. This cannot be undone.", deleteConfirmBtn: "Yes, remove it", deleteCancel: "Keep claim",
+    selectModeBtn: "Select", cancelSelect: "Cancel", selectAll: "Select all", deselectAll: "Deselect all", deleteSelected: "Delete selected", selectedCount: "selected",
     appealGenLoading: "Generating appeal letter with Claude AI…", appealCopy: "Copy letter", appealPrint: "Print",
     footer: "HIPAA-aware · AI is decision support only · a human approves every claim",
     intakeTitle: "Bring in claims & records", intakeSub: "Import claims from your billing system, or scan a medical record. Everything gets scrubbed before submission.",
@@ -320,6 +321,7 @@ const T = {
     patternTitle: "Patrón de denegación detectado",
     sendTitle: "Enviar al clearinghouse", sendConfirm: "Confirmar y enviar a Inmediata", sendSending: "Enviando…", sendSent: "Enviado ✓", sendPayer: "Clearinghouse",
     deleteClaim: "Eliminar reclamo", deleteConfirmTitle: "¿Eliminar este reclamo?", deleteConfirmBody: "Esto eliminará el reclamo", deleteConfirmBody2: "de la plataforma. No se puede deshacer.", deleteConfirmBtn: "Sí, eliminarlo", deleteCancel: "Mantener reclamo",
+    selectModeBtn: "Seleccionar", cancelSelect: "Cancelar", selectAll: "Seleccionar todo", deselectAll: "Deseleccionar todo", deleteSelected: "Eliminar selección", selectedCount: "seleccionados",
     appealGenLoading: "Generando carta de apelación con Claude AI…", appealCopy: "Copiar carta", appealPrint: "Imprimir",
     footer: "Compatible con HIPAA · IA solo apoya decisiones · un humano aprueba cada reclamo",
     intakeTitle: "Trae reclamos y expedientes", intakeSub: "Importa reclamos desde tu sistema de facturación, o escanea un expediente. Todo se revisa antes de someter.",
@@ -1446,6 +1448,9 @@ export default function App({ auth0 = null }) {
   const [submitModal, setSubmitModal] = useState(null);
   const [submissions, setSubmissions] = useState({});
   const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [deleteSelectedConfirm, setDeleteSelectedConfirm] = useState(false);
   const [compTab, setCompTab] = useState("billing");
   const [files, setFiles] = useState([]);
   const [selFile, setSelFile] = useState(null);
@@ -1765,6 +1770,21 @@ export default function App({ auth0 = null }) {
     setDeleteConfirm(null);
   };
 
+  const deleteSelectedClaims = () => {
+    setClaims(p => p.filter(c => !selectedIds.has(c.id)));
+    setSelectedIds(new Set());
+    setSelectMode(false);
+    setDeleteSelectedConfirm(false);
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   const addSmartToQueue = () => {
     if (!smartResult) return;
     const now = new Date();
@@ -2061,6 +2081,23 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
       {helpOpen && <HelpModal t={t} lang={lang} onClose={() => setHelpOpen(false)} />}
       {legalModal && <LegalModal type={legalModal} lang={lang} onClose={() => setLegalModal(null)} />}
       {notifOpen && <NotifPanel t={t} lang={lang} role={role} onClose={() => setNotifOpen(false)} patternAlerts={patternAlerts} />}
+      {deleteSelectedConfirm && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(16,36,92,.65)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(3px)" }}>
+          <div className="rise" style={{ background: C.paper2, borderRadius: 20, padding: 28, width: "100%", maxWidth: 380, boxShadow: "0 32px 80px -16px rgba(16,36,92,.35)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <div style={{ width: 42, height: 42, borderRadius: 12, background: "#fdf0ef", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Trash2 size={20} color="#C0392B" /></div>
+              <div><div style={{ fontFamily: FONT_DISPLAY, fontSize: 17, fontWeight: 500 }}>{t.deleteConfirmTitle}</div><div style={{ fontSize: 12.5, color: C.txt2 }}>{selectedIds.size} {t.selectedCount}</div></div>
+              <button onClick={() => setDeleteSelectedConfirm(false)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: C.txt3 }}><X size={18} /></button>
+            </div>
+            <div style={{ background: C.paper, borderRadius: 12, padding: 14, marginBottom: 20, fontSize: 13, color: C.txt2, lineHeight: 1.6 }}>
+              {lang === "en" ? `This will permanently remove ${selectedIds.size} claim${selectedIds.size !== 1 ? "s" : ""} from the platform. This cannot be undone.` : `Esto eliminará ${selectedIds.size} reclamo${selectedIds.size !== 1 ? "s" : ""} de la plataforma. No se puede deshacer.`}
+            </div>
+            <button onClick={deleteSelectedClaims} style={{ width: "100%", padding: "11px 0", borderRadius: 11, border: "none", background: "#C0392B", color: "#fff", fontWeight: 600, fontSize: 13.5, cursor: "pointer", marginBottom: 9, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Trash2 size={15} /> {t.deleteConfirmBtn}</button>
+            <button onClick={() => setDeleteSelectedConfirm(false)} style={{ ...btnG, width: "100%", justifyContent: "center" }}>{t.deleteCancel}</button>
+          </div>
+        </div>
+      )}
+
       {deleteConfirm && (() => {
         const dc = claims.find(x => x.id === deleteConfirm);
         return (
@@ -2625,8 +2662,16 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
           {/* CLAIMS LIST */}
           {tab === "claims" && !openClaim && (() => {
             const PAYER_COLOR = { "ASES / Mi Salud": C.teal, "Plan Vital": C.teal, "Triple-S": C.blue, "MMM": "#7C3AED", "MCS": "#D97706" };
-            const claimCard = (c, i, hidePayerBadge) => (
-              <div key={c.id} className="lift rise" style={{ animationDelay: `${i * 0.05}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 14, padding: "15px 18px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer" }} onClick={() => setOpenClaim(c.id)}>
+            const claimCard = (c, i, hidePayerBadge) => {
+              const isSelected = selectedIds.has(c.id);
+              return (
+              <div key={c.id} className="lift rise" style={{ animationDelay: `${i * 0.05}s`, background: isSelected ? C.tealSoft : C.paper2, border: `1.5px solid ${isSelected ? C.teal : C.line}`, borderRadius: 14, padding: "15px 18px", display: "flex", alignItems: "center", gap: 16, cursor: "pointer", transition: "border-color .15s, background .15s" }} onClick={() => selectMode ? toggleSelect(c.id) : setOpenClaim(c.id)}>
+                {/* Selection circle */}
+                {selectMode && (
+                  <div style={{ width: 24, height: 24, borderRadius: "50%", border: `2px solid ${isSelected ? C.teal : C.line}`, background: isSelected ? C.teal : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all .15s" }}>
+                    {isSelected && <CheckCircle2 size={14} color="#fff" strokeWidth={3} />}
+                  </div>
+                )}
                 <div style={{ width: 42, height: 42, borderRadius: 11, background: rbg(c.risk), display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><FileText size={19} color={rc(c.risk)} /></div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 9, flexWrap: "wrap" }}>
@@ -2642,16 +2687,18 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                   <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 3 }}>{c.codes} · {c.provider} · {c.dos}</div>
                 </div>
                 <RiskPill r={c.risk} big t={t} />
-                <button onClick={e => { e.stopPropagation(); setDeleteConfirm(c.id); }} title={t.deleteClaim} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px", borderRadius: 8, color: C.txt3, display: "flex", alignItems: "center", flexShrink: 0, transition: "color .15s, background .15s" }} onMouseEnter={e => { e.currentTarget.style.color = "#C0392B"; e.currentTarget.style.background = "#fdf0ef"; }} onMouseLeave={e => { e.currentTarget.style.color = C.txt3; e.currentTarget.style.background = "none"; }}><Trash2 size={15} /></button>
-                <ChevronRight size={18} color={C.txt3} />
+                {!selectMode && <button onClick={e => { e.stopPropagation(); setDeleteConfirm(c.id); }} title={t.deleteClaim} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px", borderRadius: 8, color: C.txt3, display: "flex", alignItems: "center", flexShrink: 0, transition: "color .15s, background .15s" }} onMouseEnter={e => { e.currentTarget.style.color = "#C0392B"; e.currentTarget.style.background = "#fdf0ef"; }} onMouseLeave={e => { e.currentTarget.style.color = C.txt3; e.currentTarget.style.background = "none"; }}><Trash2 size={15} /></button>}
+                {!selectMode && <ChevronRight size={18} color={C.txt3} />}
               </div>
-            );
+              );
+            };
             const groupedPayers = Array.from(new Set(filtered.map(c => c.payer))).sort();
             return (
               <div>
                 <div className="rise" style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
                   <div style={{ position: "relative", flex: 1, minWidth: 220 }}><Search size={16} color={C.txt3} style={{ position: "absolute", left: 14, top: 13 }} /><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} style={{ ...inp, paddingLeft: 40, marginBottom: 0 }} /></div>
                   <button onClick={() => setGroupByPayer(g => !g)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 16px", borderRadius: 10, border: `1.5px solid ${groupByPayer ? C.ink : C.line}`, background: groupByPayer ? C.ink : "transparent", color: groupByPayer ? "#fff" : C.txt2, fontSize: 13, fontWeight: groupByPayer ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}><Layers size={15} /> {t.groupByPayer}</button>
+                  <button onClick={() => { setSelectMode(s => !s); setSelectedIds(new Set()); }} style={{ display: "flex", alignItems: "center", gap: 7, padding: "10px 16px", borderRadius: 10, border: `1.5px solid ${selectMode ? C.red : C.line}`, background: selectMode ? "#fdf0ef" : "transparent", color: selectMode ? "#C0392B" : C.txt2, fontSize: 13, fontWeight: selectMode ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}>{selectMode ? <><X size={14} /> {t.cancelSelect}</> : <><CheckSquare size={15} /> {t.selectModeBtn}</>}</button>
                 </div>
                 <div className="rise" style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap", animationDelay: ".05s" }}>
                   {[["all", t.all], ["high", t.highRisk], ["pending", t.pending], ["denied", t.denied]].map(([k, l]) => <button key={k} className="chip" onClick={() => setFilter(k)} style={{ fontSize: 12.5, padding: "7px 15px", borderRadius: 20, cursor: "pointer", border: `1px solid ${filter === k ? C.ink : C.line}`, background: filter === k ? C.ink : C.paper2, color: filter === k ? "#fff" : C.txt2, fontWeight: filter === k ? 500 : 400 }}>{l}</button>)}
@@ -2668,6 +2715,14 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                         </button>
                       );
                     })}
+                  </div>
+                )}
+                {/* Select-all bar — only visible in select mode */}
+                {selectMode && filtered.length > 0 && (
+                  <div className="rise" style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, padding: "9px 14px", background: C.tealSoft, borderRadius: 10, border: `1px solid ${C.teal}` }}>
+                    <span style={{ fontSize: 13, color: C.tealDk, fontWeight: 500 }}>{selectedIds.size} {t.selectedCount}</span>
+                    <button onClick={() => setSelectedIds(new Set(filtered.map(c => c.id)))} style={{ fontSize: 12.5, color: C.tealDk, background: "none", border: "none", cursor: "pointer", fontWeight: 600, padding: "2px 8px" }}>{t.selectAll}</button>
+                    {selectedIds.size > 0 && <button onClick={() => setSelectedIds(new Set())} style={{ fontSize: 12.5, color: C.txt3, background: "none", border: "none", cursor: "pointer", padding: "2px 8px" }}>{t.deselectAll}</button>}
                   </div>
                 )}
                 {filtered.length === 0 && (
@@ -2704,9 +2759,20 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                     {filtered.map((c, i) => claimCard(c, i, false))}
                   </div>
                 )}
+                {/* Extra bottom padding so floating bar doesn't cover last card */}
+                {selectMode && selectedIds.size > 0 && <div style={{ height: 72 }} />}
               </div>
             );
           })()}
+
+          {/* Floating multi-delete action bar */}
+          {selectMode && selectedIds.size > 0 && tab === "claims" && !openClaim && (
+            <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 900, display: "flex", alignItems: "center", gap: 10, background: C.ink, borderRadius: 16, padding: "12px 18px", boxShadow: "0 8px 32px -8px rgba(0,0,0,.45)", animation: "rise .25s ease both" }}>
+              <span style={{ fontSize: 13.5, fontWeight: 600, color: "#fff" }}>{selectedIds.size} {t.selectedCount}</span>
+              <button onClick={() => setDeleteSelectedConfirm(true)} style={{ display: "flex", alignItems: "center", gap: 7, background: "#C0392B", color: "#fff", border: "none", borderRadius: 10, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}><Trash2 size={14} /> {t.deleteSelected}</button>
+              <button onClick={() => { setSelectMode(false); setSelectedIds(new Set()); }} style={{ background: "rgba(255,255,255,.12)", color: "rgba(255,255,255,.8)", border: "none", borderRadius: 10, padding: "8px 14px", fontSize: 13, cursor: "pointer" }}>{t.cancelSelect}</button>
+            </div>
+          )}
 
           {/* CLAIM DETAIL */}
           {tab === "claims" && openClaim && (() => {
