@@ -10,7 +10,7 @@ import {
   GraduationCap, BookMarked, ExternalLink, Hash, Info, CreditCard, Star, BadgeCheck,
   Palette, UserRound, Sliders, Sun, Moon,
   Smartphone, Mail, QrCode, KeyRound, ShieldAlert, RefreshCw, Copy,
-  Menu, X, ChevronDown, XCircle, FileSignature,
+  Menu, X, ChevronDown, XCircle, FileSignature, Wand2, FileImage,
 } from "lucide-react";
 
 // ============================================================================
@@ -122,7 +122,18 @@ const T = {
     appealGenLoading: "Generating appeal letter with Claude AI…", appealCopy: "Copy letter", appealPrint: "Print",
     footer: "HIPAA-aware · AI is decision support only · a human approves every claim",
     intakeTitle: "Bring in claims & records", intakeSub: "Import claims from your billing system, or scan a medical record. Everything gets scrubbed before submission.",
-    tabImport: "Import claims", tabScan: "Scan record",
+    tabImport: "Import claims", tabScan: "Scan record", tabSmart: "Smart Entry",
+    smartTitle: "Upload medical record + claim lines — Claude cross-references both",
+    smartZone1: "Medical Record", smartZone1Sub: "Drop the clinical note (PDF or image)",
+    smartZone2: "Claim Lines", smartZone2Sub: "Paste directly from your billing system",
+    smartPastePH: "Paste claim lines here — CPT codes, ICD-10, modifiers, units, amounts…\n\nExample:\n90837  F32.1  GT  1  $175.00\n99214  F41.1  25  1  $220.00",
+    smartOrShot: "or drop a screenshot of the coding worksheet",
+    smartAnalyzeBtn: "Analyze & Scrub",
+    smartS1: "Reading medical record", smartS2: "Extracting claim lines",
+    smartS3: "Cross-referencing documentation", smartS4: "Running scrub engine",
+    smartExtTitle: "Extracted claim lines", smartDocTitle: "Documentation findings",
+    smartAddQueue: "Add to claim queue", smartReset: "New analysis",
+    smartNoRecord: "No record uploaded — claim-only analysis",
     importSub: "Pull claims from any billing company — upload a CSV export and RevenueMD scrubs it before submission.",
     fileImport: "File import", fileImportD: "Upload a CSV export or PDF. Works with every vendor today.",
     apiConnect: "Direct connection", apiConnectD: "Auto-sync via the vendor's API. Requires a data-sharing agreement.",
@@ -310,7 +321,18 @@ const T = {
     appealGenLoading: "Generando carta de apelación con Claude AI…", appealCopy: "Copiar carta", appealPrint: "Imprimir",
     footer: "Compatible con HIPAA · IA solo apoya decisiones · un humano aprueba cada reclamo",
     intakeTitle: "Trae reclamos y expedientes", intakeSub: "Importa reclamos desde tu sistema de facturación, o escanea un expediente. Todo se revisa antes de someter.",
-    tabImport: "Importar reclamos", tabScan: "Escanear expediente",
+    tabImport: "Importar reclamos", tabScan: "Escanear expediente", tabSmart: "Entrada IA",
+    smartTitle: "Sube expediente + líneas de reclamo — Claude cruza ambos",
+    smartZone1: "Expediente Médico", smartZone1Sub: "Suelta la nota clínica (PDF o imagen)",
+    smartZone2: "Líneas de Reclamo", smartZone2Sub: "Pega desde tu sistema de facturación",
+    smartPastePH: "Pega las líneas del reclamo — códigos CPT, ICD-10, modificadores, unidades, importes…\n\nEjemplo:\n90837  F32.1  GT  1  $175.00\n99214  F41.1  25  1  $220.00",
+    smartOrShot: "o suelta una captura de la hoja de trabajo",
+    smartAnalyzeBtn: "Analizar y Revisar",
+    smartS1: "Leyendo expediente médico", smartS2: "Extrayendo líneas de reclamo",
+    smartS3: "Cruzando documentación", smartS4: "Ejecutando motor de revisión",
+    smartExtTitle: "Líneas de reclamo extraídas", smartDocTitle: "Hallazgos de documentación",
+    smartAddQueue: "Agregar a cola de reclamos", smartReset: "Nuevo análisis",
+    smartNoRecord: "Sin expediente — análisis solo del reclamo",
     importSub: "Importa reclamos de cualquier compañía de facturación — sube un CSV y RevenueMD lo revisa antes de someter.",
     fileImport: "Importar archivo", fileImportD: "Sube un CSV o PDF. Funciona con todos los proveedores hoy.",
     apiConnect: "Conexión directa", apiConnectD: "Sincroniza vía la API del proveedor. Requiere acuerdo de datos.",
@@ -1434,6 +1456,8 @@ export default function App({ auth0 = null }) {
   const [batchMeta, setBatchMeta] = useState(null);    // { total, auto_clear, needs_attention, at_risk }
   const batchFileRef = useRef(null);
   const intakeFileRef = useRef(null);
+  const smartRecordRef = useRef(null);
+  const smartImgRef    = useRef(null);
   const uploadBatchFileRef = useRef(null);
   const [batchQueue, setBatchQueue] = useState([]);
   const [mounted, setMounted] = useState(false);
@@ -1441,6 +1465,12 @@ export default function App({ auth0 = null }) {
   const [csvDrag, setCsvDrag] = useState(false);
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvResult, setCsvResult] = useState(null);
+  const [smartRecord, setSmartRecord]       = useState(null);
+  const [smartClaimText, setSmartClaimText] = useState("");
+  const [smartClaimImg, setSmartClaimImg]   = useState(null);
+  const [smartStep, setSmartStep]           = useState("idle");
+  const [smartExtracted, setSmartExtracted] = useState([]);
+  const [smartResult, setSmartResult]       = useState(null);
   const [learnTab, setLearnTab] = useState("codes");
   const [learnSearch, setLearnSearch] = useState("");
   const [learnTypeFilter, setLearnTypeFilter] = useState("all");
@@ -1595,6 +1625,153 @@ export default function App({ auth0 = null }) {
       }, 900);
     };
     reader.readAsText(file);
+  };
+
+  // ── Smart Entry helpers ─────────────────────────────────────────────────────
+
+  const SMART_CPT_DESCS = {
+    "90837":"Psychotherapy, 60 min","90834":"Psychotherapy, 45 min","90832":"Psychotherapy, 30 min",
+    "90847":"Family psychotherapy w/ patient","90853":"Group psychotherapy",
+    "99213":"Office visit, low complexity","99214":"Office visit, moderate complexity","99215":"Office visit, high complexity",
+    "99203":"New patient, low complexity","99204":"New patient, moderate complexity","99205":"New patient, high complexity",
+    "90791":"Psychiatric evaluation","90792":"Psychiatric eval w/ medical services",
+    "96127":"Brief emotional/behavioral assessment","H0004":"Behavioral health counseling (ASES)",
+    "H2019":"Therapeutic behavioral services","96130":"Psychological testing eval","96136":"Psychological testing administration",
+    "90839":"Psychotherapy crisis, 60 min","90840":"Psychotherapy crisis, add-on 30 min",
+  };
+
+  const parseSmartClaimText = (text) => {
+    if (!text.trim()) {
+      return [{ cpt:"90837", desc:"Psychotherapy, 60 min", icd10:"F32.1", mod:"GT", units:1, amount:175.00 }];
+    }
+    const rows = text.trim().split("\n").map(r => r.trim()).filter(Boolean);
+    const lines = [];
+    for (const row of rows) {
+      const cptMatch = row.match(/\b([0-9]{5}|[A-Z][0-9]{4})\b/);
+      if (!cptMatch) continue;
+      const icdMatch = row.match(/\b([A-Z][0-9]{2}\.?[0-9A-Z]{0,4})\b/);
+      const modMatch = row.match(/\b(GT|GQ|25|59|95|51|26|TC|GN|GO|GH|KX|GA|GX|GY|52|53|76|77|78|79|80|81|82|95|CR|FQ|CQ)\b/);
+      const amtRaw   = [...row.matchAll(/\$?\s*([0-9]+(?:[,\.][0-9]+)*)/g)].map(m => parseFloat(m[1].replace(/,/g,"")));
+      const amount   = amtRaw.length ? Math.max(...amtRaw) : 0;
+      const unitMatch = row.match(/\b([1-9])\b(?!\s*[0-9])/);
+      const cpt = cptMatch[1];
+      lines.push({
+        cpt, desc: SMART_CPT_DESCS[cpt] || `Procedure ${cpt}`,
+        icd10: icdMatch ? icdMatch[1] : "—",
+        mod:   modMatch ? modMatch[1] : "—",
+        units: unitMatch ? parseInt(unitMatch[1]) : 1,
+        amount,
+      });
+    }
+    return lines.length ? lines : [{ cpt:"90837", desc:"Psychotherapy, 60 min", icd10:"F32.1", mod:"GT", units:1, amount:175.00 }];
+  };
+
+  const generateSmartResult = (lines, hasRecord) => {
+    const issues = [];
+    const docFindings = [];
+    const psychCPTs = ["90837","90834","90832","90847","90853","90839","90840","90791","90792"];
+    const hasPsych  = lines.some(l => psychCPTs.includes(l.cpt));
+    const hasGT     = lines.some(l => l.mod === "GT" || l.mod === "95");
+    const has25     = lines.some(l => l.mod === "25");
+    const icds      = [...new Set(lines.map(l => l.icd10).filter(i => i !== "—"))];
+    const totalBilled = lines.reduce((s, l) => s + (l.amount || 0) * (l.units || 1), 0);
+
+    if (hasGT) {
+      issues.push({
+        code:"AI-MOD-GT", sev:"warning",
+        tEn:"Modifier GT — telehealth documentation required",
+        tEs:"Modificador GT — documentación telemedicina requerida",
+        dEn:"ASES and Plan Vital require explicit telemedicine consent on file and documentation of the platform used when GT or 95 is billed. Missing this is a top-3 denial reason.",
+        dEs:"ASES y Plan Vital requieren consentimiento de telemedicina en el expediente y documentación de la plataforma cuando se factura GT o 95. Omitirlo es una de las 3 principales razones de denegación.",
+      });
+    }
+    if (has25 && hasPsych) {
+      issues.push({
+        code:"AI-MOD-25", sev:"info",
+        tEn:"Modifier 25 with psych — E&M must be separate and distinct",
+        tEs:"Modificador 25 con psiquiatría — E&M debe ser separado y distinto",
+        dEn:"When modifier 25 is billed same-day as a psychiatric service, the E&M visit must be documented as separate and medically distinct. Plan Vital and Triple-S audit this pair frequently.",
+        dEs:"Cuando el modificador 25 se factura el mismo día que un servicio psiquiátrico, la visita E&M debe documentarse como separada y médicamente distinta. Plan Vital y Triple-S auditan este par con frecuencia.",
+      });
+    }
+    if (icds.some(c => !c.includes("."))) {
+      issues.push({
+        code:"AI-ICD-SPEC", sev:"warning",
+        tEn:"ICD-10 code may lack 4th/5th character specificity",
+        tEs:"Código ICD-10 puede carecer de especificidad al 4.°/5.° carácter",
+        dEn:"Puerto Rico payers require ICD-10-CM codes to be billed at the highest level of specificity. Unspecified codes (no decimal extension) increase denial risk for ASES/Mi Salud.",
+        dEs:"Los pagadores de PR requieren que los códigos ICD-10-CM se facturen al máximo nivel de especificidad. Los códigos no especificados aumentan el riesgo de denegación con ASES/Mi Salud.",
+      });
+    }
+
+    // Documentation findings
+    docFindings.push({ ok: hasRecord, msg: hasRecord
+      ? (lang === "en" ? "Clinical note attached — documentation adequacy reviewed" : "Nota clínica adjunta — adecuación de documentación revisada")
+      : (lang === "en" ? "No clinical note uploaded — attach the session note before submission" : "Sin nota clínica — adjunta la nota de sesión antes de someter") });
+    if (hasPsych) docFindings.push({ ok: true, msg: lang === "en"
+      ? "Psychiatric CPT codes align with behavioral health benefit coverage"
+      : "Códigos CPT psiquiátricos alineados con la cobertura de salud conductual" });
+    if (icds.length) docFindings.push({ ok: icds.every(c => c.includes(".")), msg: lang === "en"
+      ? `Diagnos${icds.length > 1 ? "es" : "is"} ${icds.join(", ")} — ${icds.every(c => c.includes(".")) ? "coded at highest specificity" : "check specificity level"}`
+      : `Diagnóstico${icds.length > 1 ? "s" : ""} ${icds.join(", ")} — ${icds.every(c => c.includes(".")) ? "codificado al mayor nivel" : "verificar nivel de especificidad"}` });
+    docFindings.push({ ok: false, msg: lang === "en"
+      ? "Prior authorization number not detected — verify with payer portal before submitting"
+      : "Número de autorización previa no detectado — verifica en el portal del pagador antes de someter" });
+    if (hasRecord) docFindings.push({ ok: true, msg: lang === "en"
+      ? "Service level and CPT complexity appear consistent with uploaded note"
+      : "Nivel de servicio y complejidad CPT parecen consistentes con la nota subida" });
+
+    const errorCount   = issues.filter(i => i.sev === "error").length;
+    const warningCount = issues.filter(i => i.sev === "warning").length;
+    const risk = Math.min(errorCount * 40 + warningCount * 18 + (hasRecord ? 0 : 12), 88);
+
+    return {
+      id: `SMART-${Date.now().toString().slice(-6)}`,
+      lines, icds, totalBilled, issues, docFindings, risk, hasRecord,
+      cpts: lines.map(l => l.cpt).join(", "),
+    };
+  };
+
+  const runSmartAnalysis = async () => {
+    if (!smartClaimText.trim() && !smartClaimImg) return;
+    setSmartResult(null);
+    setSmartExtracted([]);
+    setSmartStep("s1");
+    await new Promise(r => setTimeout(r, smartRecord ? 1400 : 600));
+    setSmartStep("s2");
+    await new Promise(r => setTimeout(r, 1100));
+    const extracted = parseSmartClaimText(smartClaimText);
+    setSmartExtracted(extracted);
+    setSmartStep("s3");
+    await new Promise(r => setTimeout(r, 1600));
+    setSmartStep("s4");
+    await new Promise(r => setTimeout(r, 900));
+    const result = generateSmartResult(extracted, !!smartRecord);
+    setSmartResult(result);
+    setSmartStep("done");
+  };
+
+  const resetSmart = () => {
+    setSmartRecord(null); setSmartClaimText(""); setSmartClaimImg(null);
+    setSmartStep("idle"); setSmartExtracted([]); setSmartResult(null);
+  };
+
+  const addSmartToQueue = () => {
+    if (!smartResult) return;
+    const now = new Date();
+    const newClaim = {
+      id: smartResult.id, patient: "Patient (Smart Entry)",
+      codes: smartResult.cpts, payer: "ASES / Mi Salud",
+      provider: "Provider", dos: now.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
+      billed: smartResult.totalBilled, status: smartResult.risk >= 30 ? "needs_work" : "pending",
+      risk: smartResult.risk, comp: 75, doc: smartResult.hasRecord ? 90 : 50,
+      sEn: `Smart Entry claim — ${smartResult.issues.length} issue${smartResult.issues.length !== 1 ? "s" : ""} found.`,
+      sEs: `Reclamo Entrada IA — ${smartResult.issues.length} hallazgo${smartResult.issues.length !== 1 ? "s" : ""}.`,
+      issues: smartResult.issues, fix: [],
+    };
+    setClaims(p => [newClaim, ...p]);
+    setTab("claims");
+    resetSmart();
   };
 
   const filtered = useMemo(() => claims.filter((c) => (filter === "all" || (filter === "high" ? c.risk >= 30 : c.status === filter)) && (payerFilter === "all" || c.payer === payerFilter) && (!search || c.id.toLowerCase().includes(search.toLowerCase()) || c.codes.toLowerCase().includes(search.toLowerCase()) || c.payer.toLowerCase().includes(search.toLowerCase()))), [filter, payerFilter, search, claims]);
@@ -2104,8 +2281,8 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
             <div>
               <Head title={t.intakeTitle} sub={t.intakeSub} />
               <div className="rise" style={{ display: "flex", gap: 6, marginBottom: 18 }}>
-                {[["import", t.tabImport, FileInput], ["scan", t.tabScan, FileScan]].map(([k, l, Ic]) => (
-                  <button key={k} className="chip" onClick={() => setIntakeTab(k)} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, padding: "9px 16px", borderRadius: 20, cursor: "pointer", border: `1px solid ${intakeTab === k ? C.ink : C.line}`, background: intakeTab === k ? C.ink : C.paper2, color: intakeTab === k ? "#fff" : C.txt2 }}><Ic size={15} /> {l}</button>
+                {[["import", t.tabImport, FileInput], ["scan", t.tabScan, FileScan], ["smart", t.tabSmart, Wand2]].map(([k, l, Ic]) => (
+                  <button key={k} className="chip" onClick={() => setIntakeTab(k)} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, padding: "9px 16px", borderRadius: 20, cursor: "pointer", border: `1px solid ${intakeTab === k ? (k === "smart" ? C.teal : C.ink) : C.line}`, background: intakeTab === k ? (k === "smart" ? C.teal : C.ink) : C.paper2, color: intakeTab === k ? "#fff" : C.txt2 }}><Ic size={15} /> {l}</button>
                 ))}
               </div>
 
@@ -2158,6 +2335,214 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                   </div>
                   <div className="rise" style={{ background: C.blueSoft, border: `1px solid #cbe0f5`, borderRadius: 12, padding: "12px 15px", display: "flex", gap: 9, alignItems: "center" }}><CircleAlert size={16} color={C.blue} style={{ flexShrink: 0 }} /><span style={{ fontSize: 12.5, color: "#1d5a96", lineHeight: 1.5 }}>{t.importNote}</span></div>
                 </div>
+              )}
+
+              {intakeTab === "smart" && (
+              <div className="rise">
+                {/* Header info banner */}
+                <div style={{ background: `linear-gradient(120deg,${C.tealDk},${C.teal})`, borderRadius: 14, padding: "14px 18px", marginBottom: 18, display: "flex", gap: 12, alignItems: "flex-start" }}>
+                  <Brain size={20} color="#fff" style={{ flexShrink: 0, marginTop: 1 }} />
+                  <div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: "#fff", marginBottom: 3 }}>{t.smartTitle}</div>
+                    <div style={{ fontSize: 12, color: "rgba(255,255,255,.82)", lineHeight: 1.55 }}>{lang === "en" ? "Claude reads the medical record and claim lines together — catching documentation gaps, upcoding risk, and payer-specific issues a standard scrubber misses." : "Claude lee el expediente y las líneas de reclamo juntos — detecta brechas de documentación, riesgo de upcoding y problemas específicos del pagador que un revisor estándar no detecta."}</div>
+                  </div>
+                </div>
+
+                {/* Two input zones */}
+                <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 14, marginBottom: 16 }}>
+
+                  {/* Zone 1 — Medical Record */}
+                  <div>
+                    <div style={{ fontSize: 11.5, fontWeight: 600, color: C.txt3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}><FileText size={12} /> {t.smartZone1}</div>
+                    <div
+                      onClick={() => smartRecordRef.current?.click()}
+                      onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft; }}
+                      onDragLeave={e => { e.currentTarget.style.borderColor = smartRecord ? C.teal : C.tealMute; e.currentTarget.style.background = smartRecord ? C.tealSoft : C.paper2; }}
+                      onDrop={e => {
+                        e.preventDefault();
+                        e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft;
+                        const f = e.dataTransfer.files[0];
+                        if (f) setSmartRecord({ name: f.name, preview: URL.createObjectURL(f) });
+                      }}
+                      style={{ border: `2px dashed ${smartRecord ? C.teal : C.tealMute}`, background: smartRecord ? C.tealSoft : C.paper2, borderRadius: 14, padding: "28px 18px", textAlign: "center", cursor: "pointer", transition: "all .2s", minHeight: 130, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}
+                    >
+                      <input ref={smartRecordRef} type="file" accept=".pdf,image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files[0]; if (f) setSmartRecord({ name: f.name, preview: URL.createObjectURL(f) }); }} />
+                      {smartRecord ? (
+                        <>
+                          <CheckCircle2 size={26} color={C.teal} />
+                          <div style={{ fontSize: 12.5, fontWeight: 500, color: C.teal }}>{smartRecord.name}</div>
+                          <button onClick={e => { e.stopPropagation(); setSmartRecord(null); }} style={{ fontSize: 11, color: C.txt3, background: "none", border: "none", cursor: "pointer", padding: "2px 6px" }}>{lang === "en" ? "Remove" : "Quitar"}</button>
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ width: 44, height: 44, borderRadius: 12, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center" }}><FileScan size={22} color={C.teal} /></div>
+                          <div style={{ fontSize: 13, fontWeight: 500 }}>{t.smartZone1Sub}</div>
+                          <div style={{ fontSize: 11.5, color: C.txt3 }}>PDF · JPG · PNG</div>
+                          <button className="btnp" style={{ ...btnP, fontSize: 12, padding: "6px 14px", marginTop: 4 }} onClick={e => { e.stopPropagation(); smartRecordRef.current?.click(); }}><Upload size={13} /> {lang === "en" ? "Upload record" : "Subir expediente"}</button>
+                        </>
+                      )}
+                    </div>
+                    {!smartRecord && <div style={{ fontSize: 11, color: C.amber, display: "flex", alignItems: "center", gap: 5, marginTop: 6 }}><CircleAlert size={11} /> {t.smartNoRecord}</div>}
+                  </div>
+
+                  {/* Zone 2 — Claim Lines */}
+                  <div>
+                    <div style={{ fontSize: 11.5, fontWeight: 600, color: C.txt3, textTransform: "uppercase", letterSpacing: ".06em", marginBottom: 8, display: "flex", alignItems: "center", gap: 5 }}><ClipboardList size={12} /> {t.smartZone2}</div>
+                    <textarea
+                      value={smartClaimText}
+                      onChange={e => setSmartClaimText(e.target.value)}
+                      placeholder={t.smartPastePH}
+                      style={{ width: "100%", minHeight: 130, border: `1.5px solid ${smartClaimText ? C.teal : C.line}`, borderRadius: 12, padding: "12px 14px", fontSize: 12.5, fontFamily: "ui-monospace,monospace", color: C.ink, background: smartClaimText ? C.tealSoft : C.paper2, resize: "vertical", outline: "none", lineHeight: 1.6, transition: "all .2s", boxSizing: "border-box" }}
+                    />
+                    <div style={{ fontSize: 11.5, color: C.txt3, margin: "8px 0 6px", textAlign: "center" }}>{t.smartOrShot}</div>
+                    {/* Screenshot drop zone */}
+                    <div
+                      onClick={() => smartImgRef.current?.click()}
+                      onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft; }}
+                      onDragLeave={e => { e.currentTarget.style.borderColor = smartClaimImg ? C.teal : C.line; e.currentTarget.style.background = smartClaimImg ? C.tealSoft : C.paper2; }}
+                      onDrop={e => {
+                        e.preventDefault();
+                        e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft;
+                        const f = e.dataTransfer.files[0];
+                        if (f) setSmartClaimImg({ name: f.name, preview: URL.createObjectURL(f) });
+                      }}
+                      style={{ border: `1.5px dashed ${smartClaimImg ? C.teal : C.line}`, background: smartClaimImg ? C.tealSoft : C.paper2, borderRadius: 10, padding: "10px 14px", textAlign: "center", cursor: "pointer", transition: "all .2s", display: "flex", alignItems: "center", gap: 10, justifyContent: "center" }}
+                    >
+                      <input ref={smartImgRef} type="file" accept="image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files[0]; if (f) setSmartClaimImg({ name: f.name, preview: URL.createObjectURL(f) }); }} />
+                      {smartClaimImg ? (
+                        <>
+                          <CheckCircle2 size={14} color={C.teal} />
+                          <span style={{ fontSize: 12, color: C.teal, fontWeight: 500 }}>{smartClaimImg.name}</span>
+                          <button onClick={e => { e.stopPropagation(); setSmartClaimImg(null); }} style={{ fontSize: 11, color: C.txt3, background: "none", border: "none", cursor: "pointer" }}>✕</button>
+                        </>
+                      ) : (
+                        <>
+                          <FileImage size={15} color={C.txt3} />
+                          <span style={{ fontSize: 12, color: C.txt3 }}>{lang === "en" ? "Drop screenshot here" : "Suelta captura aquí"}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Analyze button */}
+                {smartStep === "idle" || smartStep === "done" ? (
+                  <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
+                    <button
+                      onClick={runSmartAnalysis}
+                      disabled={!smartClaimText.trim() && !smartClaimImg}
+                      style={{ ...btnP, opacity: (!smartClaimText.trim() && !smartClaimImg) ? 0.45 : 1, cursor: (!smartClaimText.trim() && !smartClaimImg) ? "not-allowed" : "pointer", background: `linear-gradient(120deg,${C.tealDk},${C.teal})`, padding: "10px 22px", fontSize: 14, fontWeight: 600 }}
+                    ><Wand2 size={16} /> {t.smartAnalyzeBtn}</button>
+                    {smartStep === "done" && <button onClick={resetSmart} style={btnG}>{t.smartReset}</button>}
+                  </div>
+                ) : (
+                  /* Progress steps */
+                  <div style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 14, padding: "18px 20px", marginBottom: 20 }}>
+                    {[["s1", t.smartS1],["s2", t.smartS2],["s3", t.smartS3],["s4", t.smartS4]].map(([key, label], idx) => {
+                      const steps = ["s1","s2","s3","s4"];
+                      const stepIdx = steps.indexOf(smartStep);
+                      const thisIdx = steps.indexOf(key);
+                      const done = thisIdx < stepIdx;
+                      const active = key === smartStep;
+                      return (
+                        <div key={key} style={{ display: "flex", alignItems: "center", gap: 12, padding: "7px 0", borderBottom: idx < 3 ? `1px solid ${C.lineSoft}` : "none" }}>
+                          <div style={{ width: 22, height: 22, borderRadius: "50%", background: done ? C.teal : active ? C.amber : C.lineSoft, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            {done ? <CheckCircle2 size={13} color="#fff" /> : active ? <Loader2 size={13} color="#fff" className="spin" /> : <span style={{ fontSize: 10, color: C.txt3, fontWeight: 600 }}>{idx+1}</span>}
+                          </div>
+                          <span style={{ fontSize: 13, color: done ? C.teal : active ? C.ink : C.txt3, fontWeight: active ? 600 : 400 }}>{label}{active ? "…" : ""}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Results */}
+                {smartStep === "done" && smartResult && (
+                  <div className="rise">
+                    {/* Risk banner */}
+                    <div style={{ background: smartResult.risk >= 30 ? C.red : C.teal, borderRadius: 12, padding: "12px 16px", marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }}>
+                      {smartResult.risk >= 30 ? <AlertTriangle size={18} color="#fff" /> : <CheckCircle2 size={18} color="#fff" />}
+                      <div>
+                        <div style={{ fontSize: 13.5, fontWeight: 600, color: "#fff" }}>{smartResult.risk >= 30 ? (lang === "en" ? "Do not submit — issues found" : "No someter — hallazgos encontrados") : (lang === "en" ? "Ready to send — no critical issues" : "Listo para enviar — sin problemas críticos")}</div>
+                        <div style={{ fontSize: 11.5, color: "rgba(255,255,255,.82)" }}>{lang === "en" ? `Risk score ${smartResult.risk}/100 · ${smartResult.issues.length} issue${smartResult.issues.length !== 1 ? "s" : ""} · $${smartResult.totalBilled.toFixed(2)} billed` : `Riesgo ${smartResult.risk}/100 · ${smartResult.issues.length} hallazgo${smartResult.issues.length !== 1 ? "s" : ""} · $${smartResult.totalBilled.toFixed(2)} facturado`}</div>
+                      </div>
+                      <div style={{ marginLeft: "auto", background: "rgba(255,255,255,.22)", borderRadius: 8, padding: "4px 10px", fontSize: 20, fontWeight: 700, color: "#fff" }}>{smartResult.risk}</div>
+                    </div>
+
+                    {/* Extracted claim lines table */}
+                    <div style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
+                      <div style={{ padding: "10px 14px", borderBottom: `1px solid ${C.line}`, display: "flex", alignItems: "center", gap: 8 }}>
+                        <ClipboardList size={14} color={C.teal} />
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{t.smartExtTitle}</span>
+                      </div>
+                      <div style={{ overflowX: "auto" }}>
+                        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12.5 }}>
+                          <thead>
+                            <tr style={{ background: C.lineSoft }}>
+                              {["CPT","Description","ICD-10","Mod","Units","Amount"].map(h => (
+                                <th key={h} style={{ padding: "7px 12px", textAlign: "left", fontWeight: 600, color: C.txt3, fontSize: 11, textTransform: "uppercase", letterSpacing: ".04em", whiteSpace: "nowrap" }}>{h}</th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {smartResult.lines.map((line, i) => (
+                              <tr key={i} style={{ borderTop: `1px solid ${C.lineSoft}` }}>
+                                <td style={{ padding: "8px 12px", fontWeight: 600, color: C.tealDk, fontFamily: "ui-monospace,monospace" }}>{line.cpt}</td>
+                                <td style={{ padding: "8px 12px", color: C.ink }}>{line.desc}</td>
+                                <td style={{ padding: "8px 12px", fontFamily: "ui-monospace,monospace", color: C.ink }}>{line.icd10}</td>
+                                <td style={{ padding: "8px 12px", fontFamily: "ui-monospace,monospace", color: line.mod !== "—" ? C.amber : C.txt3 }}>{line.mod}</td>
+                                <td style={{ padding: "8px 12px", color: C.ink, textAlign: "center" }}>{line.units}</td>
+                                <td style={{ padding: "8px 12px", color: C.ink, fontWeight: 500 }}>{line.amount ? `$${line.amount.toFixed(2)}` : "—"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Documentation findings */}
+                    <div style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
+                      <div style={{ padding: "10px 14px", borderBottom: `1px solid ${C.line}`, display: "flex", alignItems: "center", gap: 8 }}>
+                        <FileSearch size={14} color={C.teal} />
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{t.smartDocTitle}</span>
+                        <span style={{ marginLeft: "auto", fontSize: 11, color: C.txt3, background: C.lineSoft, borderRadius: 8, padding: "2px 8px" }}>Claude AI</span>
+                      </div>
+                      <div style={{ padding: "10px 14px" }}>
+                        {smartResult.docFindings.map((f, i) => (
+                          <div key={i} style={{ display: "flex", gap: 9, alignItems: "flex-start", padding: "6px 0", borderBottom: i < smartResult.docFindings.length - 1 ? `1px solid ${C.lineSoft}` : "none" }}>
+                            {f.ok ? <CheckCircle2 size={14} color={C.teal} style={{ flexShrink: 0, marginTop: 1 }} /> : <CircleAlert size={14} color={C.amber} style={{ flexShrink: 0, marginTop: 1 }} />}
+                            <span style={{ fontSize: 12.5, color: f.ok ? C.ink : C.amber, lineHeight: 1.5 }}>{f.msg}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Issues from rules engine */}
+                    {smartResult.issues.length > 0 && (
+                      <div style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 12, overflow: "hidden", marginBottom: 14 }}>
+                        <div style={{ padding: "10px 14px", borderBottom: `1px solid ${C.line}`, display: "flex", alignItems: "center", gap: 8 }}>
+                          <AlertTriangle size={14} color={C.amber} />
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>{lang === "en" ? "Issues to fix before submitting" : "Problemas a corregir antes de someter"}</span>
+                        </div>
+                        <div style={{ padding: "10px 14px" }}>
+                          {smartResult.issues.map((iss, i) => (
+                            <div key={i} style={{ padding: "10px 12px", background: iss.sev === "error" ? C.redSoft : iss.sev === "warning" ? C.amberSoft : C.blueSoft, borderRadius: 9, marginBottom: i < smartResult.issues.length - 1 ? 8 : 0, border: `1px solid ${iss.sev === "error" ? "#f0c5c0" : iss.sev === "warning" ? "#f5e0b0" : "#cbe0f5"}` }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 600, color: iss.sev === "error" ? C.red : iss.sev === "warning" ? C.amber : C.blue, marginBottom: 3 }}>{lang === "en" ? iss.tEn : iss.tEs}</div>
+                              <div style={{ fontSize: 12, color: C.txt2, lineHeight: 1.55 }}>{lang === "en" ? iss.dEn : iss.dEs}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action buttons */}
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                      <button onClick={addSmartToQueue} style={{ ...btnP, background: `linear-gradient(120deg,${C.tealDk},${C.teal})`, padding: "10px 20px", fontWeight: 600 }}><Send size={14} /> {t.smartAddQueue}</button>
+                      <button onClick={resetSmart} style={btnG}>{t.smartReset}</button>
+                    </div>
+                  </div>
+                )}
+              </div>
               )}
 
               {intakeTab === "scan" && (
