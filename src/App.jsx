@@ -1428,10 +1428,10 @@ export default function App({ auth0 = null }) {
   const winW = useWindowWidth();
   const isMobile = winW < 768;
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [lang, setLang] = useState("en");
+  const [lang, setLang] = useState(() => { try { return localStorage.getItem("rmd_lang") || "en"; } catch { return "en"; } });
   const [authed, setAuthed] = useState(false);
   const [accessToken, setAccessToken] = useState("");
-  const [role, setRole] = useState("manager");
+  const [role, setRole] = useState(() => { try { return localStorage.getItem("rmd_role") || "manager"; } catch { return "manager"; } });
   const [tab, setTab] = useState("dash");
   const [filter, setFilter] = useState("all");
   const [payerFilter, setPayerFilter] = useState("all");
@@ -1439,14 +1439,14 @@ export default function App({ auth0 = null }) {
   const [search, setSearch] = useState("");
   const [openClaim, setOpenClaim] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
-  const [analyzed, setAnalyzed] = useState({});
-  const [reviewed, setReviewed] = useState([]);
+  const [analyzed, setAnalyzed] = useState(() => { try { const s = localStorage.getItem("rmd_analyzed"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
+  const [reviewed, setReviewed] = useState(() => { try { const s = localStorage.getItem("rmd_reviewed"); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [appeal, setAppeal] = useState(null);
-  const [outcomes, setOutcomes] = useState({});
+  const [outcomes, setOutcomes] = useState(() => { try { const s = localStorage.getItem("rmd_outcomes"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
   const [appealLetters, setAppealLetters] = useState({});
   const [appealLoading, setAppealLoading] = useState(null);
   const [submitModal, setSubmitModal] = useState(null);
-  const [submissions, setSubmissions] = useState({});
+  const [submissions, setSubmissions] = useState(() => { try { const s = localStorage.getItem("rmd_submissions"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -1467,9 +1467,9 @@ export default function App({ auth0 = null }) {
   const smartRecordRef = useRef(null);
   const smartImgRef    = useRef(null);
   const uploadBatchFileRef = useRef(null);
-  const [batchQueue, setBatchQueue] = useState([]);
+  const [batchQueue, setBatchQueue] = useState(() => { try { const s = localStorage.getItem("rmd_batch_queue"); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [mounted, setMounted] = useState(false);
-  const [claims, setClaims] = useState(CLAIMS_DEMO);
+  const [claims, setClaims] = useState(() => { try { const s = localStorage.getItem("rmd_claims"); return s ? JSON.parse(s) : CLAIMS_DEMO; } catch { return CLAIMS_DEMO; } });
   const [csvDrag, setCsvDrag] = useState(false);
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvResult, setCsvResult] = useState(null);
@@ -1503,7 +1503,7 @@ export default function App({ auth0 = null }) {
   const [totpCopied, setTotpCopied] = useState(false);
   const [emailAuthStep, setEmailAuthStep] = useState("idle"); // idle | sent | enabled
   const [emailAuthCode, setEmailAuthCode] = useState("");
-  const [baaConfirmed, setBaaConfirmed] = useState(false);
+  const [baaConfirmed, setBaaConfirmed] = useState(() => { try { return localStorage.getItem("rmd_baa") === "1"; } catch { return false; } });
   const [baaModalFile, setBaaModalFile] = useState(null); // { file, target: "csv"|"batch" }
   const [TOTP_SECRET] = useState(() => {
     const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
@@ -1514,6 +1514,17 @@ export default function App({ auth0 = null }) {
   const t = T[lang];
 
   useEffect(() => { setMounted(true); }, []);
+
+  // ── Persist to localStorage ────────────────────────────────────────────────
+  useEffect(() => { try { localStorage.setItem("rmd_claims",      JSON.stringify(claims));      } catch {} }, [claims]);
+  useEffect(() => { try { localStorage.setItem("rmd_analyzed",    JSON.stringify(analyzed));    } catch {} }, [analyzed]);
+  useEffect(() => { try { localStorage.setItem("rmd_reviewed",    JSON.stringify(reviewed));    } catch {} }, [reviewed]);
+  useEffect(() => { try { localStorage.setItem("rmd_outcomes",    JSON.stringify(outcomes));    } catch {} }, [outcomes]);
+  useEffect(() => { try { localStorage.setItem("rmd_submissions", JSON.stringify(submissions)); } catch {} }, [submissions]);
+  useEffect(() => { try { localStorage.setItem("rmd_batch_queue", JSON.stringify(batchQueue));  } catch {} }, [batchQueue]);
+  useEffect(() => { try { localStorage.setItem("rmd_lang",        lang);                        } catch {} }, [lang]);
+  useEffect(() => { try { localStorage.setItem("rmd_role",        role);                        } catch {} }, [role]);
+  useEffect(() => { try { localStorage.setItem("rmd_baa",         baaConfirmed ? "1" : "0");    } catch {} }, [baaConfirmed]);
 
   // Auto-authenticate when Auth0 confirms the user is logged in, then grab an access token
   useEffect(() => {
