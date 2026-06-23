@@ -10,7 +10,7 @@ import {
   GraduationCap, BookMarked, ExternalLink, Hash, Info, CreditCard, Star, BadgeCheck,
   Palette, UserRound, Sliders, Sun, Moon,
   Smartphone, Mail, QrCode, KeyRound, ShieldAlert, RefreshCw, Copy,
-  Menu, X, ChevronDown, XCircle, FileSignature, Wand2, FileImage,
+  Menu, X, ChevronDown, XCircle, FileSignature, Wand2, FileImage, Trash2,
 } from "lucide-react";
 
 // ============================================================================
@@ -119,6 +119,7 @@ const T = {
     outcomeRecorded: "Outcome recorded",
     patternTitle: "Denial pattern detected",
     sendTitle: "Send to clearinghouse", sendConfirm: "Confirm & send to Inmediata", sendSending: "Sending…", sendSent: "Submitted ✓", sendPayer: "Clearinghouse",
+    deleteClaim: "Remove claim", deleteConfirmTitle: "Remove this claim?", deleteConfirmBody: "This will remove claim", deleteConfirmBody2: "from the platform. This cannot be undone.", deleteConfirmBtn: "Yes, remove it", deleteCancel: "Keep claim",
     appealGenLoading: "Generating appeal letter with Claude AI…", appealCopy: "Copy letter", appealPrint: "Print",
     footer: "HIPAA-aware · AI is decision support only · a human approves every claim",
     intakeTitle: "Bring in claims & records", intakeSub: "Import claims from your billing system, or scan a medical record. Everything gets scrubbed before submission.",
@@ -318,6 +319,7 @@ const T = {
     outcomeRecorded: "Resultado registrado",
     patternTitle: "Patrón de denegación detectado",
     sendTitle: "Enviar al clearinghouse", sendConfirm: "Confirmar y enviar a Inmediata", sendSending: "Enviando…", sendSent: "Enviado ✓", sendPayer: "Clearinghouse",
+    deleteClaim: "Eliminar reclamo", deleteConfirmTitle: "¿Eliminar este reclamo?", deleteConfirmBody: "Esto eliminará el reclamo", deleteConfirmBody2: "de la plataforma. No se puede deshacer.", deleteConfirmBtn: "Sí, eliminarlo", deleteCancel: "Mantener reclamo",
     appealGenLoading: "Generando carta de apelación con Claude AI…", appealCopy: "Copiar carta", appealPrint: "Imprimir",
     footer: "Compatible con HIPAA · IA solo apoya decisiones · un humano aprueba cada reclamo",
     intakeTitle: "Trae reclamos y expedientes", intakeSub: "Importa reclamos desde tu sistema de facturación, o escanea un expediente. Todo se revisa antes de someter.",
@@ -1443,6 +1445,7 @@ export default function App({ auth0 = null }) {
   const [appealLoading, setAppealLoading] = useState(null);
   const [submitModal, setSubmitModal] = useState(null);
   const [submissions, setSubmissions] = useState({});
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [compTab, setCompTab] = useState("billing");
   const [files, setFiles] = useState([]);
   const [selFile, setSelFile] = useState(null);
@@ -1756,6 +1759,12 @@ export default function App({ auth0 = null }) {
     setSmartStep("idle"); setSmartExtracted([]); setSmartResult(null);
   };
 
+  const deleteClaim = (id) => {
+    setClaims(p => p.filter(c => c.id !== id));
+    if (openClaim === id) setOpenClaim(null);
+    setDeleteConfirm(null);
+  };
+
   const addSmartToQueue = () => {
     if (!smartResult) return;
     const now = new Date();
@@ -2052,6 +2061,26 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
       {helpOpen && <HelpModal t={t} lang={lang} onClose={() => setHelpOpen(false)} />}
       {legalModal && <LegalModal type={legalModal} lang={lang} onClose={() => setLegalModal(null)} />}
       {notifOpen && <NotifPanel t={t} lang={lang} role={role} onClose={() => setNotifOpen(false)} patternAlerts={patternAlerts} />}
+      {deleteConfirm && (() => {
+        const dc = claims.find(x => x.id === deleteConfirm);
+        return (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(16,36,92,.65)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(3px)" }}>
+            <div className="rise" style={{ background: C.paper2, borderRadius: 20, padding: 28, width: "100%", maxWidth: 380, boxShadow: "0 32px 80px -16px rgba(16,36,92,.35)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                <div style={{ width: 42, height: 42, borderRadius: 12, background: "#fdf0ef", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Trash2 size={20} color="#C0392B" /></div>
+                <div><div style={{ fontFamily: FONT_DISPLAY, fontSize: 17, fontWeight: 500 }}>{t.deleteConfirmTitle}</div><div style={{ fontSize: 12.5, color: C.txt2 }}>#{dc?.id}</div></div>
+                <button onClick={() => setDeleteConfirm(null)} style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer", color: C.txt3 }}><X size={18} /></button>
+              </div>
+              <div style={{ background: C.paper, borderRadius: 12, padding: 14, marginBottom: 20, fontSize: 13, color: C.txt2, lineHeight: 1.6 }}>
+                {t.deleteConfirmBody} <strong style={{ color: C.ink }}>#{dc?.id}</strong> {t.deleteConfirmBody2}
+              </div>
+              <button onClick={() => deleteClaim(deleteConfirm)} style={{ width: "100%", padding: "11px 0", borderRadius: 11, border: "none", background: "#C0392B", color: "#fff", fontWeight: 600, fontSize: 13.5, cursor: "pointer", marginBottom: 9, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Trash2 size={15} /> {t.deleteConfirmBtn}</button>
+              <button onClick={() => setDeleteConfirm(null)} style={{ ...btnG, width: "100%", justifyContent: "center" }}>{t.deleteCancel}</button>
+            </div>
+          </div>
+        );
+      })()}
+
       {submitModal && (() => {
         const sc = claims.find(x => x.id === submitModal);
         return (
@@ -2613,6 +2642,7 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                   <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 3 }}>{c.codes} · {c.provider} · {c.dos}</div>
                 </div>
                 <RiskPill r={c.risk} big t={t} />
+                <button onClick={e => { e.stopPropagation(); setDeleteConfirm(c.id); }} title={t.deleteClaim} style={{ background: "none", border: "none", cursor: "pointer", padding: "6px", borderRadius: 8, color: C.txt3, display: "flex", alignItems: "center", flexShrink: 0, transition: "color .15s, background .15s" }} onMouseEnter={e => { e.currentTarget.style.color = "#C0392B"; e.currentTarget.style.background = "#fdf0ef"; }} onMouseLeave={e => { e.currentTarget.style.color = C.txt3; e.currentTarget.style.background = "none"; }}><Trash2 size={15} /></button>
                 <ChevronRight size={18} color={C.txt3} />
               </div>
             );
@@ -2694,6 +2724,7 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                         )
                   }
                   <button onClick={() => downloadClaimPDF(claims.find(x => x.id === openClaim))} style={{ ...(submissions[c.id] || !analyzed[c.id] || c.status === "denied" ? { marginLeft: "auto" } : {}), ...btnG, display: "flex", alignItems: "center", gap: 7 }}><Download size={14} /> {lang === "en" ? "Download PDF" : "Descargar PDF"}</button>
+                  <button onClick={() => setDeleteConfirm(c.id)} style={{ ...btnG, display: "flex", alignItems: "center", gap: 7, color: "#C0392B", borderColor: "#f0c5c0" }} onMouseEnter={e => { e.currentTarget.style.background = "#fdf0ef"; }} onMouseLeave={e => { e.currentTarget.style.background = C.paper2; }}><Trash2 size={14} /> {t.deleteClaim}</button>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 290px", gap: 18, alignItems: "start" }}>
                   <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 24 }}>
