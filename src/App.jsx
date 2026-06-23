@@ -60,7 +60,7 @@ const T = {
     tagline: "Identify denials before they happen. Code with confidence. Get paid faster.",
     email: "Work email", password: "Password", role: "Your role", signIn: "Enter platform",
     demoNote: "Demo — any credentials work", coder: "Coder / Biller", manager: "Manager",
-    nav_dash: "Overview", nav_intake: "Intake", nav_claims: "Claims", nav_analysis: "AI Analysis",
+    nav_dash: "Overview", nav_intake: "Import", nav_claims: "Claims", nav_analysis: "AI Analysis",
     nav_denials: "Denials", nav_revenue: "Revenue", nav_payers: "Payers", nav_compliance: "Compliance",
     nav_settings: "Settings", logout: "Sign out", nav_business: "Business", nav_batch: "Batch queue",
     nav_learn: "Learning Center",
@@ -123,8 +123,8 @@ const T = {
     selectModeBtn: "Select", cancelSelect: "Cancel", selectAll: "Select all", deselectAll: "Deselect all", deleteSelected: "Delete selected", selectedCount: "selected",
     appealGenLoading: "Generating appeal letter with Claude AI…", appealCopy: "Copy letter", appealPrint: "Print",
     footer: "HIPAA-aware · AI is decision support only · a human approves every claim",
-    intakeTitle: "Bring in claims & records", intakeSub: "Import claims from your billing system, or scan a medical record. Everything gets scrubbed before submission.",
-    tabImport: "Import claims", tabScan: "Scan record", tabSmart: "Smart Entry",
+    intakeTitle: "Import MR & Claim Lines", intakeSub: "Upload the medical record and enter the billed claim lines — Claude reads both and scrubs before you submit.",
+    tabImport: "Import claims", tabScan: "Scan record", tabSmart: "Import MR & Claim Lines",
     smartTitle: "Upload medical record + claim lines — Claude cross-references both",
     smartZone1: "Medical Record", smartZone1Sub: "Drop the clinical note (PDF or image)",
     smartZone2: "Claim Lines", smartZone2Sub: "Paste directly from your billing system",
@@ -261,7 +261,7 @@ const T = {
     tagline: "Detecta denegaciones antes de que ocurran. Codifica con confianza. Cobra más rápido.",
     email: "Correo de trabajo", password: "Contraseña", role: "Tu rol", signIn: "Entrar a la plataforma",
     demoNote: "Demo — cualquier credencial funciona", coder: "Codificador / Facturador", manager: "Gerente",
-    nav_dash: "Resumen", nav_intake: "Recepción", nav_claims: "Reclamos", nav_analysis: "Análisis IA",
+    nav_dash: "Resumen", nav_intake: "Importar", nav_claims: "Reclamos", nav_analysis: "Análisis IA",
     nav_denials: "Denegaciones", nav_revenue: "Ingresos", nav_payers: "Pagadores", nav_compliance: "Cumplimiento",
     nav_settings: "Ajustes", logout: "Salir", nav_business: "Negocio", nav_batch: "Cola por lote",
     nav_learn: "Centro de aprendizaje",
@@ -324,8 +324,8 @@ const T = {
     selectModeBtn: "Seleccionar", cancelSelect: "Cancelar", selectAll: "Seleccionar todo", deselectAll: "Deseleccionar todo", deleteSelected: "Eliminar selección", selectedCount: "seleccionados",
     appealGenLoading: "Generando carta de apelación con Claude AI…", appealCopy: "Copiar carta", appealPrint: "Imprimir",
     footer: "Compatible con HIPAA · IA solo apoya decisiones · un humano aprueba cada reclamo",
-    intakeTitle: "Trae reclamos y expedientes", intakeSub: "Importa reclamos desde tu sistema de facturación, o escanea un expediente. Todo se revisa antes de someter.",
-    tabImport: "Importar reclamos", tabScan: "Escanear expediente", tabSmart: "Entrada IA",
+    intakeTitle: "Importar EM y Líneas de Reclamo", intakeSub: "Sube el expediente médico e ingresa las líneas facturadas — Claude lee ambos y revisa antes de someter.",
+    tabImport: "Importar reclamos", tabScan: "Escanear expediente", tabSmart: "Importar EM y Líneas de Reclamo",
     smartTitle: "Sube expediente + líneas de reclamo — Claude cruza ambos",
     smartZone1: "Expediente Médico", smartZone1Sub: "Suelta la nota clínica (PDF o imagen)",
     smartZone2: "Líneas de Reclamo", smartZone2Sub: "Pega desde tu sistema de facturación",
@@ -2346,64 +2346,7 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
           {tab === "intake" && (
             <div>
               <Head title={t.intakeTitle} sub={t.intakeSub} />
-              <div className="rise" style={{ display: "flex", gap: 6, marginBottom: 18 }}>
-                {[["import", t.tabImport, FileInput], ["scan", t.tabScan, FileScan], ["smart", t.tabSmart, Wand2]].map(([k, l, Ic]) => (
-                  <button key={k} className="chip" onClick={() => setIntakeTab(k)} style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 13.5, padding: "9px 16px", borderRadius: 20, cursor: "pointer", border: `1px solid ${intakeTab === k ? (k === "smart" ? C.teal : C.ink) : C.line}`, background: intakeTab === k ? (k === "smart" ? C.teal : C.ink) : C.paper2, color: intakeTab === k ? "#fff" : C.txt2 }}><Ic size={15} /> {l}</button>
-                ))}
-              </div>
 
-              {intakeTab === "import" && (
-                <div>
-                  {/* Real CSV drag & drop upload */}
-                  <div
-                    className="rise"
-                    onDragOver={(e) => { e.preventDefault(); setCsvDrag(true); }}
-                    onDragLeave={() => setCsvDrag(false)}
-                    onDrop={(e) => { e.preventDefault(); setCsvDrag(false); const f = e.dataTransfer.files[0]; if (f) handleCSVFile(f); }}
-                    onClick={() => document.getElementById("csv-input").click()}
-                    style={{ border: `2px dashed ${csvDrag ? C.teal : C.tealMute}`, background: csvDrag ? C.tealSoft : C.paper2, borderRadius: 18, padding: "32px 24px", textAlign: "center", cursor: "pointer", transition: "all .2s", marginBottom: 16 }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft; }}
-                    onMouseLeave={(e) => { if (!csvDrag) { e.currentTarget.style.borderColor = C.tealMute; e.currentTarget.style.background = C.paper2; } }}
-                  >
-                    <input id="csv-input" type="file" accept=".csv,.txt,.pdf" style={{ display: "none" }} onChange={(e) => handleCSVFile(e.target.files[0])} />
-                    <div style={{ width: 52, height: 52, borderRadius: 14, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}><Upload size={24} color={C.teal} /></div>
-                    <div style={{ fontSize: 15, fontWeight: 500 }}>{lang === "en" ? "Drop your claims file here" : "Suelta tu archivo de reclamos aquí"}</div>
-                    <div style={{ fontSize: 12.5, color: C.txt2, marginTop: 4 }}>{lang === "en" ? "CSV or PDF · CSV columns: id, patient, codes, payer, provider, dos, billed, status, risk" : "CSV o PDF · columnas CSV: id, patient, codes, payer, provider, dos, billed, status, risk"}</div>
-                    <button className="btnp" style={{ ...btnP, marginTop: 14 }} onClick={(e) => { e.stopPropagation(); document.getElementById("csv-input").click(); }}><Upload size={15} /> {lang === "en" ? "Browse file" : "Buscar archivo"}</button>
-                  </div>
-
-                  {csvImporting && <div className="rise" style={{ marginBottom: 14, fontSize: 13, color: C.amber, display: "flex", alignItems: "center", gap: 7 }}><Loader2 size={14} className="spin" /> {lang === "en" ? "Reading and parsing claims…" : "Leyendo y procesando reclamos…"}</div>}
-                  {csvResult && !csvResult.error && (
-                    <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 14, overflow: "hidden", marginBottom: 14 }}>
-                      <div style={{ background: `linear-gradient(120deg,${C.tealDk},${C.teal})`, padding: "12px 16px", display: "flex", alignItems: "center", gap: 9 }}><CheckCircle2 size={16} color="#fff" /><span style={{ fontWeight: 500, fontSize: 13.5, color: "#fff" }}>{lang === "en" ? `${csvResult.count} claims imported` : `${csvResult.count} reclamos importados`}</span><span style={{ marginLeft: "auto", fontSize: 11.5, color: "rgba(255,255,255,.85)" }}>{csvResult.name}</span></div>
-                      <div style={{ padding: "12px 16px", display: "flex", gap: 10 }}>
-                        <button className="btnp" onClick={() => { setTab("claims"); setCsvResult(null); }} style={{ ...btnP, flex: 1, justifyContent: "center" }}>{lang === "en" ? "View in Claims" : "Ver en Reclamos"} <ArrowRight size={15} /></button>
-                        <button onClick={() => setCsvResult(null)} style={btnG}>{t.dismiss}</button>
-                      </div>
-                    </div>
-                  )}
-                  {csvResult?.error && <div className="rise" style={{ background: C.redSoft, border: `1px solid #f0c5c0`, borderRadius: 12, padding: "11px 14px", marginBottom: 14, fontSize: 12.5, color: C.red, display: "flex", gap: 8, alignItems: "center" }}><AlertTriangle size={15} />{csvResult.sizeErr ? (lang === "en" ? `"${csvResult.name}" exceeds the 25 MB limit. Split the file and re-upload.` : `"${csvResult.name}" supera el límite de 25 MB. Divida el archivo y vuelva a subir.`) : (lang === "en" ? `Could not parse "${csvResult.name}". Check it has a header row.` : `No se pudo leer "${csvResult.name}". Verifica que tenga encabezado.`)}</div>}
-
-                  {/* CSV format hint */}
-                  <div className="rise" style={{ background: C.ink, borderRadius: 13, padding: "13px 16px", marginBottom: 16 }}>
-                    <div style={{ fontSize: 11.5, color: C.gold, fontWeight: 500, marginBottom: 7, display: "flex", alignItems: "center", gap: 6 }}><FileText size={13} /> {lang === "en" ? "Expected CSV format" : "Formato CSV esperado"}</div>
-                    <code style={{ fontSize: 10.5, color: "rgba(255,255,255,.72)", lineHeight: 1.7, display: "block", whiteSpace: "pre-wrap", fontFamily: "ui-monospace,monospace" }}>{`id,patient,codes,payer,provider,dos,billed,status,risk\nPV-2024-0901,Patient #5001,90837,Plan Vital,Dr. Rodriguez,May 15,195,pending,50`}</code>
-                  </div>
-
-                  <div className="rise" style={{ fontSize: 12.5, fontWeight: 500, color: C.txt3, display: "flex", alignItems: "center", gap: 7, marginBottom: 11, fontFamily: FONT_DISPLAY }}><Plug size={15} /> {t.roadmap} — {t.apiConnect}</div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(165px,1fr))", gap: 11, marginBottom: 16 }}>
-                    {API_SOURCES.map((s, i) => (
-                      <div key={i} style={{ background: C.paper2, border: `1px dashed ${C.line}`, borderRadius: 13, padding: 13, display: "flex", alignItems: "center", gap: 10, opacity: 0.85 }}>
-                        <div style={{ width: 30, height: 30, borderRadius: 8, background: C.lineSoft, display: "flex", alignItems: "center", justifyContent: "center" }}><Network size={15} color={C.txt3} /></div>
-                        <div><div style={{ fontSize: 12.5, fontWeight: 500 }}>{s.name}</div><div style={{ fontSize: 10, color: C.txt3 }}>{lang === "en" ? "needs agreement" : "requiere acuerdo"}</div></div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="rise" style={{ background: C.blueSoft, border: `1px solid #cbe0f5`, borderRadius: 12, padding: "12px 15px", display: "flex", gap: 9, alignItems: "center" }}><CircleAlert size={16} color={C.blue} style={{ flexShrink: 0 }} /><span style={{ fontSize: 12.5, color: "#1d5a96", lineHeight: 1.5 }}>{t.importNote}</span></div>
-                </div>
-              )}
-
-              {intakeTab === "smart" && (
               <div className="rise">
                 {/* Header info banner */}
                 <div style={{ background: `linear-gradient(120deg,${C.tealDk},${C.teal})`, borderRadius: 14, padding: "14px 18px", marginBottom: 18, display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -2620,42 +2563,6 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                   </div>
                 )}
               </div>
-              )}
-
-              {intakeTab === "scan" && (
-              <div style={{ display: "grid", gridTemplateColumns: sel && !isMobile ? "1fr 1fr" : "1fr", gap: 18, alignItems: "start" }}>
-                <div className="rise">
-                  <div
-                    onDragOver={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft; }}
-                    onDragLeave={(e) => { e.currentTarget.style.borderColor = C.tealMute; e.currentTarget.style.background = C.paper2; }}
-                    onDrop={(e) => { e.preventDefault(); e.currentTarget.style.borderColor = C.tealMute; e.currentTarget.style.background = C.paper2; const file = e.dataTransfer.files[0]; if (file) addRealFile(file); }}
-                    onClick={() => document.getElementById("scan-input").click()}
-                    style={{ border: `2px dashed ${C.tealMute}`, background: C.paper2, borderRadius: 18, padding: "44px 24px", textAlign: "center", cursor: "pointer", transition: "all .2s" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.tealMute; e.currentTarget.style.background = C.paper2; }}
-                  >
-                    <input id="scan-input" type="file" accept=".pdf,image/*" style={{ display: "none" }} onChange={(e) => { if (e.target.files[0]) addRealFile(e.target.files[0]); }} />
-                    <div style={{ width: 60, height: 60, borderRadius: 16, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px" }}><FileScan size={30} color={C.teal} /></div>
-                    <div style={{ fontSize: 16, fontWeight: 500 }}>{t.drop}</div>
-                    <div style={{ fontSize: 13, color: C.txt2, marginTop: 5 }}>{t.dropSub}</div>
-                    <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 18 }}>
-                      <button className="btnp" style={btnP} onClick={(e) => { e.stopPropagation(); document.getElementById("scan-input").click(); }}><Upload size={15} /> {lang === "en" ? "Upload record" : "Subir expediente"}</button>
-                      <button style={btnS} onClick={(e) => { e.stopPropagation(); addSample(); }}>{lang === "en" ? "Try sample" : "Ver muestra"}</button>
-                    </div>
-                  </div>
-                  {files.map((f) => (
-                    <div key={f.id} onClick={() => f.status === "done" && setSelFile(f.id)} className="lift" style={{ background: C.paper2, border: `1px solid ${selFile === f.id ? C.teal : C.line}`, borderRadius: 14, padding: "13px 15px", marginTop: 11, display: "flex", alignItems: "center", gap: 12, cursor: f.status === "done" ? "pointer" : "default" }}>
-                      <div style={{ width: 38, height: 38, borderRadius: 10, background: f.status === "done" ? C.tealSoft : C.lineSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>{f.status === "done" ? <CheckCircle2 size={18} color={C.teal} /> : <FileText size={18} color={C.txt3} />}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 500 }}>{f.name}</div>
-                        <div style={{ fontSize: 12, color: C.txt3, marginTop: 2 }}>{f.status === "scanning" ? <span style={{ color: C.amber, display: "flex", alignItems: "center", gap: 5 }}><Loader2 size={12} className="spin" /> {SCAN[f.stage]}…</span> : <span style={{ color: C.teal, display: "flex", alignItems: "center", gap: 4 }}><CheckCircle2 size={12} /> {f.isReal ? (lang === "en" ? "Ready to review" : "Listo para revisar") : `${t.confidence} ${f.ex.confidence}%`}</span>}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {sel && <ScanResult sel={sel} t={t} lang={lang} claims={claims} setClaims={setClaims} setTab={setTab} setOpenClaim={setOpenClaim} />}
-              </div>
-              )}
             </div>
           )}
 
