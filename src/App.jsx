@@ -2362,17 +2362,18 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                         e.preventDefault();
                         e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft;
                         const f = e.dataTransfer.files[0];
-                        if (f) setSmartRecord({ name: f.name, preview: URL.createObjectURL(f), isImage: f.type.startsWith("image/") });
+                        if (f) setSmartRecord({ name: f.name, size: f.size, preview: URL.createObjectURL(f), isImage: f.type.startsWith("image/") });
                       }}
-                      style={{ border: `2px dashed ${smartRecord ? C.teal : C.tealMute}`, background: smartRecord ? C.tealSoft : C.paper2, borderRadius: 14, padding: smartRecord ? "10px 14px" : "28px 18px", textAlign: "center", cursor: "pointer", transition: "all .2s", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6 }}
+                      style={{ border: `2px dashed ${smartRecord ? C.teal : C.tealMute}`, background: smartRecord ? C.tealSoft : C.paper2, borderRadius: 14, padding: "28px 18px", textAlign: "center", cursor: "pointer", transition: "all .2s", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, minHeight: 130 }}
                     >
-                      <input ref={smartRecordRef} type="file" accept=".pdf,image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files[0]; if (f) setSmartRecord({ name: f.name, preview: URL.createObjectURL(f), isImage: f.type.startsWith("image/") }); }} />
+                      <input ref={smartRecordRef} type="file" accept=".pdf,image/*" style={{ display: "none" }} onChange={e => { const f = e.target.files[0]; if (f) setSmartRecord({ name: f.name, size: f.size, preview: URL.createObjectURL(f), isImage: f.type.startsWith("image/") }); }} />
                       {smartRecord ? (
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, width: "100%" }}>
-                          <CheckCircle2 size={16} color={C.teal} style={{ flexShrink: 0 }} />
-                          <span style={{ fontSize: 12, fontWeight: 500, color: C.teal, flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{smartRecord.name}</span>
-                          <button onClick={e => { e.stopPropagation(); setSmartRecord(null); }} style={{ fontSize: 11, color: C.txt3, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>✕</button>
-                        </div>
+                        <>
+                          <CheckCircle2 size={28} color={C.teal} />
+                          <div style={{ fontSize: 13, fontWeight: 600, color: C.teal, marginTop: 4 }}>{smartRecord.name}</div>
+                          <div style={{ fontSize: 11, color: C.txt3 }}>{(smartRecord.size / 1024).toFixed(1)} KB · {smartRecord.isImage ? (lang === "en" ? "Image" : "Imagen") : "PDF"}</div>
+                          <button onClick={e => { e.stopPropagation(); setSmartRecord(null); }} style={{ fontSize: 11, color: C.txt3, background: "none", border: `1px solid ${C.line}`, borderRadius: 6, cursor: "pointer", padding: "3px 10px", marginTop: 4 }}>{lang === "en" ? "Replace file" : "Reemplazar"}</button>
+                        </>
                       ) : (
                         <>
                           <div style={{ width: 44, height: 44, borderRadius: 12, background: C.tealSoft, display: "flex", alignItems: "center", justifyContent: "center" }}><FileScan size={22} color={C.teal} /></div>
@@ -2382,11 +2383,9 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                         </>
                       )}
                     </div>
-                    {/* Document preview */}
-                    {smartRecord && (
-                      smartRecord.isImage
-                        ? <img src={smartRecord.preview} alt="record" style={{ width: "100%", borderRadius: 10, marginTop: 8, border: `1px solid ${C.line}`, maxHeight: 380, objectFit: "contain", background: "#fff" }} />
-                        : <iframe src={smartRecord.preview} title="record" style={{ width: "100%", height: 380, borderRadius: 10, marginTop: 8, border: `1px solid ${C.line}`, background: "#fff" }} />
+                    {/* Image preview (PDFs show confirmation card above — no iframe needed) */}
+                    {smartRecord?.isImage && (
+                      <img src={smartRecord.preview} alt="record" style={{ width: "100%", borderRadius: 10, marginTop: 8, border: `1px solid ${C.line}`, maxHeight: 320, objectFit: "contain", background: "#fff" }} />
                     )}
                     {!smartRecord && <div style={{ fontSize: 11, color: C.amber, display: "flex", alignItems: "center", gap: 5, marginTop: 6 }}><CircleAlert size={11} /> {t.smartNoRecord}</div>}
                   </div>
@@ -2410,28 +2409,28 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                         e.preventDefault();
                         e.currentTarget.style.borderColor = C.teal; e.currentTarget.style.background = C.tealSoft;
                         const f = e.dataTransfer.files[0];
-                        if (f) setSmartClaimImg({ name: f.name, preview: URL.createObjectURL(f) });
+                        if (f) setSmartClaimImg({ name: f.name, size: f.size, preview: URL.createObjectURL(f), isImage: f.type.startsWith("image/") });
                       }}
-                      style={{ border: `1.5px dashed ${smartClaimImg ? C.teal : C.line}`, background: smartClaimImg ? C.tealSoft : C.paper2, borderRadius: 10, padding: "10px 14px", textAlign: "center", cursor: "pointer", transition: "all .2s", display: "flex", alignItems: "center", gap: 10, justifyContent: "center" }}
+                      style={{ border: `1.5px dashed ${smartClaimImg ? C.teal : C.line}`, background: smartClaimImg ? C.tealSoft : C.paper2, borderRadius: 10, padding: "10px 14px", textAlign: "center", cursor: "pointer", transition: "all .2s" }}
                     >
-                      <input ref={smartImgRef} type="file" accept="image/*,.pdf" style={{ display: "none" }} onChange={e => { const f = e.target.files[0]; if (f) setSmartClaimImg({ name: f.name, preview: URL.createObjectURL(f), isImage: f.type.startsWith("image/") }); }} />
+                      <input ref={smartImgRef} type="file" accept="image/*,.pdf" style={{ display: "none" }} onChange={e => { const f = e.target.files[0]; if (f) setSmartClaimImg({ name: f.name, size: f.size, preview: URL.createObjectURL(f), isImage: f.type.startsWith("image/") }); }} />
                       {smartClaimImg ? (
-                        <div style={{ width: "100%", textAlign: "left" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                            <CheckCircle2 size={14} color={C.teal} />
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: smartClaimImg.isImage ? 8 : 0 }}>
+                            <CheckCircle2 size={14} color={C.teal} style={{ flexShrink: 0 }} />
                             <span style={{ fontSize: 12, color: C.teal, fontWeight: 500, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{smartClaimImg.name}</span>
-                            <button onClick={e => { e.stopPropagation(); setSmartClaimImg(null); }} style={{ fontSize: 11, color: C.txt3, background: "none", border: "none", cursor: "pointer" }}>✕</button>
+                            <span style={{ fontSize: 10.5, color: C.txt3, flexShrink: 0 }}>{(smartClaimImg.size / 1024).toFixed(1)} KB</span>
+                            <button onClick={e => { e.stopPropagation(); setSmartClaimImg(null); }} style={{ fontSize: 11, color: C.txt3, background: "none", border: "none", cursor: "pointer", flexShrink: 0 }}>✕</button>
                           </div>
-                          {smartClaimImg.isImage
-                            ? <img src={smartClaimImg.preview} alt="claim worksheet" style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.line}`, maxHeight: 260, objectFit: "contain", background: "#fff" }} />
-                            : <iframe src={smartClaimImg.preview} title="claim worksheet" style={{ width: "100%", height: 260, borderRadius: 8, border: `1px solid ${C.line}`, background: "#fff" }} />
-                          }
+                          {smartClaimImg.isImage && (
+                            <img src={smartClaimImg.preview} alt="claim worksheet" style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.line}`, maxHeight: 220, objectFit: "contain", background: "#fff" }} />
+                          )}
                         </div>
                       ) : (
-                        <>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
                           <FileImage size={15} color={C.txt3} />
                           <span style={{ fontSize: 12, color: C.txt3 }}>{lang === "en" ? "Drop screenshot or PDF here" : "Suelta captura o PDF aquí"}</span>
-                        </>
+                        </div>
                       )}
                     </div>
                   </div>
