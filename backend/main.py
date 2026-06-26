@@ -42,6 +42,7 @@ from database import get_db, init_db
 from db_models import AuditLog, Batch, Claim
 from models import BatchResponse, BatchSummary, ClaimUpdate, Issue, ParsedClaim, ScrubResult, Suggestion
 from parser import parse_837
+from document_parser import extract_claims
 from rules.engine import scrub_many
 
 # ── Environment ───────────────────────────────────────────────────────────────
@@ -108,6 +109,32 @@ def _check_api_key(x_api_key: str | None):
         raise HTTPException(status_code=401, detail="Invalid or missing X-API-Key header.")
 
 
+# ── File routing helper ───────────────────────────────────────────────────────
+
+def _is_edi(file_bytes: bytes, filename: str) -> bool:
+    """Return True if the file looks like a raw EDI 837 transaction."""
+    ext = filename.lower().rsplit(".", 1)[-1] if "." in filename else ""
+    if ext in ("edi", "837", "x12"):
+        return True
+    try:
+        peek = file_bytes[:10].decode("ascii", errors="replace").strip()
+        return peek.startswith("ISA")
+    except Exception:
+        return False
+
+
+async def _parse_upload(file: UploadFile) -> tuple[bytes, list[ParsedClaim]]:
+    """Read an uploaded file and return (raw_bytes, parsed_claims)."""
+    file_bytes = await file.read()
+    filename   = file.filename or "upload"
+    if _is_edi(file_bytes, filename):
+        log.info("routing to EDI parser: %s", filename)
+        content = file_bytes.decode("utf-8", errors="replace")
+        return file_bytes, parse_837(content)
+    log.info("routing to document extractor: %s", filename)
+    return file_bytes, extract_claims(file_bytes, filename)
+
+
 # ── Routes ─────────────────────────────────────────────────────────────────────
 
 @app.get("/health")
@@ -143,16 +170,15 @@ async def parse_file(
     file: UploadFile = File(...),
     x_api_key: str | None = Header(default=None),
 ):
-    """Upload an EDI 837 file — returns raw parsed claims before scrubbing."""
+    """Upload a claim document (PDF, image, EDI 837, CSV) — returns raw parsed claims."""
     _check_api_key(x_api_key)
-    content = (await file.read()).decode("utf-8", errors="replace")
-    log.info("parse request: file=%s size=%d", file.filename, len(content))
+    log.info("parse request: file=%s", file.filename)
     try:
-        claims = parse_837(content)
+        _, claims = await _parse_upload(file)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     if not claims:
-        raise HTTPException(status_code=422, detail="No claims found in file.")
+        raise HTTPException(status_code=422, detail="No claims found in document.")
     log.info("parsed %d claims", len(claims))
     return claims
 
@@ -179,16 +205,15 @@ async def batch(
     Results are persisted to the database for history.
     """
     _check_api_key(x_api_key)
-    content = (await file.read()).decode("utf-8", errors="replace")
-    log.info("batch request: file=%s size=%d", file.filename, len(content))
+    log.info("batch request: file=%s", file.filename)
 
     try:
-        parsed = parse_837(content)
+        _, parsed = await _parse_upload(file)
     except ValueError as e:
-        log.warning("parse error: %s", e)
+        log.warning("parse/extract error: %s", e)
         raise HTTPException(status_code=422, detail=str(e))
     if not parsed:
-        raise HTTPException(status_code=422, detail="No claims found in file.")
+        raise HTTPException(status_code=422, detail="No claims found in document.")
 
     results = scrub_many(parsed)
 

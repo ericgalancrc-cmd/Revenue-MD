@@ -47,7 +47,7 @@ const T = {
     learnCmsTitle: "CMS & Federal references", learnPrTitle: "Puerto Rico — payer & ASES resources",
     learnOpen: "Open", learnVerify: "Verify before production use",
     batchTitle: "Batch queue", batchSub: "Import one file, work many claims. We scrub and triage every claim so your attention goes where it matters.",
-    batchDrop: "Import a batch file", batchDropSub: "EDI 837 (hundreds of claims) or CSV — try a sample of 42", batchLoad: "Load sample batch", batchReading: "Reading 837 · scrubbing 42 claims · triaging…",
+    batchDrop: "Import claim documents", batchDropSub: "PDF superbills, encounter forms, remittance advice, or CSV — we extract every code automatically", batchLoad: "Load sample batch", batchReading: "Reading document · extracting codes · scrubbing · triaging…",
     bImported: "Imported", bAutoClear: "Auto-clear", bNeedAtt: "Need attention", bAtRisk: "$ at risk",
     bSelected: "selected", bApprove: "Approve selected", bAssign: "Assign", bExport: "Export",
     bLaneHint: "Tap a lane to select all in it", bNeedsWork: "Needs work", bQuickReview: "Quick review",
@@ -84,12 +84,12 @@ const T = {
     footer: "HIPAA-aware · AI is decision support only · a human approves every claim",
     intakeTitle: "Bring in claims & records", intakeSub: "Import claims from your billing system, or scan a medical record. Everything gets scrubbed before submission.",
     tabImport: "Import claims", tabScan: "Scan record",
-    importSub: "Pull claims from any billing company — we read the standard EDI 837 file every system exports, plus CSV.",
-    fileImport: "File import", fileImportD: "Upload an EDI 837 or CSV export. Works with every vendor today.",
+    importSub: "Upload any claim document — PDF superbills, encounter forms, images, or CSV. RevenueMD extracts every code automatically using AI.",
+    fileImport: "Document upload", fileImportD: "PDF, JPG, PNG, or CSV — superbills, encounter forms, remittance advice. No special export needed.",
     apiConnect: "Direct connection", apiConnectD: "Auto-sync via the vendor's API. Requires a data-sharing agreement.",
-    available: "Available now", roadmap: "On the roadmap", connect: "Connect", importBtn: "Import a claim file",
+    available: "Available now", roadmap: "On the roadmap", connect: "Connect", importBtn: "Upload claim documents",
     importedOk: "Imported & ready to scrub", importedFrom: "from", viewImported: "Open in claim workspace",
-    howWorks: "How it flows", flow1: "Export an 837/CSV from your billing system", flow2: "RevenueMD reads & normalizes the claim", flow3: "Rules engine + AI scrub it for denials", flow4: "Send the clean claim on to your clearinghouse",
+    howWorks: "How it flows", flow1: "Scan or photograph any claim document", flow2: "RevenueMD reads and extracts every code automatically", flow3: "Rules engine scrubs for denials and compliance issues", flow4: "Review, approve, and send the clean claim to your clearinghouse",
     importNote: "RevenueMD sits before your clearinghouse (e.g. Inmediata) — it scrubs claims, it does not submit them.",
     drop: "Drop a record or click to browse", dropSub: "PDF · JPG · PNG — up to 25 MB", loadSample: "Try a sample record",
     scanning: "Reading codes…", extracted: "Extracted billing data", confidence: "OCR confidence", language: "Language",
@@ -120,7 +120,7 @@ const T = {
     learnCmsTitle: "CMS y referencias federales", learnPrTitle: "Puerto Rico — recursos de pagadores y ASES",
     learnOpen: "Abrir", learnVerify: "Verificar antes de uso en producción",
     batchTitle: "Cola por lote", batchSub: "Importa un archivo, trabaja muchos reclamos. Revisamos y clasificamos cada uno para que tu atención vaya donde importa.",
-    batchDrop: "Importar un archivo de lote", batchDropSub: "EDI 837 (cientos de reclamos) o CSV — prueba una muestra de 42", batchLoad: "Cargar lote de muestra", batchReading: "Leyendo 837 · revisando 42 reclamos · clasificando…",
+    batchDrop: "Importar documentos de reclamos", batchDropSub: "PDF, superbills, formularios de encuentro, imágenes o CSV — extraemos cada código automáticamente", batchLoad: "Cargar lote de muestra", batchReading: "Leyendo documento · extrayendo códigos · revisando · clasificando…",
     bImported: "Importados", bAutoClear: "Auto-aprobables", bNeedAtt: "Requieren atención", bAtRisk: "$ en riesgo",
     bSelected: "seleccionados", bApprove: "Aprobar selección", bAssign: "Asignar", bExport: "Exportar",
     bLaneHint: "Toca un carril para seleccionar todo", bNeedsWork: "Requiere trabajo", bQuickReview: "Revisión rápida",
@@ -157,12 +157,12 @@ const T = {
     footer: "Compatible con HIPAA · IA solo apoya decisiones · un humano aprueba cada reclamo",
     intakeTitle: "Trae reclamos y expedientes", intakeSub: "Importa reclamos desde tu sistema de facturación, o escanea un expediente. Todo se revisa antes de someter.",
     tabImport: "Importar reclamos", tabScan: "Escanear expediente",
-    importSub: "Importa reclamos de cualquier compañía de facturación — leemos el archivo estándar EDI 837 que todo sistema exporta, además de CSV.",
-    fileImport: "Importar archivo", fileImportD: "Sube un EDI 837 o CSV. Funciona con todos los proveedores hoy.",
+    importSub: "Sube cualquier documento de reclamo — superbills en PDF, formularios de encuentro, imágenes o CSV. RevenueMD extrae cada código automáticamente con IA.",
+    fileImport: "Subir documento", fileImportD: "PDF, JPG, PNG o CSV — superbills, formularios de encuentro, aviso de pago. No necesitas exportar en formato especial.",
     apiConnect: "Conexión directa", apiConnectD: "Sincroniza vía la API del proveedor. Requiere acuerdo de datos.",
-    available: "Disponible ahora", roadmap: "En el plan", connect: "Conectar", importBtn: "Importar un archivo de reclamos",
+    available: "Disponible ahora", roadmap: "En el plan", connect: "Conectar", importBtn: "Subir documentos de reclamos",
     importedOk: "Importado y listo para revisar", importedFrom: "desde", viewImported: "Abrir en el área de reclamos",
-    howWorks: "Cómo fluye", flow1: "Exporta un 837/CSV de tu sistema", flow2: "RevenueMD lee y normaliza el reclamo", flow3: "El motor de reglas + IA lo revisan", flow4: "Envía el reclamo limpio a tu clearinghouse",
+    howWorks: "Cómo fluye", flow1: "Escanea o fotografía cualquier documento de reclamo", flow2: "RevenueMD lee y extrae cada código automáticamente", flow3: "El motor de reglas revisa por denegaciones y cumplimiento", flow4: "Revisa, aprueba y envía el reclamo limpio al clearinghouse",
     importNote: "RevenueMD va antes de tu clearinghouse (ej. Inmediata) — revisa los reclamos, no los somete.",
     scanRecord: "Escanear expediente",
     drop: "Suelta un expediente o haz clic", dropSub: "PDF · JPG · PNG — hasta 25 MB", loadSample: "Probar expediente de muestra",
@@ -727,7 +727,7 @@ export default function App({ auth0 = null }) {
               {intakeTab === "import" && (
                 <div>
                   {/* hidden file input for Intake — triggers real API if VITE_API_URL is set */}
-                  <input ref={intakeFileRef} type="file" accept=".edi,.837,.txt,.csv" style={{ display: "none" }} onChange={async (e) => {
+                  <input ref={intakeFileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.txt,.csv,.edi,.837" style={{ display: "none" }} onChange={async (e) => {
                     const file = e.target.files?.[0]; if (!file) return;
                     const src = importing || "File";
                     setImportError(null);
@@ -1123,7 +1123,7 @@ export default function App({ auth0 = null }) {
               <div>
                 <Head title={t.batchTitle} sub={t.batchSub} />
                 {/* hidden file input — triggers when API_URL is set */}
-                <input ref={batchFileRef} type="file" accept=".edi,.837,.txt,.csv" style={{ display: "none" }} onChange={(e) => uploadBatchFile(e.target.files?.[0])} />
+                <input ref={batchFileRef} type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.tif,.tiff,.txt,.csv,.edi,.837" style={{ display: "none" }} onChange={(e) => uploadBatchFile(e.target.files?.[0])} />
                 {!batchLoaded ? (
                   <div className="rise">
                     {!batchReading ? (
