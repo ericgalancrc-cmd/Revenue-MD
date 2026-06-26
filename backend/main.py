@@ -26,16 +26,19 @@ Run locally
 """
 
 from __future__ import annotations
+import csv
+import io
 import json
 import logging
 import os
 import time
 import uuid
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from database import get_db, init_db
@@ -79,7 +82,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins      = ALLOWED_ORIGINS,
     allow_credentials  = True,
-    allow_methods      = ["GET", "POST", "OPTIONS"],
+    allow_methods      = ["GET", "POST", "PATCH", "OPTIONS"],
     allow_headers      = ["Content-Type", "X-API-Key", "Authorization"],
     expose_headers     = ["X-Request-ID"],
 )
@@ -453,6 +456,116 @@ def update_claim(
     db.commit()
     log.info("claim updated: id=%s reviewed=%s st=%s", claim_id, claim.reviewed, claim.st)
     return {"id": claim_id, "reviewed": claim.reviewed, "st": claim.st}
+
+
+@app.get("/api/denials")
+def list_denials(db: Session = Depends(get_db)):
+    """Return denied claims with appeal-window days remaining."""
+    rows = db.query(Claim).filter(Claim.st == "denied").order_by(Claim.created_at.desc()).all()
+    now = datetime.now(timezone.utc)
+    result = []
+    for c in rows:
+        if c.created_at:
+            ts = c.created_at if c.created_at.tzinfo else c.created_at.replace(tzinfo=timezone.utc)
+            days = max(0, (now - ts).days)
+        else:
+            days = 0
+        issues = json.loads(c.issues_json or "[]")
+        errors = [i for i in issues if i.get("sev") == "error"]
+        rEn = errors[0]["dEn"] if errors else (c.iEn or "Claim denied")
+        rEs = errors[0]["dEs"] if errors else (c.iEs or "Reclamo denegado")
+        result.append({
+            "id":    c.id,
+            "payer": c.payer or "",
+            "rEn":   rEn,
+            "rEs":   rEs,
+            "lost":  c.val or 0.0,
+            "days":  days,
+        })
+    return result
+
+
+@app.post("/api/claims/{claim_id}/appeal")
+async def appeal_claim(
+    claim_id: str,
+    x_api_key: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    """Generate a bilingual Claude appeal strategy for a denied claim."""
+    _check_api_key(x_api_key)
+    c = db.query(Claim).filter(Claim.id == claim_id).first()
+    if not c:
+        raise HTTPException(status_code=404, detail="Claim not found.")
+
+    issues = json.loads(c.issues_json or "[]")
+    issues_text = "\n".join(f"- [{i['sev'].upper()}] {i['tEn']}: {i['dEn']}" for i in issues) or "No issues recorded."
+
+    prompt = f"""\
+You are a senior Puerto Rico medical billing appeals specialist \
+(Plan Vital/ASES, Triple-S, MCS, MMM, Medicare/FCSO).
+
+Generate a concise, actionable first-level appeal strategy for this denied claim. \
+Cover: (1) the strongest argument for reversal, (2) documentation to attach, \
+(3) the relevant payer rule to cite, (4) realistic recovery estimate.
+
+CLAIM: {c.id}
+Payer: {c.payer or "Unknown"}
+Provider: {c.prov or "Unknown"} | NPI: {c.npi or "N/A"}
+Date of service: {c.dos or "Unknown"}
+Codes: {c.codes or "Unknown"}
+Billed: ${c.val or 0:.2f} | Auth: {c.auth or "None"}
+Denial reasons:
+{issues_text}
+
+Return ONLY a JSON object — no markdown, no explanation:
+{{"strategyEn": "2-3 paragraph appeal strategy in English", "strategyEs": "Same strategy in Spanish"}}\
+"""
+    try:
+        response = _ai_client().messages.create(
+            model      = "claude-sonnet-4-6",
+            max_tokens = 1024,
+            messages   = [{"role": "user", "content": prompt}],
+        )
+        raw = response.content[0].text.strip()
+        if raw.startswith("```"):
+            lines = raw.splitlines()
+            raw = "\n".join(lines[1:(-1 if lines[-1].strip() == "```" else len(lines))])
+        result = json.loads(raw)
+        log.info("appeal generated: id=%s", claim_id)
+        return {"strategyEn": str(result.get("strategyEn", "")), "strategyEs": str(result.get("strategyEs", ""))}
+    except Exception as e:
+        log.error("Appeal generation failed for %s: %s", claim_id, e)
+        raise HTTPException(status_code=500, detail=f"Appeal generation failed: {e}")
+
+
+@app.get("/api/batches/{batch_id}/export")
+def export_batch(batch_id: str, db: Session = Depends(get_db)):
+    """Download a batch as a UTF-8 CSV file."""
+    b = db.query(Batch).filter(Batch.id == batch_id).first()
+    if not b:
+        raise HTTPException(status_code=404, detail="Batch not found.")
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(["ID", "Payer", "Patient", "Codes", "ICD-10", "Provider", "NPI", "DOS",
+                     "Billed", "Risk", "Lane", "Status", "Auth", "Issues"])
+    for c in b.claims:
+        issues = json.loads(c.issues_json or "[]")
+        issues_text = "; ".join(f"[{i.get('sev','').upper()}] {i.get('tEn','')}" for i in issues)
+        writer.writerow([
+            c.id, c.payer or "", c.pat or "", c.codes or "",
+            " | ".join(json.loads(c.icd_json or "[]")),
+            c.prov or "", c.npi or "", c.dos or "",
+            f"{c.val or 0:.2f}", c.risk or 0, c.lane or "",
+            c.st or "pending", c.auth or "", issues_text,
+        ])
+
+    filename = f"batch_{batch_id[:8]}.csv"
+    return StreamingResponse(
+        io.BytesIO(buf.getvalue().encode("utf-8-sig")),
+        media_type = "text/csv",
+        headers    = {"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ── Global error handler ──────────────────────────────────────────────────────

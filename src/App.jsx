@@ -349,6 +349,7 @@ const SECURITY_RULES = [
 
 // ── API connection ────────────────────────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL || "";  // set in .env.local
+const IS_DEMO = !import.meta.env.VITE_AUTH0_DOMAIN;
 
 // Convert a ScrubResult (from API) to the shape the Claims tab expects
 const normalizeClaim = (c) => ({
@@ -514,6 +515,10 @@ export default function App({ auth0 = null }) {
   const [learnSearch, setLearnSearch] = useState("");
   const [liveClaims, setLiveClaims] = useState([]);
   const [dashMetrics, setDashMetrics] = useState(null);
+  const [liveDenials, setLiveDenials] = useState([]);
+  const [batchId, setBatchId] = useState(() => localStorage.getItem("rmd_last_batch_id") || "");
+  const [appealing, setAppealing] = useState({});
+  const [appealData, setAppealData] = useState({});
   const t = T[lang];
 
   useEffect(() => { setMounted(true); }, []);
@@ -523,16 +528,18 @@ export default function App({ auth0 = null }) {
   useEffect(() => { localStorage.setItem("rmd_role", role); }, [role]);
   useEffect(() => { localStorage.setItem("rmd_reviewed", JSON.stringify(reviewed)); }, [reviewed]);
 
-  // Fetch live claims + dashboard metrics from the API
+  // Fetch live claims + dashboard metrics + denials from the API
   const fetchLiveData = useCallback(async () => {
     if (!API_URL) return;
     try {
-      const [claimsRes, metricsRes] = await Promise.all([
+      const [claimsRes, metricsRes, denialsRes] = await Promise.all([
         fetch(`${API_URL}/api/claims`),
         fetch(`${API_URL}/api/dashboard`),
+        fetch(`${API_URL}/api/denials`),
       ]);
       if (claimsRes.ok) setLiveClaims((await claimsRes.json()).map(normalizeClaim));
       if (metricsRes.ok) setDashMetrics(await metricsRes.json());
+      if (denialsRes.ok) setLiveDenials(await denialsRes.json());
     } catch {}
   }, []);
 
@@ -545,7 +552,10 @@ export default function App({ auth0 = null }) {
       st: preserveState ? (c.st || "pending") : "pending",
     })));
     setBatchLoaded(true);
-    if (data.id && API_URL) localStorage.setItem("rmd_last_batch_id", data.id);
+    if (data.id) {
+      setBatchId(data.id);
+      if (API_URL) localStorage.setItem("rmd_last_batch_id", data.id);
+    }
     fetchLiveData();
   }, [fetchLiveData]);
 
@@ -567,6 +577,7 @@ export default function App({ auth0 = null }) {
   }, [auth0?.isAuthenticated]);
 
   const displayClaims = useMemo(() => liveClaims.length > 0 ? liveClaims : CLAIMS, [liveClaims]);
+  const displayDenials = useMemo(() => liveDenials.length > 0 ? liveDenials : DENIALS, [liveDenials]);
   const filtered = useMemo(() => displayClaims.filter((c) => (filter === "all" || c.status === filter) && (!search || c.id.toLowerCase().includes(search.toLowerCase()) || c.codes.toLowerCase().includes(search.toLowerCase()))), [displayClaims, filter, search]);
   const needsCount = [...PAYERS.flatMap((p) => p.facts), ...BILLING_RULES, ...PRIVACY_RULES, ...SECURITY_RULES].filter((x) => x.v === "needs").length;
 
@@ -674,6 +685,49 @@ export default function App({ auth0 = null }) {
       setAnalyzed((p) => ({ ...p, [id]: { sEn: claim?.sEn || "Analysis not available.", sEs: claim?.sEs || "Análisis no disponible." } }));
     } finally { setAnalyzing(false); }
   };
+  const exportBatch = async (id) => {
+    if (!API_URL || !id) return;
+    try {
+      const res = await fetch(`${API_URL}/api/batches/${id}/export`);
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url; a.download = `batch_${id.slice(0, 8)}.csv`;
+      document.body.appendChild(a); a.click();
+      document.body.removeChild(a); URL.revokeObjectURL(url);
+    } catch (e) { console.error("Export failed:", e); }
+  };
+
+  const generateAppeal = async (claimId) => {
+    setAppealing((p) => ({ ...p, [claimId]: true }));
+    try {
+      if (API_URL) {
+        const res = await fetch(`${API_URL}/api/claims/${claimId}/appeal`, { method: "POST" });
+        if (res.ok) { const data = await res.json(); setAppealData((p) => ({ ...p, [claimId]: data })); setAppeal(claimId); return; }
+      }
+      setAppealData((p) => ({ ...p, [claimId]: { strategyEn: "File a first-level appeal before the deadline. Attach the prior-authorization confirmation and the clinical note documenting medical necessity. Estimated recovery: 60–75%.", strategyEs: "Presenta una apelación de primer nivel antes del límite. Adjunta la confirmación de autorización y la nota clínica de necesidad médica. Recuperación estimada: 60–75%." } }));
+      setAppeal(claimId);
+    } catch {
+      setAppealData((p) => ({ ...p, [claimId]: { strategyEn: "File a first-level appeal before the deadline. Attach the prior-authorization confirmation and the clinical note documenting medical necessity.", strategyEs: "Presenta una apelación de primer nivel antes del límite. Adjunta la confirmación de autorización y la nota clínica de necesidad médica." } }));
+      setAppeal(claimId);
+    } finally { setAppealing((p) => ({ ...p, [claimId]: false })); }
+  };
+
+  const downloadAppeal = (claimId, denial) => {
+    const data = appealData[claimId];
+    const text = data ? (lang === "en" ? data.strategyEn : data.strategyEs) : (lang === "en" ? "Run AI Appeal Strategy first to generate the appeal content." : "Ejecuta la estrategia de apelación IA primero.");
+    const header = lang === "en" ? "APPEAL STRATEGY" : "ESTRATEGIA DE APELACIÓN";
+    const reason = lang === "en" ? denial.rEn : denial.rEs;
+    const content = `${header} — ${denial.id}\n${"=".repeat(50)}\nDenial reason: ${reason}\nAmount at stake: $${(denial.lost || 0).toFixed(2)}\n\n${text}`;
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `appeal_${denial.id}.txt`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  };
+
   const addSample = () => {
     const f = { id: Date.now() + "", name: "expediente_PV_4452.pdf", status: "scanning", stage: 0 };
     setFiles((p) => [f, ...p]);
@@ -712,6 +766,7 @@ export default function App({ auth0 = null }) {
         <header style={{ background: C.paper2, borderBottom: `1px solid ${C.line}`, padding: "15px 30px", display: "flex", alignItems: "center", justifyContent: "space-between", position: "relative", zIndex: 1 }}>
           <div style={{ fontSize: 17, fontWeight: 500, fontFamily: FONT_DISPLAY }}>{nav.find((n) => n.id === tab)?.label}</div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {IS_DEMO && <div style={{ fontSize: 10.5, fontWeight: 600, color: C.amber, background: C.amberSoft, padding: "4px 10px", borderRadius: 10, border: `1px solid #f0dcb0`, letterSpacing: 0.5 }}>DEMO MODE</div>}
             <div className="pill" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: C.teal, background: C.tealSoft, padding: "5px 11px", borderRadius: 20, fontWeight: 500 }}><span className="pdot" style={{ width: 7, height: 7, borderRadius: "50%", background: C.teal }} /> Live</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: C.txt2 }}>
               <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.ink, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 500, fontSize: 11.5 }}>{role === "manager" ? "MG" : role === "biller" ? "BL" : "CD"}</div>
@@ -951,25 +1006,43 @@ export default function App({ auth0 = null }) {
           )}
 
           {/* DENIALS */}
-          {tab === "denials" && (
-            <div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(175px,1fr))", gap: 14, marginBottom: 22 }}>
-                <Metric i={0} label={lang === "en" ? "Open denials" : "Denegaciones abiertas"} value="3" />
-                <Metric i={1} label={t.lostRevenue} value={fmt(1410)} accent={C.red} />
-                <Metric i={2} label={lang === "en" ? "Recovered YTD" : "Recuperado año"} value={fmt(6820)} accent={C.teal} />
-              </div>
-              {DENIALS.map((d, i) => (
-                <div key={d.id} className="rise" style={{ animationDelay: `${i * 0.06}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20, marginBottom: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <div><div style={{ fontSize: 14.5, fontWeight: 500 }}>#{d.id}</div><div style={{ fontSize: 13, color: C.txt2, marginTop: 4 }}>{lang === "en" ? d.rEn : d.rEs}</div><div style={{ fontSize: 12, color: C.amber, marginTop: 8, display: "flex", alignItems: "center", gap: 5 }}><Clock size={13} /> {d.days} {lang === "en" ? "days" : "días"} {t.toAppeal}</div></div>
-                    <div style={{ textAlign: "right" }}><div style={{ fontSize: 11.5, color: C.txt3 }}>{t.lostRevenue}</div><div style={{ fontSize: 20, fontWeight: 500, color: C.red, fontFamily: FONT_DISPLAY }}>{fmt(d.lost)}</div></div>
-                  </div>
-                  <div style={{ display: "flex", gap: 8, marginTop: 14 }}><button className="btnp" onClick={() => setAppeal(appeal === d.id ? null : d.id)} style={{ ...btnP, fontSize: 12.5 }}><Send size={14} /> {t.aiStrategy}</button><button style={{ ...btnS, fontSize: 12.5 }}>{t.buildAppeal}</button></div>
-                  {appeal === d.id && <div className="rise" style={{ marginTop: 14, background: C.blueSoft, border: `1px solid #cbe0f5`, borderRadius: 12, padding: 14 }}><div style={{ fontSize: 12, fontWeight: 500, color: C.blue, marginBottom: 6, display: "flex", alignItems: "center", gap: 6, letterSpacing: .5, textTransform: "uppercase" }}><Brain size={13} /> {t.aiStrategy}</div><div style={{ fontSize: 13, color: "#1d5a96", lineHeight: 1.6 }}>{lang === "en" ? "File a first-level appeal before the deadline. Attach the prior-authorization confirmation and the clinical note documenting medical necessity. Estimated recovery: 60–75%." : "Presenta una apelación de primer nivel antes del límite. Adjunta la confirmación de autorización y la nota clínica de necesidad médica. Recuperación estimada: 60–75%."}</div></div>}
+          {tab === "denials" && (() => {
+            const totalLost = displayDenials.reduce((s, d) => s + (d.lost || 0), 0);
+            return (
+              <div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(175px,1fr))", gap: 14, marginBottom: 22 }}>
+                  <Metric i={0} label={lang === "en" ? "Open denials" : "Denegaciones abiertas"} value={String(displayDenials.length)} />
+                  <Metric i={1} label={t.lostRevenue} value={fmt(totalLost)} accent={C.red} />
+                  <Metric i={2} label={lang === "en" ? "Recovered YTD" : "Recuperado año"} value={fmt(6820)} accent={C.teal} />
                 </div>
-              ))}
-            </div>
-          )}
+                {displayDenials.length === 0 && (
+                  <div style={{ textAlign: "center", padding: "48px 24px", color: C.txt3, fontSize: 14 }}>{lang === "en" ? "No open denials — great work!" : "Sin denegaciones abiertas — ¡excelente!"}</div>
+                )}
+                {displayDenials.map((d, i) => (
+                  <div key={d.id} className="rise" style={{ animationDelay: `${i * 0.06}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20, marginBottom: 12 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                      <div>
+                        <div style={{ fontSize: 14.5, fontWeight: 500 }}>#{d.id}{d.payer ? <span style={{ fontSize: 12, color: C.txt2, fontWeight: 400, marginLeft: 8 }}>{d.payer}</span> : null}</div>
+                        <div style={{ fontSize: 13, color: C.txt2, marginTop: 4 }}>{lang === "en" ? d.rEn : d.rEs}</div>
+                        <div style={{ fontSize: 12, color: C.amber, marginTop: 8, display: "flex", alignItems: "center", gap: 5 }}><Clock size={13} /> {d.days} {lang === "en" ? "days" : "días"} {t.toAppeal}</div>
+                      </div>
+                      <div style={{ textAlign: "right" }}><div style={{ fontSize: 11.5, color: C.txt3 }}>{t.lostRevenue}</div><div style={{ fontSize: 20, fontWeight: 500, color: C.red, fontFamily: FONT_DISPLAY }}>{fmt(d.lost)}</div></div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+                      <button className="btnp" disabled={appealing[d.id]} onClick={() => { if (!appealData[d.id]) generateAppeal(d.id); else setAppeal(appeal === d.id ? null : d.id); }} style={{ ...btnP, fontSize: 12.5, opacity: appealing[d.id] ? 0.7 : 1 }}>{appealing[d.id] ? <Loader2 size={13} className="spin" /> : <Send size={14} />} {appealing[d.id] ? (lang === "en" ? "Generating…" : "Generando…") : t.aiStrategy}</button>
+                      <button style={{ ...btnS, fontSize: 12.5 }} onClick={() => downloadAppeal(d.id, d)}><Download size={14} /> {t.buildAppeal}</button>
+                    </div>
+                    {appeal === d.id && appealData[d.id] && (
+                      <div className="rise" style={{ marginTop: 14, background: C.blueSoft, border: `1px solid #cbe0f5`, borderRadius: 12, padding: 14 }}>
+                        <div style={{ fontSize: 12, fontWeight: 500, color: C.blue, marginBottom: 6, display: "flex", alignItems: "center", gap: 6, letterSpacing: .5, textTransform: "uppercase" }}><Brain size={13} /> {t.aiStrategy}</div>
+                        <div style={{ fontSize: 13, color: "#1d5a96", lineHeight: 1.6 }}>{lang === "en" ? appealData[d.id].strategyEn : appealData[d.id].strategyEs}</div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
 
           {/* REVENUE */}
           {tab === "revenue" && (
@@ -1141,6 +1214,12 @@ export default function App({ auth0 = null }) {
               setBatchQueue((p) => p.map((q) => q.sel && q.st === "pending" ? { ...q, st: "approved", sel: false } : q));
               if (API_URL && toApprove.length > 0) toApprove.forEach((id) => fetch(`${API_URL}/api/claims/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ st: "approved" }) }).catch(() => {}));
             };
+            const bulkDeny = () => {
+              const toDeny = batchQueue.filter((q) => q.sel && q.st === "pending").map((q) => q.id);
+              setBatchQueue((p) => p.map((q) => q.sel && q.st === "pending" ? { ...q, st: "denied", sel: false } : q));
+              if (API_URL && toDeny.length > 0) toDeny.forEach((id) => fetch(`${API_URL}/api/claims/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ st: "denied" }) }).catch(() => {}));
+              fetchLiveData();
+            };
             // ── Batch helpers ──────────────────────────────────────────────
             // applyBatchResults is defined at component level (also handles localStorage + session restore)
             const loadMockBatch = () => { setBatchReading(true); setTimeout(() => { setBatchReading(false); applyBatchResults({ id: "", total: 42, auto_clear: 31, needs_attention: 11, at_risk: 3400, claims: BATCH_SEED.map((x) => ({ ...x })) }); }, 1400); };
@@ -1188,8 +1267,9 @@ export default function App({ auth0 = null }) {
                       <span style={{ fontSize: 13, fontWeight: 500, color: selCount ? "#fff" : C.txt2 }}>{selCount} {t.bSelected}</span>
                       <div style={{ flex: 1 }} />
                       <button onClick={bulkApprove} disabled={!selCount} style={{ background: selCount ? C.teal : C.lineSoft, color: selCount ? "#fff" : C.txt3, border: "none", borderRadius: 9, padding: "8px 15px", fontSize: 12.5, fontWeight: 500, cursor: selCount ? "pointer" : "default", display: "flex", alignItems: "center", gap: 6 }}><CheckCircle2 size={14} /> {t.bApprove}</button>
-                      <button disabled={!selCount} style={{ background: "transparent", color: selCount ? "#fff" : C.txt3, border: `1px solid ${selCount ? "rgba(255,255,255,.3)" : C.lineSoft}`, borderRadius: 9, padding: "8px 13px", fontSize: 12.5, fontWeight: 500, cursor: selCount ? "pointer" : "default", display: "flex", alignItems: "center", gap: 6 }}><Users size={14} /> {t.bAssign}</button>
-                      <button disabled={!selCount} style={{ background: "transparent", color: selCount ? "#fff" : C.txt3, border: `1px solid ${selCount ? "rgba(255,255,255,.3)" : C.lineSoft}`, borderRadius: 9, padding: "8px 13px", fontSize: 12.5, fontWeight: 500, cursor: selCount ? "pointer" : "default", display: "flex", alignItems: "center", gap: 6 }}><Download size={14} /> {t.bExport}</button>
+                      <button onClick={bulkDeny} disabled={!selCount} style={{ background: "transparent", color: selCount ? "#fff" : C.txt3, border: `1px solid ${selCount ? "rgba(255,255,255,.3)" : C.lineSoft}`, borderRadius: 9, padding: "8px 13px", fontSize: 12.5, fontWeight: 500, cursor: selCount ? "pointer" : "default", display: "flex", alignItems: "center", gap: 6 }} title={lang === "en" ? "Mark selected as denied" : "Marcar seleccionados como denegados"}><FileWarning size={14} /> {lang === "en" ? "Deny" : "Denegar"}</button>
+                      <button disabled style={{ background: "transparent", color: C.txt3, border: `1px solid ${C.lineSoft}`, borderRadius: 9, padding: "8px 13px", fontSize: 12.5, fontWeight: 500, cursor: "not-allowed", display: "flex", alignItems: "center", gap: 6 }} title={lang === "en" ? "Coming soon" : "Próximamente"}><Users size={14} /> {t.bAssign}</button>
+                      <button onClick={() => exportBatch(batchId)} disabled={!batchId || !API_URL} style={{ background: "transparent", color: (batchId && API_URL) ? "#fff" : C.txt3, border: `1px solid ${(batchId && API_URL) ? "rgba(255,255,255,.3)" : C.lineSoft}`, borderRadius: 9, padding: "8px 13px", fontSize: 12.5, fontWeight: 500, cursor: (batchId && API_URL) ? "pointer" : "default", display: "flex", alignItems: "center", gap: 6 }} title={!API_URL ? "Requires API connection" : !batchId ? "Upload a batch first" : "Export as CSV"}><Download size={14} /> {t.bExport}</button>
                     </div>
                     <div className="rise" style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
                       {Object.entries(BATCH_LANES).map(([k, v]) => (
