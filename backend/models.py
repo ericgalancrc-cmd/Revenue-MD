@@ -100,6 +100,17 @@ class ClaimUpdate(BaseModel):
     st: Optional[str] = None
 
 
+class DashboardMetrics(BaseModel):
+    total: int
+    approved: int
+    pending: int
+    high_risk: int
+    at_risk_value: float
+    approved_value: float
+    approval_rate: float   # 0–100
+    denial_rate: float     # 0–100
+
+
 class BatchSummary(BaseModel):
     """Lightweight batch record for the history list (no claim detail)."""
     id: str

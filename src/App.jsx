@@ -350,6 +350,15 @@ const SECURITY_RULES = [
 // ── API connection ────────────────────────────────────────────────────────────
 const API_URL = import.meta.env.VITE_API_URL || "";  // set in .env.local
 
+// Convert a ScrubResult (from API) to the shape the Claims tab expects
+const normalizeClaim = (c) => ({
+  ...c,
+  patient:  c.pat  || "Patient",
+  provider: c.prov || "",
+  billed:   c.val  || c.charge || 0,
+  status:   c.st === "denied" ? "denied" : c.lane === "needs_work" ? "high" : "pending",
+});
+
 
 const SAMPLE = { lang: "es", confidence: 94, cpt: ["90837", "90785"], icd: ["F32.1", "F41.1"], mods: ["GT"], units: "90837·1  90785·1", dos: "Apr 22, 2024", npi: "1457382910", auth: null };
 
@@ -503,6 +512,8 @@ export default function App({ auth0 = null }) {
   const [mounted, setMounted] = useState(false);
   const [learnTab, setLearnTab] = useState("codes");
   const [learnSearch, setLearnSearch] = useState("");
+  const [liveClaims, setLiveClaims] = useState([]);
+  const [dashMetrics, setDashMetrics] = useState(null);
   const t = T[lang];
 
   useEffect(() => { setMounted(true); }, []);
@@ -511,6 +522,19 @@ export default function App({ auth0 = null }) {
   useEffect(() => { localStorage.setItem("rmd_lang", lang); }, [lang]);
   useEffect(() => { localStorage.setItem("rmd_role", role); }, [role]);
   useEffect(() => { localStorage.setItem("rmd_reviewed", JSON.stringify(reviewed)); }, [reviewed]);
+
+  // Fetch live claims + dashboard metrics from the API
+  const fetchLiveData = useCallback(async () => {
+    if (!API_URL) return;
+    try {
+      const [claimsRes, metricsRes] = await Promise.all([
+        fetch(`${API_URL}/api/claims`),
+        fetch(`${API_URL}/api/dashboard`),
+      ]);
+      if (claimsRes.ok) setLiveClaims((await claimsRes.json()).map(normalizeClaim));
+      if (metricsRes.ok) setDashMetrics(await metricsRes.json());
+    } catch {}
+  }, []);
 
   // applyBatchResults at component level so it can be called from the restore effect
   const applyBatchResults = useCallback((data, preserveState = false) => {
@@ -522,25 +546,28 @@ export default function App({ auth0 = null }) {
     })));
     setBatchLoaded(true);
     if (data.id && API_URL) localStorage.setItem("rmd_last_batch_id", data.id);
-  }, []);
+    fetchLiveData();
+  }, [fetchLiveData]);
 
-  // Restore the last batch when the user logs in
+  // On login: fetch live data and restore the last batch
   useEffect(() => {
     if (!authed || !API_URL) return;
+    fetchLiveData();
     const lastId = localStorage.getItem("rmd_last_batch_id");
     if (!lastId) return;
     fetch(`${API_URL}/api/batches/${lastId}`)
       .then((r) => r.ok ? r.json() : null)
       .then((data) => { if (data) applyBatchResults(data, true); })
       .catch(() => {});
-  }, [authed, applyBatchResults]);
+  }, [authed, fetchLiveData, applyBatchResults]);
 
   // Auto-authenticate when Auth0 confirms the user is logged in
   useEffect(() => {
     if (auth0 && auth0.isAuthenticated && !authed) setAuthed(true);
   }, [auth0?.isAuthenticated]);
 
-  const filtered = useMemo(() => CLAIMS.filter((c) => (filter === "all" || c.status === filter) && (!search || c.id.toLowerCase().includes(search.toLowerCase()) || c.codes.toLowerCase().includes(search.toLowerCase()))), [filter, search]);
+  const displayClaims = useMemo(() => liveClaims.length > 0 ? liveClaims : CLAIMS, [liveClaims]);
+  const filtered = useMemo(() => displayClaims.filter((c) => (filter === "all" || c.status === filter) && (!search || c.id.toLowerCase().includes(search.toLowerCase()) || c.codes.toLowerCase().includes(search.toLowerCase()))), [displayClaims, filter, search]);
   const needsCount = [...PAYERS.flatMap((p) => p.facts), ...BILLING_RULES, ...PRIVACY_RULES, ...SECURITY_RULES].filter((x) => x.v === "needs").length;
 
   const FONTS = (
@@ -632,7 +659,21 @@ export default function App({ auth0 = null }) {
     { id: "learn", icon: GraduationCap, label: t.nav_learn },
   ];
 
-  const runAnalysis = (id) => { setAnalyzing(true); setTimeout(() => { setAnalyzing(false); setAnalyzed((p) => ({ ...p, [id]: true })); }, 1300); };
+  const runAnalysis = async (id) => {
+    setAnalyzing(true);
+    try {
+      if (API_URL) {
+        const res = await fetch(`${API_URL}/api/claims/${id}/analyze`, { method: "POST" });
+        if (res.ok) { const data = await res.json(); setAnalyzed((p) => ({ ...p, [id]: data })); return; }
+      }
+      // Fallback: use existing sEn/sEs already on the claim
+      const claim = displayClaims.find((x) => x.id === id);
+      setAnalyzed((p) => ({ ...p, [id]: { sEn: claim?.sEn || "Analysis not available.", sEs: claim?.sEs || "Análisis no disponible." } }));
+    } catch {
+      const claim = displayClaims.find((x) => x.id === id);
+      setAnalyzed((p) => ({ ...p, [id]: { sEn: claim?.sEn || "Analysis not available.", sEs: claim?.sEs || "Análisis no disponible." } }));
+    } finally { setAnalyzing(false); }
+  };
   const addSample = () => {
     const f = { id: Date.now() + "", name: "expediente_PV_4452.pdf", status: "scanning", stage: 0 };
     setFiles((p) => [f, ...p]);
@@ -688,20 +729,20 @@ export default function App({ auth0 = null }) {
                 <p style={{ color: C.txt2, fontSize: 15, margin: 0 }}>{t.today}</p>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(195px,1fr))", gap: 14, marginBottom: 20 }}>
-                <Metric i={0} label={t.m_revenue} value={fmt(18200)} sub={t.thisMonth} trend="+14%" up />
-                <Metric i={1} label={t.m_denial} value="12.4%" sub={t.thisMonth} trend="-3.1%" up />
-                <Metric i={2} label={t.m_approval} value="87.6%" sub={t.target} />
-                <Metric i={3} label={t.m_under} value={fmt(4750)} sub={t.opportunity} accent={C.amber} />
+                <Metric i={0} label={t.m_revenue} value={dashMetrics ? fmt(dashMetrics.approved_value) : fmt(18200)} sub={t.thisMonth} trend={dashMetrics ? `${dashMetrics.approved} approved` : "+14%"} up />
+                <Metric i={1} label={t.m_denial} value={dashMetrics ? dashMetrics.denial_rate.toFixed(1) + "%" : "12.4%"} sub={t.thisMonth} trend={dashMetrics ? `${dashMetrics.total} total` : "-3.1%"} up />
+                <Metric i={2} label={t.m_approval} value={dashMetrics ? dashMetrics.approval_rate.toFixed(1) + "%" : "87.6%"} sub={t.target} />
+                <Metric i={3} label={t.m_under} value={dashMetrics ? fmt(dashMetrics.at_risk_value) : fmt(4750)} sub={t.opportunity} accent={C.amber} />
               </div>
               <div className="rise" style={{ animationDelay: ".15s", background: `linear-gradient(120deg, ${C.ink} 0%, ${C.ink2} 100%)`, borderRadius: 18, padding: "20px 24px", display: "flex", gap: 16, alignItems: "center", marginBottom: 20, position: "relative", overflow: "hidden" }}>
                 <div style={{ position: "absolute", width: 240, height: 240, borderRadius: "50%", background: "radial-gradient(circle,rgba(201,162,75,.14),transparent 70%)", right: -60, top: -90 }} />
                 <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(201,162,75,.16)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Zap size={21} color={C.gold} /></div>
-                <div style={{ flex: 1, position: "relative" }}><div style={{ fontWeight: 500, fontSize: 15, color: "#fff" }}>{t.priorityTitle}</div><div style={{ fontSize: 13.5, color: "rgba(255,255,255,.66)", marginTop: 3 }}>{t.priorityBody}</div></div>
+                <div style={{ flex: 1, position: "relative" }}><div style={{ fontWeight: 500, fontSize: 15, color: "#fff" }}>{t.priorityTitle}</div><div style={{ fontSize: 13.5, color: "rgba(255,255,255,.66)", marginTop: 3 }}>{dashMetrics && dashMetrics.high_risk > 0 ? `${dashMetrics.high_risk} high-risk claim${dashMetrics.high_risk !== 1 ? "s" : ""} · ${fmt(dashMetrics.at_risk_value)} at risk` : t.priorityBody}</div></div>
                 <button className="btnp" onClick={() => { setTab("claims"); setFilter("high"); }} style={{ ...btnP, flexShrink: 0, background: C.gold, color: C.ink }}>{t.reviewNow} <ArrowRight size={15} /></button>
               </div>
               <div className="rise" style={{ animationDelay: ".22s", background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 22 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}><div style={{ fontSize: 15, fontWeight: 500, fontFamily: FONT_DISPLAY, display: "flex", alignItems: "center", gap: 8 }}><Activity size={17} color={C.teal} /> {t.recent}</div><button onClick={() => setTab("claims")} style={btnG}>{t.viewAll} <ChevronRight size={14} /></button></div>
-                {CLAIMS.slice(0, 4).map((c, i) => (
+                {displayClaims.slice(0, 4).map((c, i) => (
                   <div key={c.id} className="lift" onClick={() => { setTab("claims"); setOpenClaim(c.id); }} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: 12, cursor: "pointer", border: "1px solid transparent", marginBottom: i < 3 ? 4 : 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                       <div style={{ width: 36, height: 36, borderRadius: 9, background: rbg(c.risk), display: "flex", alignItems: "center", justifyContent: "center" }}><FileText size={16} color={rc(c.risk)} /></div>
@@ -859,7 +900,7 @@ export default function App({ auth0 = null }) {
 
           {/* CLAIM DETAIL */}
           {tab === "claims" && openClaim && (() => {
-            const c = CLAIMS.find((x) => x.id === openClaim); const A = analyzed[c.id];
+            const c = displayClaims.find((x) => x.id === openClaim); const A = analyzed[c?.id];
             return (
               <div>
                 <button onClick={() => setOpenClaim(null)} style={{ ...btnG, marginBottom: 16 }}><ChevronRight size={15} style={{ transform: "rotate(180deg)" }} /> {t.back}</button>
@@ -876,7 +917,7 @@ export default function App({ auth0 = null }) {
                       <button className="btnp" onClick={() => runAnalysis(c.id)} disabled={analyzing} style={{ ...btnP, width: "100%", justifyContent: "center", padding: 14, opacity: analyzing ? 0.7 : 1, fontSize: 14.5 }}>{analyzing ? <Loader2 size={17} className="spin" /> : <Brain size={17} />} {analyzing ? t.analyzing : t.runAnalysis}</button>
                     ) : (
                       <div className="rise">
-                        <div style={{ background: `linear-gradient(120deg,${C.ink},${C.ink2})`, borderRadius: 14, padding: 16, marginBottom: 18 }}><div style={{ fontSize: 12, fontWeight: 500, color: C.gold, marginBottom: 6, display: "flex", alignItems: "center", gap: 6, letterSpacing: 1, textTransform: "uppercase" }}><Brain size={13} /> {t.aiSummary}</div><div style={{ fontSize: 14, lineHeight: 1.65, color: "rgba(255,255,255,.92)" }}>{lang === "en" ? c.sEn : c.sEs}</div></div>
+                        <div style={{ background: `linear-gradient(120deg,${C.ink},${C.ink2})`, borderRadius: 14, padding: 16, marginBottom: 18 }}><div style={{ fontSize: 12, fontWeight: 500, color: C.gold, marginBottom: 6, display: "flex", alignItems: "center", gap: 6, letterSpacing: 1, textTransform: "uppercase" }}><Brain size={13} /> {t.aiSummary}</div><div style={{ fontSize: 14, lineHeight: 1.65, color: "rgba(255,255,255,.92)" }}>{lang === "en" ? (A?.sEn || c.sEn) : (A?.sEs || c.sEs)}</div></div>
                         <div style={{ fontSize: 13.5, fontWeight: 500, marginBottom: 10, fontFamily: FONT_DISPLAY }}>{t.issues}</div>
                         {c.issues.map((iss, i) => { const s = SEV[iss.sev]; return <div key={i} className="rise" style={{ animationDelay: `${i * 0.06}s`, display: "flex", gap: 11, padding: 13, borderRadius: 12, background: s.bg, marginBottom: 8 }}><s.icon size={17} color={s.c} style={{ flexShrink: 0, marginTop: 1 }} /><div><div style={{ fontSize: 13, fontWeight: 500, color: s.c }}>{lang === "en" ? iss.tEn : iss.tEs}</div><div style={{ fontSize: 12.5, color: s.c, opacity: 0.82, marginTop: 2, lineHeight: 1.5 }}>{lang === "en" ? iss.dEn : iss.dEs}</div></div></div>; })}
                         {c.fix.length > 0 && <><div style={{ fontSize: 13.5, fontWeight: 500, margin: "18px 0 10px", fontFamily: FONT_DISPLAY }}>{t.sugg}</div>{c.fix.map((f, i) => <div key={i} style={{ border: `1px solid ${C.tealMute}`, background: C.tealSoft, borderRadius: 12, padding: 13 }}><div style={{ fontSize: 13, fontWeight: 500, color: C.tealDk }}>{lang === "en" ? f.tEn : f.tEs}</div><div style={{ fontSize: 12.5, color: "#0a5c47", marginTop: 3, lineHeight: 1.5 }}>{lang === "en" ? f.wEn : f.wEs}</div><div style={{ display: "flex", gap: 8, marginTop: 11 }}><button className="btnp" style={{ ...btnP, padding: "7px 15px", fontSize: 12.5 }}>{t.apply}</button><button style={{ ...btnG, fontSize: 12.5 }}>{t.dismiss}</button></div></div>)}</>}
@@ -900,7 +941,7 @@ export default function App({ auth0 = null }) {
           {tab === "analysis" && (
             <div>
               <Head title={t.nav_analysis} sub={lang === "en" ? "Every claim, ranked by AI-assessed denial risk." : "Cada reclamo, ordenado por riesgo de denegación evaluado por IA."} />
-              {[...CLAIMS].sort((a, b) => b.risk - a.risk).map((c, i) => (
+              {[...displayClaims].sort((a, b) => b.risk - a.risk).map((c, i) => (
                 <div key={c.id} className="lift rise" style={{ animationDelay: `${i * 0.05}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20, marginBottom: 12, cursor: "pointer" }} onClick={() => { setTab("claims"); setOpenClaim(c.id); if (!analyzed[c.id]) runAnalysis(c.id); }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}><div><span style={{ fontSize: 14.5, fontWeight: 500 }}>#{c.id}</span><span style={{ fontSize: 12.5, color: C.txt2, marginLeft: 10 }}>{c.codes} · {c.payer}</span></div><RiskPill r={c.risk} big label /></div>
                   <div style={{ fontSize: 13.5, color: C.txt2, lineHeight: 1.6 }}>{lang === "en" ? c.sEn : c.sEs}</div>
