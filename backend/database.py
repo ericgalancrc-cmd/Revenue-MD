@@ -13,6 +13,14 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./revenuemd.db")
 
+# Render/Railway/Heroku-style DATABASE_URLs use the plain "postgresql://"
+# scheme, which SQLAlchemy defaults to the psycopg2 dialect — but psycopg2
+# has no prebuilt wheels for newer Python versions and fails to install.
+# Rewrite to the modern psycopg (v3) driver instead, which we depend on.
+if DATABASE_URL.startswith("postgresql://") or DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.split("://", 1)[1]
+    DATABASE_URL = f"postgresql+psycopg://{DATABASE_URL}"
+
 _is_sqlite = DATABASE_URL.startswith("sqlite")
 
 engine = create_engine(
