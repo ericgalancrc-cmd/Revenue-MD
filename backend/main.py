@@ -162,6 +162,13 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else ""
 
 
+def _identity(user: dict) -> tuple[str, str]:
+    """(org_id, user_id) — org_id scopes shared clinic data (all staff at the
+    same org see the same claims); user_id attributes an action to the
+    individual staff member who performed it, for audit accountability."""
+    return user["org"], (user.get("email") or user["sub"])
+
+
 def _scrub_and_enhance(claim: ParsedClaim) -> ScrubResult:
     """Run a claim through the rules engine, then AI enhancement if available."""
     result = scrub(claim)
@@ -221,7 +228,7 @@ async def batch(
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
-    org_id = user["sub"]
+    org_id, user_id = _identity(user)
     content = await file.read()
     filename = file.filename or "upload.edi"
 
@@ -232,7 +239,7 @@ async def batch(
 
     results = scrub_many(raw_claims)
     result_batch = _store_batch(results, db, org_id=org_id)
-    _audit(db, org_id, org_id, "batch_created", "batch", result_batch.id, _client_ip(request))
+    _audit(db, org_id, user_id, "batch_created", "batch", result_batch.id, _client_ip(request))
     db.commit()
     return result_batch
 
@@ -243,7 +250,7 @@ def list_batches(
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
-    org_id = user["sub"]
+    org_id, user_id = _identity(user)
     rows = (
         db.query(BatchRecord)
         .filter(BatchRecord.org_id == org_id)
@@ -251,7 +258,7 @@ def list_batches(
         .limit(20)
         .all()
     )
-    _audit(db, org_id, org_id, "batches_listed", ip=_client_ip(request))
+    _audit(db, org_id, user_id, "batches_listed", ip=_client_ip(request))
     db.commit()
     return [_batch_row_to_response(row) for row in rows]
 
@@ -263,7 +270,7 @@ def get_batch(
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
-    org_id = user["sub"]
+    org_id, user_id = _identity(user)
     row = (
         db.query(BatchRecord)
         .filter(BatchRecord.id == batch_id, BatchRecord.org_id == org_id)
@@ -271,7 +278,7 @@ def get_batch(
     )
     if row is None:
         raise HTTPException(404, f"Batch '{batch_id}' not found.")
-    _audit(db, org_id, org_id, "batch_read", "batch", batch_id, _client_ip(request))
+    _audit(db, org_id, user_id, "batch_read", "batch", batch_id, _client_ip(request))
     db.commit()
     return _batch_row_to_response(row)
 
@@ -286,7 +293,7 @@ def list_claims(
     user: dict = Depends(get_current_user),
 ):
     """Return the org's claims across all batches, newest first."""
-    org_id = user["sub"]
+    org_id, user_id = _identity(user)
     rows = (
         db.query(ClaimRecord)
         .filter(ClaimRecord.org_id == org_id)
@@ -298,7 +305,7 @@ def list_claims(
     # default, and a concurrent delete of one of these rows between the query
     # above and a post-commit attribute access would raise ObjectDeletedError.
     results = [row.to_result() for row in rows]
-    _audit(db, org_id, org_id, "claims_listed", ip=_client_ip(request))
+    _audit(db, org_id, user_id, "claims_listed", ip=_client_ip(request))
     db.commit()
     return results
 
@@ -311,10 +318,10 @@ async def create_claim(
     user: dict = Depends(get_current_user),
 ):
     """Manually add a single claim — scrubbed and persisted like a 1-item batch."""
-    org_id = user["sub"]
+    org_id, user_id = _identity(user)
     result = _scrub_and_enhance(claim)
     result_batch = _store_batch([result], db, org_id=org_id)
-    _audit(db, org_id, org_id, "claim_created", "claim", result_batch.claims[0].id, _client_ip(request))
+    _audit(db, org_id, user_id, "claim_created", "claim", result_batch.claims[0].id, _client_ip(request))
     db.commit()
     return result_batch.claims[0]
 
@@ -327,11 +334,11 @@ def update_claim(
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
-    org_id = user["sub"]
+    org_id, user_id = _identity(user)
     row = _get_org_claim(db, row_id, org_id)
     for field, value in patch.model_dump(exclude_unset=True).items():
         setattr(row, field, value)
-    _audit(db, org_id, org_id, "claim_updated", "claim", str(row_id), _client_ip(request))
+    _audit(db, org_id, user_id, "claim_updated", "claim", str(row_id), _client_ip(request))
     db.commit()
     db.refresh(row)
     return row.to_result()
@@ -344,10 +351,10 @@ def delete_claim(
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
-    org_id = user["sub"]
+    org_id, user_id = _identity(user)
     row = _get_org_claim(db, row_id, org_id)
     db.delete(row)
-    _audit(db, org_id, org_id, "claim_deleted", "claim", str(row_id), _client_ip(request))
+    _audit(db, org_id, user_id, "claim_deleted", "claim", str(row_id), _client_ip(request))
     db.commit()
     return {"deleted": True, "row_id": row_id}
 
@@ -379,7 +386,7 @@ def baa_status(
     user: dict = Depends(get_current_user),
 ):
     """Return whether this org has accepted the BAA."""
-    org_id = user["sub"]
+    org_id, _ = _identity(user)
     record = (
         db.query(BAARecord)
         .filter(BAARecord.org_id == org_id)
@@ -396,8 +403,7 @@ def baa_accept(
     user: dict = Depends(get_current_user),
 ):
     """Record BAA acceptance for this org (idempotent — safe to call multiple times)."""
-    org_id  = user["sub"]
-    user_id = user.get("email", org_id)
+    org_id, user_id = _identity(user)
     now     = datetime.now(timezone.utc).isoformat()
     ip      = _client_ip(request)
 
@@ -422,7 +428,7 @@ def list_audit(
     user: dict = Depends(get_current_user),
 ):
     """Return the last 100 audit log entries for this org."""
-    org_id = user["sub"]
+    org_id, _ = _identity(user)
     rows = (
         db.query(AuditLog)
         .filter(AuditLog.org_id == org_id)
@@ -433,6 +439,7 @@ def list_audit(
     return [
         {
             "id":            r.id,
+            "user_id":       r.user_id,
             "action":        r.action,
             "resource_type": r.resource_type,
             "resource_id":   r.resource_id,
