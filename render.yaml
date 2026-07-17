@@ -12,11 +12,14 @@ services:
           name: revenuemd-db
           property: connectionString
       - key: CORS_ORIGINS
-        value: https://revenue-md.vercel.app  # update to your real Vercel URL
-      - key: AUTH0_DOMAIN
-        value: dev-mvhfi6mnltzukbs2.us.auth0.com
-      - key: AUTH0_AUDIENCE
-        value: https://api.revenuemd.com
+        value: https://revenue-md.vercel.app  # update to your real Vercel URL after deploying
+      # AUTH0_DOMAIN / AUTH0_AUDIENCE intentionally omitted: leaving them unset
+      # runs the backend in demo mode (org_id="demo", no login required). Add
+      # both here (and set VITE_AUTH0_DOMAIN/VITE_AUTH0_CLIENT_ID/VITE_AUTH0_AUDIENCE
+      # in Vercel) only once you've created a real Auth0 tenant + app — setting
+      # AUTH0_DOMAIN here without a matching frontend Auth0 app makes every
+      # backend request fail with 401, since the frontend would never obtain
+      # a token that tenant accepts.
 
 databases:
   - name: revenuemd-db
