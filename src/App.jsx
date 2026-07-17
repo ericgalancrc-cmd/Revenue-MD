@@ -608,12 +608,6 @@ const CLAIMS_DEMO = [
     fix: [{ tEn: "Add telehealth platform name to the note", tEs: "Añadir nombre de plataforma de telesalud a la nota", wEn: "Insert the platform name used for the session (e.g., 'Session conducted via Doxy.me') into the clinical note before resubmitting.", wEs: "Insertar el nombre de la plataforma usada (ej. 'Sesión realizada vía Doxy.me') en la nota clínica antes de volver a someter." }] },
 ];
 
-const DENIALS = [
-  { id: "PV-2024-0792", rEn: "Missing prior authorization", rEs: "Falta autorización previa", lost: 680, days: 18 },
-  { id: "PV-2024-0788", rEn: "Unit limit exceeded (H0004)", rEs: "Límite de unidades excedido (H0004)", lost: 420, days: 24 },
-  { id: "TS-2024-0590", rEn: "Incorrect BlueCard prefix", rEs: "Prefijo BlueCard incorrecto", lost: 310, days: 31 },
-];
-
 const PAYERS = [
   { id: "PLANVITAL", name: "Plan Vital", sub: "ASES · Medicaid · GHP", color: C.teal, soft: C.tealSoft, lob: ["Medicaid", "GHP"],
     facts: [
@@ -1460,6 +1454,7 @@ export default function App({ auth0 = null }) {
   const [imported, setImported] = useState(null);
   const [importError, setImportError] = useState(null);
   const [batchLoaded, setBatchLoaded] = useState(false);
+  const [claimsHydrated, setClaimsHydrated] = useState(false);
   const [batchReading, setBatchReading] = useState(false);
   const [batchMeta, setBatchMeta] = useState(null);    // { total, auto_clear, needs_attention, at_risk }
   const batchFileRef = useRef(null);
@@ -1541,9 +1536,9 @@ export default function App({ auth0 = null }) {
   // Helper: returns Authorization header when a token is available
   const authHeaders = () => (accessToken ? { Authorization: `Bearer ${accessToken}` } : {});
 
-  // After login: check BAA status, then reload the most recent batch
+  // After login: check BAA status, hydrate the real claims workspace, then reload the most recent batch
   useEffect(() => {
-    if (!authed || !API_URL || batchLoaded) return;
+    if (!authed || !API_URL) return;
     if (auth0?.isAuthenticated && !accessToken) return; // wait for token
     // Check BAA acceptance (only meaningful when auth is enabled)
     if (accessToken) {
@@ -1555,21 +1550,33 @@ export default function App({ auth0 = null }) {
         })
         .catch(() => {});
     }
-    fetch(`${API_URL}/api/batches`, { headers: authHeaders() })
-      .then((r) => r.ok ? r.json() : null)
-      .then((batches) => {
-        if (!batches || !batches.length) return;
-        const latest = batches[0];
-        return fetch(`${API_URL}/api/batches/${latest.id}`, { headers: authHeaders() }).then((r) => r.ok ? r.json() : null);
-      })
-      .then((data) => {
-        if (!data || !data.claims || !data.claims.length) return;
-        setBatchQueue(data.claims.map((c) => ({ ...c, sel: false })));
-        setBatchMeta({ total: data.total, auto_clear: data.auto_clear, needs_attention: data.needs_attention, at_risk: data.at_risk });
-        setBatchLoaded(true);
-      })
-      .catch(() => { /* no API — demo mode, batch stays seeded locally */ });
-  }, [authed, accessToken]);
+    // Hydrate the claims workspace with the org's real persisted claims — this
+    // wholesale-replaces whatever was locally seeded (including CLAIMS_DEMO),
+    // since this is the authoritative server snapshot at login time.
+    if (!claimsHydrated) {
+      fetch(`${API_URL}/api/claims?limit=200`, { headers: authHeaders() })
+        .then((r) => r.ok ? r.json() : [])
+        .then((data) => setClaims(data.map(toWorkspaceClaim)))
+        .catch(() => { /* API unreachable — keep the locally seeded claims */ })
+        .finally(() => setClaimsHydrated(true));
+    }
+    if (!batchLoaded) {
+      fetch(`${API_URL}/api/batches`, { headers: authHeaders() })
+        .then((r) => r.ok ? r.json() : null)
+        .then((batches) => {
+          if (!batches || !batches.length) return;
+          const latest = batches[0];
+          return fetch(`${API_URL}/api/batches/${latest.id}`, { headers: authHeaders() }).then((r) => r.ok ? r.json() : null);
+        })
+        .then((data) => {
+          if (!data || !data.claims || !data.claims.length) return;
+          setBatchQueue(data.claims.map((c) => ({ ...c, sel: false })));
+          setBatchMeta({ total: data.total, auto_clear: data.auto_clear, needs_attention: data.needs_attention, at_risk: data.at_risk });
+          setBatchLoaded(true);
+        })
+        .catch(() => { /* no API — demo mode, batch stays seeded locally */ });
+    }
+  }, [authed, accessToken, claimsHydrated, batchLoaded]);
 
   // Parse a codes string like "90837 GT + H0004 ×8" into service_lines array
   // so the backend rules engine can inspect individual CPT codes and modifiers.
@@ -1624,7 +1631,11 @@ export default function App({ auth0 = null }) {
   };
 
   const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
-  const handleCSVFile = (file) => {
+  // baaJustConfirmed covers the resume-after-confirm call from the BAA modal,
+  // where setBaaConfirmed(true) hasn't committed to state yet — this closure's
+  // `baaConfirmed` is still stale, so without it confirming would immediately
+  // re-trigger the modal.
+  const handleCSVFile = (file, baaJustConfirmed = false) => {
     if (!file) return;
     if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
       setIntakeTab("scan");
@@ -1632,7 +1643,7 @@ export default function App({ auth0 = null }) {
       return;
     }
     if (file.size > MAX_UPLOAD_BYTES) { setCsvResult({ error: true, name: file.name, sizeErr: true }); return; }
-    if (!baaConfirmed) { setBaaModalFile({ file, target: "csv" }); return; }
+    if (!baaConfirmed && !baaJustConfirmed) { setBaaModalFile({ file, target: "csv" }); return; }
     setCsvImporting(true); setCsvResult(null);
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -1787,14 +1798,61 @@ export default function App({ auth0 = null }) {
     setSmartClaimImgs((prev) => [...prev, ...files.map(toFileEntry)]);
   };
 
-  const deleteClaim = (id) => {
+  // Maps a backend ScrubResult (batch upload, manual create, or hydration) into
+  // the shape the claims workspace renders. Status is always re-derived from
+  // `lane` — nothing patches a claim's status after creation today, so this
+  // stays safe to recompute on every load.
+  const toWorkspaceClaim = (c) => ({
+    row_id:    c.row_id ?? null,
+    id:        c.id,
+    patient:   c.patient || "Unknown",
+    codes:     c.codes || "—",
+    payer:     c.payer || "Unknown",
+    provider:  c.provider || c.prov || "—",
+    dos:       c.dos || "—",
+    billed:    c.billed || c.val || 0,
+    status:    c.lane === "auto_clear" ? "clear" : c.lane === "quick_review" ? "pending" : "denied",
+    risk:      c.risk ?? 50,
+    comp:      c.comp ?? 70,
+    doc:       c.doc ?? 70,
+    sEn:       c.sEn || "Scrubbed via batch upload.",
+    sEs:       c.sEs || "Revisado mediante carga de lote.",
+    issues:    c.issues || [],
+    fix:       c.fix || [],
+    service_lines: c.service_lines || [],
+    npi:       c.npi || "",
+    diagnosis: c.diagnosis || "",
+    batch_created: c.batch_created || null,
+  });
+
+  const deleteClaim = async (id) => {
+    const claim = claims.find((c) => c.id === id);
+    if (API_URL && claim?.row_id != null) {
+      try {
+        const res = await fetch(`${API_URL}/api/claims/${claim.row_id}`, { method: "DELETE", headers: authHeaders() });
+        if (!res.ok) { console.error("Delete claim failed:", res.status); return; }
+      } catch (e) { console.error("Delete claim error:", e); return; }
+    }
     setClaims(p => p.filter(c => c.id !== id));
     if (openClaim === id) setOpenClaim(null);
     setDeleteConfirm(null);
   };
 
-  const deleteSelectedClaims = () => {
-    setClaims(p => p.filter(c => !selectedIds.has(c.id)));
+  const deleteSelectedClaims = async () => {
+    if (API_URL) {
+      const targets = claims.filter((c) => selectedIds.has(c.id) && c.row_id != null);
+      const results = await Promise.allSettled(
+        targets.map((c) => fetch(`${API_URL}/api/claims/${c.row_id}`, { method: "DELETE", headers: authHeaders() }))
+      );
+      const deletedIds = new Set(
+        targets.filter((_, i) => results[i].status === "fulfilled" && results[i].value.ok).map((c) => c.id)
+      );
+      // Claims with no row_id (never synced) are local-only — delete those too.
+      claims.filter((c) => selectedIds.has(c.id) && c.row_id == null).forEach((c) => deletedIds.add(c.id));
+      setClaims(p => p.filter(c => !deletedIds.has(c.id)));
+    } else {
+      setClaims(p => p.filter(c => !selectedIds.has(c.id)));
+    }
     setSelectedIds(new Set());
     setSelectMode(false);
     setDeleteSelectedConfirm(false);
@@ -1808,13 +1866,35 @@ export default function App({ auth0 = null }) {
     });
   };
 
-  const addSmartToQueue = () => {
+  const addSmartToQueue = async () => {
     if (!smartResult) return;
     const now = new Date();
+    const dos = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    if (API_URL) {
+      try {
+        const res = await fetch(`${API_URL}/api/claims`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify({
+            id: smartResult.id, patient: "Patient (Smart Entry)", codes: smartResult.cpts,
+            payer: "ASES / Mi Salud", provider: "Provider", dos, billed: smartResult.totalBilled,
+          }),
+        });
+        if (res.ok) {
+          const result = await res.json();
+          setClaims(p => [toWorkspaceClaim(result), ...p]);
+          setTab("claims");
+          resetSmart();
+          return;
+        }
+        console.error("Create claim failed:", res.status);
+      } catch (e) { console.error("Create claim error:", e); }
+      // fall through to local-only add if the backend call failed
+    }
     const newClaim = {
       id: smartResult.id, patient: "Patient (Smart Entry)",
       codes: smartResult.cpts, payer: "ASES / Mi Salud",
-      provider: "Provider", dos: now.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),
+      provider: "Provider", dos,
       billed: smartResult.totalBilled, status: smartResult.risk >= 30 ? "needs_work" : "pending",
       risk: smartResult.risk, comp: 75, doc: smartResult.hasRecord ? 90 : 50,
       sEn: `Smart Entry claim — ${smartResult.issues.length} issue${smartResult.issues.length !== 1 ? "s" : ""} found.`,
@@ -1837,6 +1917,69 @@ export default function App({ auth0 = null }) {
       groups[key].claims.push(c);
     });
     return Object.values(groups).filter(g => g.claims.length >= 2);
+  }, [claims]);
+
+  // Days between a claim's originating batch date (or DOS as fallback) and today.
+  // Year-less date strings (e.g. demo data's "May 8") parse inconsistently
+  // across engines — some default to a fixed past year — so results outside
+  // a plausible claim-age window are treated as unparseable.
+  const daysSince = (dateStr) => {
+    if (!dateStr) return 0;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return 0;
+    const days = Math.round((Date.now() - d.getTime()) / 86400000);
+    return (days < 0 || days > 730) ? 0 : days;
+  };
+
+  // Denials tab: real denied claims not yet marked paid/written off, derived
+  // from actual claim data instead of a hardcoded list.
+  const realDenials = useMemo(() => claims
+    .filter(c => c.status === "denied" && outcomes[c.id] !== "paid" && outcomes[c.id] !== "writtenOff")
+    .map(c => ({
+      id: c.id,
+      // Best-effort reason: the rules engine's short issue label, or the longer
+      // summary as fallback. Not a literal payer denial code — there's no
+      // dedicated denial-reason field captured today.
+      rEn: c.iEn || c.sEn || "Denial reason not specified",
+      rEs: c.iEs || c.sEs || "Razón de denegación no especificada",
+      lost: c.billed || 0,
+      days: daysSince(c.batch_created || c.dos),
+    })), [claims, outcomes]);
+  const lostRevenueTotal = useMemo(() => realDenials.reduce((s, d) => s + d.lost, 0), [realDenials]);
+  const recoveredYTD = useMemo(() => claims
+    .filter(c => outcomes[c.id] === "paid")
+    .reduce((s, c) => s + (c.billed || 0), 0), [claims, outcomes]);
+
+  // Revenue tab: real aggregates derived from claims instead of hardcoded numbers.
+  const codingAccuracy = useMemo(() => claims.length
+    ? Math.round(claims.reduce((s, c) => s + (c.comp ?? 100), 0) / claims.length) : 100, [claims]);
+  // Heuristic, not an event log: counts claims flagged as risky that weren't
+  // ultimately denied. Conflates "fixed pre-submission" with "flagged but
+  // never resubmitted" — an approximation, not a literal prevented-denial count.
+  const deniedPreventedCount = useMemo(() =>
+    claims.filter(c => (c.risk ?? 0) >= 30 && c.status !== "denied").length, [claims]);
+  const monthlyBilledValue = useMemo(() => {
+    const buckets = {};
+    claims.forEach(c => {
+      const src = c.batch_created || c.dos;
+      const d = src ? new Date(src) : null;
+      if (!d || isNaN(d.getTime())) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      buckets[key] = (buckets[key] || 0) + (c.billed || 0);
+    });
+    return Object.entries(buckets).sort(([a], [b]) => a.localeCompare(b)).slice(-6).map(([key, v]) => {
+      const [y, m] = key.split("-").map(Number);
+      return { m: new Date(y, m - 1, 1).toLocaleDateString("en-US", { month: "short" }), v };
+    });
+  }, [claims]);
+  const thisMonthBilled = useMemo(() => {
+    const now = new Date();
+    return claims.reduce((s, c) => {
+      const src = c.batch_created || c.dos;
+      const d = src ? new Date(src) : null;
+      if (!d || isNaN(d.getTime())) return s;
+      return (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()) ? s + (c.billed || 0) : s;
+    }, 0);
   }, [claims]);
 
   const FONTS = (
@@ -2208,9 +2351,9 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                     fetch(`${API_URL}/api/baa/accept`, { method: "POST", headers: authHeaders() }).catch(() => {});
                   }
                 } else if (pending.target === "csv") {
-                  handleCSVFile(pending.file);
+                  handleCSVFile(pending.file, true);
                 } else if (pending.target === "batch" && uploadBatchFileRef.current) {
-                  uploadBatchFileRef.current(pending.file);
+                  uploadBatchFileRef.current(pending.file, true);
                 }
               }} style={{ padding: "10px 22px", borderRadius: 10, border: "none", background: "#B45309", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: FONT_SANS }}>
                 {lang === "en" ? "I confirm — proceed" : "Confirmo — continuar"}
@@ -2837,11 +2980,16 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
           {tab === "denials" && (
             <div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(175px,1fr))", gap: 14, marginBottom: 22 }}>
-                <Metric i={0} label={lang === "en" ? "Open denials" : "Denegaciones abiertas"} value="3" />
-                <Metric i={1} label={t.lostRevenue} value={fmt(1410)} accent={C.red} />
-                <Metric i={2} label={lang === "en" ? "Recovered YTD" : "Recuperado año"} value={fmt(6820)} accent={C.teal} />
+                <Metric i={0} label={lang === "en" ? "Open denials" : "Denegaciones abiertas"} value={String(realDenials.length)} />
+                <Metric i={1} label={t.lostRevenue} value={fmt(lostRevenueTotal)} accent={C.red} />
+                <Metric i={2} label={lang === "en" ? "Recovered YTD" : "Recuperado año"} value={fmt(recoveredYTD)} accent={C.teal} />
               </div>
-              {DENIALS.map((d, i) => (
+              {realDenials.length === 0 && (
+                <div style={{ textAlign: "center", padding: "40px 20px", color: C.txt3, fontSize: 13.5 }}>
+                  {lang === "en" ? "No open denials — nice work." : "Sin denegaciones abiertas — buen trabajo."}
+                </div>
+              )}
+              {realDenials.map((d, i) => (
                 <div key={d.id} className="rise" style={{ animationDelay: `${i * 0.06}s`, background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 20, marginBottom: 12 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div><div style={{ fontSize: 14.5, fontWeight: 500 }}>#{d.id}</div><div style={{ fontSize: 13, color: C.txt2, marginTop: 4 }}>{lang === "en" ? d.rEn : d.rEs}</div><div style={{ fontSize: 12, color: C.amber, marginTop: 8, display: "flex", alignItems: "center", gap: 5 }}><Clock size={13} /> {d.days} {lang === "en" ? "days" : "días"} {t.toAppeal}</div></div>
@@ -2877,21 +3025,27 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
           {tab === "revenue" && (
             <div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(175px,1fr))", gap: 14, marginBottom: 22 }}>
-                <Metric i={0} label={t.m_revenue} value={fmt(18200)} sub={t.thisMonth} trend="+14%" up />
-                <Metric i={1} label={lang === "en" ? "Denials prevented" : "Denegaciones evitadas"} value="34" sub={t.thisMonth} />
-                <Metric i={2} label={lang === "en" ? "Coding accuracy" : "Precisión"} value="91%" trend="+6%" up />
+                <Metric i={0} label={t.m_revenue} value={fmt(thisMonthBilled)} sub={t.thisMonth} />
+                <Metric i={1} label={lang === "en" ? "Denials prevented" : "Denegaciones evitadas"} value={String(deniedPreventedCount)} sub={t.thisMonth} />
+                <Metric i={2} label={lang === "en" ? "Coding accuracy" : "Precisión"} value={`${codingAccuracy}%`} />
               </div>
               <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 24 }}>
-                <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 22, fontFamily: FONT_DISPLAY }}>{lang === "en" ? "Revenue recovered" : "Ingresos recuperados"}</div>
-                <div style={{ display: "flex", alignItems: "flex-end", gap: 18, height: 200 }}>
-                  {[{ m: "Jan", v: 8200 }, { m: "Feb", v: 11400 }, { m: "Mar", v: 14100 }, { m: "Apr", v: 18200 }, { m: "May", v: 21600 }].map((r, i) => (
-                    <div key={r.m} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
-                      <div style={{ fontSize: 11.5, fontWeight: 500, color: C.tealDk }}>{fmt(r.v)}</div>
-                      <div className="rise" style={{ animationDelay: `${i * 0.08}s`, width: "100%", maxWidth: 54, height: (r.v / 22000) * 155, background: i === 4 ? `linear-gradient(${C.teal},${C.tealDk})` : C.tealMute, borderRadius: "8px 8px 0 0" }} />
-                      <div style={{ fontSize: 12, color: C.txt2 }}>{r.m}</div>
-                    </div>
-                  ))}
-                </div>
+                <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 22, fontFamily: FONT_DISPLAY }}>{lang === "en" ? "Claims value scrubbed" : "Valor de reclamos revisados"}</div>
+                {monthlyBilledValue.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "30px 20px", color: C.txt3, fontSize: 13.5 }}>
+                    {lang === "en" ? "No claim history yet — upload a batch to see trends." : "Aún no hay historial — sube un lote para ver tendencias."}
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 18, height: 200 }}>
+                    {(() => { const maxV = Math.max(1, ...monthlyBilledValue.map(r => r.v)); return monthlyBilledValue.map((r, i) => (
+                      <div key={`${r.m}-${i}`} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                        <div style={{ fontSize: 11.5, fontWeight: 500, color: C.tealDk }}>{fmt(r.v)}</div>
+                        <div className="rise" style={{ animationDelay: `${i * 0.08}s`, width: "100%", maxWidth: 54, height: (r.v / maxV) * 155, background: i === monthlyBilledValue.length - 1 ? `linear-gradient(${C.teal},${C.tealDk})` : C.tealMute, borderRadius: "8px 8px 0 0" }} />
+                        <div style={{ fontSize: 12, color: C.txt2 }}>{r.m}</div>
+                      </div>
+                    )); })()}
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -3193,26 +3347,7 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
               // Merge real scrub results into the claims workspace so each claim
               // can be opened, inspected, and fixed in the claims detail view.
               if (data.claims?.length) {
-                const workspaceClaims = data.claims.map((c) => ({
-                  id:       c.id,
-                  patient:  c.patient || "Unknown",
-                  codes:    c.codes || "—",
-                  payer:    c.payer || "Unknown",
-                  provider: c.provider || c.prov || "—",
-                  dos:      c.dos || "—",
-                  billed:   c.billed || c.val || 0,
-                  status:   c.lane === "auto_clear" ? "clear" : c.lane === "quick_review" ? "pending" : "denied",
-                  risk:     c.risk ?? 50,
-                  comp:     c.comp ?? 70,
-                  doc:      c.doc ?? 70,
-                  sEn:      c.sEn || "Scrubbed via batch upload.",
-                  sEs:      c.sEs || "Revisado mediante carga de lote.",
-                  issues:   c.issues || [],
-                  fix:      c.fix || [],
-                  service_lines: c.service_lines || [],
-                  npi:      c.npi || "",
-                  diagnosis: c.diagnosis || "",
-                }));
+                const workspaceClaims = data.claims.map(toWorkspaceClaim);
                 setClaims((prev) => {
                   const existingIds = new Set(prev.map((x) => x.id));
                   const fresh = workspaceClaims.filter((c) => !existingIds.has(c.id));
@@ -3222,10 +3357,14 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
               setBatchLoaded(true);
             };
             const loadMockBatch = () => { setBatchReading(true); setTimeout(() => { setBatchReading(false); setBatchMeta({ total: 42, auto_clear: 31, needs_attention: 11, at_risk: 3400 }); setBatchLoaded(true); setBatchQueue(BATCH_SEED.map((x) => ({ ...x }))); }, 1400); };
-            const uploadBatchFile = async (file) => {
+            const uploadBatchFile = async (file, baaJustConfirmed = false) => {
               if (!file) return;
               if (file.size > MAX_UPLOAD_BYTES) { alert(lang === "en" ? `File exceeds 25 MB limit (${(file.size/1024/1024).toFixed(1)} MB). Please split the batch and re-upload.` : `El archivo supera el límite de 25 MB (${(file.size/1024/1024).toFixed(1)} MB). Divida el lote y vuelva a subir.`); return; }
-              if (!baaConfirmed) { setBaaModalFile({ file, target: "batch" }); return; }
+              // baaJustConfirmed covers the resume-after-confirm call below, where
+              // setBaaConfirmed(true) hasn't committed yet and this closure's
+              // `baaConfirmed` is still stale — without it, confirming the modal
+              // would immediately re-trigger it.
+              if (!baaConfirmed && !baaJustConfirmed) { setBaaModalFile({ file, target: "batch" }); return; }
               setBatchReading(true);
               if (API_URL) {
                 try {

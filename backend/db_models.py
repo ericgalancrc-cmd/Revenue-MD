@@ -119,6 +119,7 @@ class ClaimRecord(Base):
         from models import ScrubResult, ServiceLine, Issue, Fix, Lane
 
         return ScrubResult(
+            row_id        = self.row_id,
             id            = self.claim_id,
             patient       = self.patient,
             codes         = self.codes,
@@ -146,6 +147,7 @@ class ClaimRecord(Base):
             iEs           = self.iEs,
             issues        = [Issue(**i) for i in json.loads(self.issues_json or "[]")],
             fix           = [Fix(**f)   for f in json.loads(self.fix_json   or "[]")],
+            batch_created = self.batch.created if self.batch is not None else None,
         )
 
 
