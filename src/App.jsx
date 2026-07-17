@@ -1474,6 +1474,7 @@ export default function App({ auth0 = null }) {
   const [smartStep, setSmartStep]           = useState("idle");
   const [smartExtracted, setSmartExtracted] = useState([]);
   const [smartResult, setSmartResult]       = useState(null);
+  const [smartError, setSmartError]         = useState(null);
   const [learnTab, setLearnTab] = useState("codes");
   const [learnSearch, setLearnSearch] = useState("");
   const [learnTypeFilter, setLearnTypeFilter] = useState("all");
@@ -1765,6 +1766,7 @@ export default function App({ auth0 = null }) {
   const runSmartAnalysis = async () => {
     if (!smartClaimText.trim() && smartClaimImgs.length === 0) return;
     setSmartResult(null);
+    setSmartError(null);
     setSmartExtracted([]);
     setSmartStep("s1");
 
@@ -1785,14 +1787,21 @@ export default function App({ auth0 = null }) {
         })();
         const res = await fetch(`${API_URL}/api/smart-entry`, { method: "POST", body: form, headers: authHeaders() });
         await stepAnimation;
-        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || `${res.status} ${res.statusText}`);
         const data = await res.json();
         setSmartResult(data);
         setSmartStep("done");
         return;
       } catch (e) {
+        // A real backend is configured — don't silently fake a result when it
+        // fails, or a misconfigured deployment (missing ANTHROPIC_API_KEY,
+        // backend down, wrong VITE_API_URL) looks indistinguishable from a
+        // working one. Surface the error and stop; only pure demo mode
+        // (API_URL unset) uses the local simulation below.
         console.error("Smart Entry API error:", e);
-        // fall through to local simulation
+        setSmartError(e.message || String(e));
+        setSmartStep("idle");
+        return;
       }
     }
 
@@ -1812,7 +1821,7 @@ export default function App({ auth0 = null }) {
 
   const resetSmart = () => {
     setSmartRecords([]); setSmartClaimText(""); setSmartClaimImgs([]);
-    setSmartStep("idle"); setSmartExtracted([]); setSmartResult(null);
+    setSmartStep("idle"); setSmartExtracted([]); setSmartResult(null); setSmartError(null);
   };
 
   const toFileEntry = (f) => ({ name: f.name, size: f.size, preview: URL.createObjectURL(f), isImage: f.type.startsWith("image/"), file: f });
@@ -2695,6 +2704,23 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                         </div>
                       );
                     })}
+                  </div>
+                )}
+
+                {/* Smart Entry error — a real backend is configured but the call failed;
+                    surfaced instead of silently faking a result. */}
+                {smartError && (
+                  <div className="rise" style={{ background: C.redSoft, border: `1px solid #f0c5c0`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <AlertTriangle size={17} color={C.red} style={{ flexShrink: 0, marginTop: 1 }} />
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.red }}>{lang === "en" ? "Couldn't analyze — nothing was scrubbed" : "No se pudo analizar — no se revisó nada"}</div>
+                      <div style={{ fontSize: 12.5, color: "#8a2f2f", marginTop: 3, lineHeight: 1.5 }}>{smartError}</div>
+                      <div style={{ fontSize: 11.5, color: C.txt3, marginTop: 5 }}>
+                        {lang === "en"
+                          ? "This usually means the backend isn't configured (missing ANTHROPIC_API_KEY, or the API is unreachable) — check the deployment, not your photos."
+                          : "Esto usualmente significa que el backend no está configurado (falta ANTHROPIC_API_KEY o la API no responde) — revisa el despliegue, no tus fotos."}
+                      </div>
+                    </div>
                   </div>
                 )}
 
