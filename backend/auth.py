@@ -15,6 +15,13 @@ from jose import JWTError, jwt
 AUTH0_DOMAIN   = os.getenv("AUTH0_DOMAIN", "")
 AUTH0_AUDIENCE = os.getenv("AUTH0_AUDIENCE", "")
 
+# Namespaced custom claim Auth0 can be configured (via a post-login Action) to
+# inject, mapping a staff member's individual login to their shared clinic/org.
+# Without it, org falls back to the individual's own `sub` — correct for a
+# solo practitioner, but it means every user at a multi-staff clinic would
+# otherwise land in their own isolated data silo instead of a shared one.
+ORG_CLAIM = "https://revenuemdpr.com/org_id"
+
 _bearer = HTTPBearer(auto_error=False)
 _jwks_cache: Optional[dict] = None
 
@@ -34,7 +41,12 @@ async def _get_jwks() -> dict:
 async def get_current_user(
     creds: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
 ) -> dict:
-    """Validate Auth0 JWT and return payload. Demo mode if AUTH0_DOMAIN not set."""
+    """Validate Auth0 JWT and return payload, normalized with an `org` key.
+
+    `org` is the shared clinic/tenant identity that claim data is scoped by;
+    `sub` remains the individual staff member's own identity for audit
+    attribution. Demo mode if AUTH0_DOMAIN not set.
+    """
     if not AUTH0_DOMAIN:
         return {"sub": "demo", "org": "demo"}
 
@@ -66,6 +78,7 @@ async def get_current_user(
             audience=AUTH0_AUDIENCE,
             issuer=f"https://{AUTH0_DOMAIN}/",
         )
+        payload["org"] = payload.get(ORG_CLAIM) or payload["sub"]
         return payload
     except JWTError as exc:
         raise HTTPException(status_code=401, detail=f"Invalid token: {exc}")
