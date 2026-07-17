@@ -1767,6 +1767,35 @@ export default function App({ auth0 = null }) {
     setSmartResult(null);
     setSmartExtracted([]);
     setSmartStep("s1");
+
+    if (API_URL) {
+      try {
+        const form = new FormData();
+        form.append("claim_text", smartClaimText);
+        form.append("lang", lang);
+        smartRecords.forEach((r) => form.append("record_files", r.file));
+        smartClaimImgs.forEach((r) => form.append("claim_files", r.file));
+
+        // Step animation plays alongside the real request for visual feedback;
+        // the actual work is the fetch, not these timers.
+        const stepAnimation = (async () => {
+          await new Promise((r) => setTimeout(r, 700)); setSmartStep("s2");
+          await new Promise((r) => setTimeout(r, 700)); setSmartStep("s3");
+          await new Promise((r) => setTimeout(r, 700)); setSmartStep("s4");
+        })();
+        const res = await fetch(`${API_URL}/api/smart-entry`, { method: "POST", body: form, headers: authHeaders() });
+        await stepAnimation;
+        if (!res.ok) throw new Error((await res.json()).detail || res.statusText);
+        const data = await res.json();
+        setSmartResult(data);
+        setSmartStep("done");
+        return;
+      } catch (e) {
+        console.error("Smart Entry API error:", e);
+        // fall through to local simulation
+      }
+    }
+
     await new Promise(r => setTimeout(r, smartRecords.length ? 1400 : 600));
     setSmartStep("s2");
     await new Promise(r => setTimeout(r, 1100));
@@ -1786,7 +1815,7 @@ export default function App({ auth0 = null }) {
     setSmartStep("idle"); setSmartExtracted([]); setSmartResult(null);
   };
 
-  const toFileEntry = (f) => ({ name: f.name, size: f.size, preview: URL.createObjectURL(f), isImage: f.type.startsWith("image/") });
+  const toFileEntry = (f) => ({ name: f.name, size: f.size, preview: URL.createObjectURL(f), isImage: f.type.startsWith("image/"), file: f });
   const addSmartRecords = (fileList) => {
     const files = Array.from(fileList || []);
     if (!files.length) return;
@@ -1870,6 +1899,25 @@ export default function App({ auth0 = null }) {
     if (!smartResult) return;
     const now = new Date();
     const dos = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+    // Already persisted by a real /api/smart-entry call — just surface it in
+    // the workspace, no need to create it again.
+    if (smartResult.row_id != null) {
+      setClaims(p => [{
+        row_id: smartResult.row_id, id: smartResult.id, patient: "Patient (Smart Entry)",
+        codes: smartResult.cpts, payer: "ASES / Mi Salud", provider: "Provider", dos,
+        billed: smartResult.totalBilled,
+        status: smartResult.lane === "auto_clear" ? "clear" : smartResult.lane === "quick_review" ? "pending" : "denied",
+        risk: smartResult.risk, comp: smartResult.comp, doc: smartResult.doc,
+        sEn: `Smart Entry claim — ${smartResult.issues.length} issue${smartResult.issues.length !== 1 ? "s" : ""} found.`,
+        sEs: `Reclamo Entrada IA — ${smartResult.issues.length} hallazgo${smartResult.issues.length !== 1 ? "s" : ""}.`,
+        issues: smartResult.issues, fix: [],
+      }, ...p]);
+      setTab("claims");
+      resetSmart();
+      return;
+    }
+
     if (API_URL) {
       try {
         const res = await fetch(`${API_URL}/api/claims`, {

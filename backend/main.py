@@ -10,6 +10,7 @@ POST /api/batch               Upload file → parse + scrub + persist (main flow
 GET  /api/batches             List org's recent batches (newest first)
 GET  /api/batches/{id}        Get a specific batch by ID
 POST /api/analyze             Scrub a single claim dict (AI analysis button)
+POST /api/smart-entry         Medical record + claim lines (text/images) → AI-cross-referenced result
 GET  /api/baa/status          Check if the org has accepted the BAA
 POST /api/baa/accept          Record BAA acceptance for the org
 GET  /api/audit               Last 100 audit log entries for the org
@@ -30,17 +31,20 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
 from auth import get_current_user
 from database import get_db, init_db
 from db_models import AuditLog, BAARecord, BatchRecord, ClaimRecord
-from models import BatchResponse, ClaimUpdate, ParsedClaim, ScrubResult
+from models import (
+    BatchResponse, ClaimUpdate, DocFinding, Issue, ParsedClaim, ScrubResult,
+    ServiceLine, SmartEntryLine, SmartEntryResult,
+)
 from parser import parse_837
 from parsers.csv_claims import parse_csv
-from rules.engine import scrub, scrub_many
+from rules.engine import _compliance_score, _doc_score, _lane, scrub, scrub_many
 import ai
 
 logger = logging.getLogger(__name__)
@@ -382,6 +386,93 @@ async def analyze_claim(
     _audit(db, org_id, user_id, "claim_analyzed", "claim", claim.id, _client_ip(request))
     db.commit()
     return result
+
+
+@app.post("/api/smart-entry", response_model=SmartEntryResult)
+async def smart_entry(
+    request: Request,
+    claim_text: str = Form(""),
+    lang: str = Form("en"),
+    record_files: List[UploadFile] = File(default=[]),
+    claim_files: List[UploadFile] = File(default=[]),
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Medical record + claim lines (pasted text and/or photos/screenshots) →
+    a real Claude-vision extraction, cross-referenced against the medical
+    record for documentation gaps and run through the deterministic rules
+    engine for payer-specific coding checks. Persisted like /api/claims."""
+    if not ai.is_available():
+        raise HTTPException(503, "Smart Entry requires ANTHROPIC_API_KEY to be configured on the backend.")
+
+    record_bytes = [(f.filename or "record", await f.read()) for f in record_files]
+    claim_bytes  = [(f.filename or "claim", await f.read()) for f in claim_files]
+
+    extracted = ai.smart_entry_extract(claim_text, record_bytes, claim_bytes, lang)
+    if not extracted or not extracted.get("lines"):
+        raise HTTPException(422, "Could not extract any billable lines from the provided input.")
+
+    try:
+        raw_lines = extracted["lines"]
+        ai_doc_findings = [DocFinding(**f) for f in extracted.get("docFindings", [])]
+        ai_issues       = [Issue(**i) for i in extracted.get("issues", [])]
+
+        claim_id = f"SMART-{uuid.uuid4().hex[:6].upper()}"
+        service_lines = [
+            ServiceLine(
+                cpt=l.get("cpt", ""),
+                mods=[l["mod"]] if l.get("mod") and l["mod"] != "—" else [],
+                units=int(l.get("units") or 1),
+                charge=float(l.get("amount") or 0.0),
+            )
+            for l in raw_lines if l.get("cpt")
+        ]
+        icds = sorted({l["icd10"] for l in raw_lines if l.get("icd10") and l["icd10"] != "—"})
+        total_billed = sum(float(l.get("amount") or 0.0) * int(l.get("units") or 1) for l in raw_lines)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(502, f"AI returned an unexpected response format: {exc}")
+
+    claim = ParsedClaim(
+        id=claim_id,
+        codes=", ".join(l["cpt"] for l in raw_lines if l.get("cpt")),
+        diagnosis=icds[0] if icds else "",
+        diagnoses=icds,
+        service_lines=service_lines,
+    )
+    result = scrub(claim)
+    result.issues = list(result.issues) + ai_issues
+
+    has_record = len(record_files) > 0
+    extra_risk = sum(40 if i.sev == "error" else 18 if i.sev == "warning" else 5 for i in ai_issues)
+    if not has_record:
+        extra_risk += 12
+    result.risk = min(result.risk + extra_risk, 100)
+    result.comp = _compliance_score(result.issues)
+    result.doc  = _doc_score(result.issues)
+    result.lane = _lane(result.risk, result.issues)
+
+    org_id, user_id = _identity(user)
+    result_batch = _store_batch([result], db, org_id=org_id)
+    stored = result_batch.claims[0]
+
+    _audit(db, org_id, user_id, "smart_entry_analyzed", "claim", claim_id, _client_ip(request))
+    db.commit()
+
+    return SmartEntryResult(
+        id=stored.id,
+        row_id=stored.row_id,
+        lines=[SmartEntryLine(**l) for l in raw_lines],
+        icds=icds,
+        totalBilled=round(total_billed, 2),
+        issues=stored.issues,
+        docFindings=ai_doc_findings,
+        risk=stored.risk,
+        comp=stored.comp,
+        doc=stored.doc,
+        lane=stored.lane,
+        hasRecord=has_record,
+        cpts=", ".join(l["cpt"] for l in raw_lines if l.get("cpt")),
+    )
 
 
 @app.post("/api/appeal")

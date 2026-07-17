@@ -101,3 +101,33 @@ class BatchResponse(BaseModel):
     needs_attention: int
     at_risk:         float
     claims:          List[ScrubResult]
+
+
+class SmartEntryLine(BaseModel):
+    cpt:    str
+    desc:   str   = ""
+    icd10:  str   = "—"
+    mod:    str   = "—"
+    units:  int   = 1
+    amount: float = 0.0
+
+
+class DocFinding(BaseModel):
+    ok:  bool
+    msg: str
+
+
+class SmartEntryResult(BaseModel):
+    id:          str
+    row_id:      Optional[int] = None
+    lines:       List[SmartEntryLine] = []
+    icds:        List[str] = []
+    totalBilled: float = 0.0
+    issues:      List[Issue] = []
+    docFindings: List[DocFinding] = []
+    risk:        int  = 0
+    comp:        int  = 100
+    doc:         int  = 100
+    lane:        Lane = Lane.auto_clear
+    hasRecord:   bool = False
+    cpts:        str  = ""
