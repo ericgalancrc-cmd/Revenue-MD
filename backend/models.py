@@ -60,6 +60,7 @@ class ParsedClaim(BaseModel):
 
 
 class ScrubResult(ParsedClaim):
+    row_id:      Optional[int] = None   # stable per-record id for single-claim CRUD
     lane:        Lane    = Lane.auto_clear
     risk:        int     = 0
     comp:        int     = 100
@@ -72,6 +73,24 @@ class ScrubResult(ParsedClaim):
     fix:         List[Fix]   = []
     ai_note:     str     = ""   # biller-facing AI insight beyond the issue list
     ai_enhanced: bool    = False
+    batch_created: Optional[str] = None   # timestamp of the owning batch, for trend charts
+
+
+class ClaimUpdate(BaseModel):
+    """Partial update for a single claim — only fields present are applied."""
+    patient:   Optional[str]   = None
+    codes:     Optional[str]   = None
+    payer:     Optional[str]   = None
+    prov:      Optional[str]   = None
+    provider:  Optional[str]   = None
+    dos:       Optional[str]   = None
+    billed:    Optional[float] = None
+    val:       Optional[float] = None
+    auth:      Optional[str]   = None
+    pos:       Optional[str]   = None
+    diagnosis: Optional[str]   = None
+    member_id: Optional[str]   = None
+    status:    Optional[str]   = None
 
 
 class BatchResponse(BaseModel):
