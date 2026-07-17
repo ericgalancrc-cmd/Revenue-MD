@@ -201,24 +201,35 @@ def health():
 
 @app.post("/api/parse", response_model=List[ParsedClaim])
 async def parse_file(
+    request: Request,
     file: UploadFile = File(...),
+    db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
     content = await file.read()
     claims = _detect_and_parse(content, file.filename or "upload.edi")
     if not claims:
         raise HTTPException(422, "No claims found in the uploaded file.")
+    org_id, user_id = _identity(user)
+    _audit(db, org_id, user_id, "file_parsed", "file", file.filename or "", _client_ip(request))
+    db.commit()
     return claims
 
 
 @app.post("/api/scrub", response_model=List[ScrubResult])
 async def scrub_claims(
     claims: List[ParsedClaim],
+    request: Request,
+    db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
     if not claims:
         raise HTTPException(422, "claims list must not be empty.")
-    return scrub_many(claims)
+    org_id, user_id = _identity(user)
+    results = scrub_many(claims)
+    _audit(db, org_id, user_id, "claims_scrubbed", "claim", "", _client_ip(request))
+    db.commit()
+    return results
 
 
 @app.post("/api/batch", response_model=BatchResponse)
@@ -362,19 +373,30 @@ def delete_claim(
 @app.post("/api/analyze", response_model=ScrubResult)
 async def analyze_claim(
     claim: ParsedClaim,
+    request: Request,
+    db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
-    return _scrub_and_enhance(claim)
+    org_id, user_id = _identity(user)
+    result = _scrub_and_enhance(claim)
+    _audit(db, org_id, user_id, "claim_analyzed", "claim", claim.id, _client_ip(request))
+    db.commit()
+    return result
 
 
 @app.post("/api/appeal")
 async def generate_appeal(
     body: dict,
+    request: Request,
+    db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
+    org_id, user_id = _identity(user)
     denial = body.get("denial", {})
     lang   = body.get("lang", "en")
     letter = ai.appeal_letter(denial, lang)
+    _audit(db, org_id, user_id, "appeal_letter_generated", "claim", denial.get("id", ""), _client_ip(request))
+    db.commit()
     return {"letter": letter}
 
 
