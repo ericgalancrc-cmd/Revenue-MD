@@ -14,10 +14,11 @@ Falls back silently to the rules-engine result if:
 """
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import os
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -219,3 +220,116 @@ Respond with ONLY valid JSON — no markdown fences, no prose outside the JSON o
     except Exception as exc:
         logger.warning("AI enhancement failed — using rules-engine result: %s", exc)
         return result
+
+
+_IMAGE_MIME_BY_EXT = {
+    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".gif": "image/gif", ".webp": "image/webp",
+}
+
+
+def _file_content_block(filename: str, data: bytes) -> Optional[Dict[str, Any]]:
+    """Build a Claude vision content block for an image or PDF file, or None
+    if the extension isn't a supported document/image type."""
+    ext = os.path.splitext(filename.lower())[1]
+    if ext == ".pdf":
+        return {
+            "type": "document",
+            "source": {"type": "base64", "media_type": "application/pdf", "data": base64.b64encode(data).decode()},
+        }
+    media_type = _IMAGE_MIME_BY_EXT.get(ext)
+    if not media_type:
+        return None
+    return {
+        "type": "image",
+        "source": {"type": "base64", "media_type": media_type, "data": base64.b64encode(data).decode()},
+    }
+
+
+def smart_entry_extract(
+    claim_text: str,
+    record_files: List[Tuple[str, bytes]],
+    claim_files: List[Tuple[str, bytes]],
+    lang: str = "en",
+) -> Optional[Dict[str, Any]]:
+    """
+    Reads medical-record page(s) and claim-lines screenshots/text via Claude
+    vision, extracts billable line items, and cross-references them against
+    the record for documentation gaps and coding-risk issues.
+
+    Returns {"lines": [...], "docFindings": [...], "issues": [...]} or None
+    if AI is unavailable, there's nothing to analyze, or the call fails.
+    """
+    if not is_available():
+        return None
+    if not claim_text.strip() and not claim_files and not record_files:
+        return None
+
+    is_en = lang != "es"
+    content: List[Dict[str, Any]] = []
+
+    if record_files:
+        content.append({"type": "text", "text": "MEDICAL RECORD PAGE(S):"})
+        for filename, data in record_files:
+            block = _file_content_block(filename, data)
+            if block:
+                content.append(block)
+
+    if claim_files:
+        content.append({"type": "text", "text": "CLAIM LINES WORKSHEET / SCREENSHOT(S):"})
+        for filename, data in claim_files:
+            block = _file_content_block(filename, data)
+            if block:
+                content.append(block)
+
+    instructions = f"""You are a certified medical billing specialist for Puerto Rico payers \
+(ASES/Mi Salud, Plan Vital, Triple-S, MMM, MCS, Medicare/FCSO).
+
+You were given the medical record page(s) and claim-lines material above (if any), \
+plus pasted claim-lines text below (if any). Read everything provided, then:
+
+1. Extract every billable line item: CPT/HCPCS code, a short plain-English description, \
+the primary ICD-10 diagnosis code for that line, any modifier (or "—" if none), units, \
+and the billed dollar amount.
+2. Cross-reference the claim lines against the medical record. Flag documentation gaps a \
+standard scrubber would miss — e.g. a treatment-plan date/signature not present, interactive \
+complexity not separately documented, telehealth platform not named, service level not \
+supported by the note, prior-authorization reference missing. If no medical record was \
+provided, include one docFinding noting that.
+3. Flag coding-risk issues: modifier misuse, ICD-10 lacking specificity, upcoding/undercoding \
+risk relative to documented complexity. Use code prefix "AI-" for each.
+
+{"PASTED CLAIM LINES TEXT:" if claim_text.strip() else ""}
+{claim_text.strip()}
+
+Write docFinding messages and issue text in {"English" if is_en else "Spanish"}. Issue titles/details \
+still need both tEn/tEs and dEn/dEs — write the one matching the requested language accurately and \
+give a reasonable {"Spanish" if is_en else "English"} counterpart for the other.
+
+Respond with ONLY valid JSON — no markdown fences, no prose outside the JSON object:
+{{
+  "lines": [{{"cpt":"...", "desc":"...", "icd10":"...", "mod":"...", "units":1, "amount":123.45}}],
+  "docFindings": [{{"ok": true, "msg": "..."}}],
+  "issues": [{{"code":"AI-...", "sev":"error|warning|info", "tEn":"...", "tEs":"...", "dEn":"...", "dEs":"..."}}]
+}}
+If nothing billable could be found, return {{"lines": [], "docFindings": [...explaining why...], "issues": []}}."""
+
+    content.append({"type": "text", "text": instructions})
+
+    try:
+        response = _client.messages.create(
+            model=MODEL,
+            max_tokens=2200,
+            temperature=0,
+            messages=[{"role": "user", "content": content}],
+        )
+        raw = response.content[0].text.strip()
+        if raw.startswith("```"):
+            parts = raw.split("```")
+            raw = parts[1] if len(parts) > 1 else raw
+            if raw.startswith("json"):
+                raw = raw[4:].strip()
+        return json.loads(raw)
+    except Exception as exc:
+        logger.warning("Smart Entry extraction failed: %s", exc)
+        return None
