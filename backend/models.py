@@ -93,6 +93,11 @@ class ClaimUpdate(BaseModel):
     status:    Optional[str]   = None
 
 
+class TeamInviteRequest(BaseModel):
+    email: str
+    role:  str = "coder"   # "coder" | "manager"
+
+
 class BatchResponse(BaseModel):
     id:              str
     created:         str

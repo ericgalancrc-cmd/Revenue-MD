@@ -739,6 +739,96 @@ class TestBilingualOutput:
         assert r.iEs == ""
 
 
+# ── MCS-001: NPI required for MA enrollment check ─────────────────────────────
+
+class TestMCS001:
+    def test_fires_when_npi_missing(self):
+        c = make_claim(
+            payer="MCS",
+            npi="",
+            service_lines=[ServiceLine(cpt="99213", units=1)],
+        )
+        r = scrub(c)
+        assert fired(r, "MCS-001")
+        assert sev(r, "MCS-001") == "error"
+
+    def test_does_not_fire_when_npi_present(self):
+        c = make_claim(
+            payer="MCS",
+            npi="1234567890",
+            service_lines=[ServiceLine(cpt="99213", units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MCS-001")
+
+    def test_does_not_fire_for_other_payers(self):
+        c = make_claim(payer="Plan Vital", npi="")
+        r = scrub(c)
+        assert not fired(r, "MCS-001")
+
+
+# ── MCS-002: MSP verification always flagged ──────────────────────────────────
+
+class TestMCS002:
+    def test_always_fires_for_mcs(self):
+        c = make_claim(payer="MCS")
+        r = scrub(c)
+        assert fired(r, "MCS-002")
+        assert sev(r, "MCS-002") == "warning"
+
+    def test_does_not_fire_for_other_payers(self):
+        c = make_claim(payer="Plan Vital")
+        r = scrub(c)
+        assert not fired(r, "MCS-002")
+
+
+# ── MCS-003: Specialist/high-cost imaging PA verification ────────────────────
+
+class TestMCS003:
+    def test_fires_for_flagged_cpt_without_auth(self):
+        c = make_claim(
+            payer="MCS",
+            codes="70551",
+            auth="",
+            service_lines=[ServiceLine(cpt="70551", units=1)],
+        )
+        r = scrub(c)
+        assert fired(r, "MCS-003")
+        assert sev(r, "MCS-003") == "warning"
+
+    def test_does_not_fire_when_auth_present(self):
+        c = make_claim(
+            payer="MCS",
+            codes="70551",
+            auth="AUTH-9001",
+            service_lines=[ServiceLine(cpt="70551", units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MCS-003")
+
+    def test_does_not_fire_for_non_flagged_cpt(self):
+        c = make_claim(
+            payer="MCS",
+            codes="99213",
+            auth="",
+            service_lines=[ServiceLine(cpt="99213", units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MCS-003")
+
+
+class TestMCSPayerNormalization:
+    def test_mcs_classicare_routes_to_mcs_rules(self):
+        c = make_claim(payer="MCS Classicare", npi="")
+        r = scrub(c)
+        assert fired(r, "MCS-001"), "payer aliases should normalize to MCS"
+
+    def test_mcs_platino_routes_to_mcs_rules(self):
+        c = make_claim(payer="MCS Platino", npi="")
+        r = scrub(c)
+        assert fired(r, "MCS-001"), "payer aliases should normalize to MCS"
+
+
 # ── Score calculations ────────────────────────────────────────────────────────
 
 class TestScores:

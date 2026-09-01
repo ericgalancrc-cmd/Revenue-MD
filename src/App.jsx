@@ -251,6 +251,7 @@ const T = {
     stAuthEnabled: "Active", stAuthDisabled: "Not enabled",
     stTeamSub: "Manage who has access to your organization's RevenueMD account.",
     stAddMember: "Add member", stMemberName: "Name", stMemberRole: "Role", stMemberStatus: "Status", stMemberActive: "Active",
+    stMemberPending: "Pending", stTeamEmpty: "No team members invited yet.",
     stInviteEmail: "Invite by email", stSendInvite: "Send invite",
     stLanguage: "Language", stLanguageSub: "Choose the platform language.",
     mobileManagerOnly: "This view is for managers only",
@@ -453,6 +454,7 @@ const T = {
     stAuthEnabled: "Activo", stAuthDisabled: "No habilitado",
     stTeamSub: "Gestiona quién tiene acceso a la cuenta de tu organización.",
     stAddMember: "Agregar miembro", stMemberName: "Nombre", stMemberRole: "Rol", stMemberStatus: "Estado", stMemberActive: "Activo",
+    stMemberPending: "Pendiente", stTeamEmpty: "Aún no se ha invitado a ningún miembro del equipo.",
     stInviteEmail: "Invitar por correo", stSendInvite: "Enviar invitación",
     stLanguage: "Idioma", stLanguageSub: "Elige el idioma de la plataforma.",
     mobileManagerOnly: "Esta vista es solo para gerentes",
@@ -1458,6 +1460,11 @@ export default function App({ auth0 = null }) {
   const [batchReading, setBatchReading] = useState(false);
   const [batchMeta, setBatchMeta] = useState(null);    // { total, auto_clear, needs_attention, at_risk }
   const batchFileRef = useRef(null);
+  const [team, setTeam] = useState(null);              // null until loaded from API; falls back to demo list
+  const [teamLoaded, setTeamLoaded] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("coder");
+  const [inviteStatus, setInviteStatus] = useState(null); // { kind: "sending"|"sent"|"error", message }
   const intakeFileRef = useRef(null);
   const smartRecordRef = useRef(null);
   const smartImgRef    = useRef(null);
@@ -1577,7 +1584,47 @@ export default function App({ auth0 = null }) {
         })
         .catch(() => { /* no API — demo mode, batch stays seeded locally */ });
     }
-  }, [authed, accessToken, claimsHydrated, batchLoaded]);
+    if (!teamLoaded) {
+      fetch(`${API_URL}/api/team`, { headers: authHeaders() })
+        .then((r) => r.ok ? r.json() : [])
+        .then((data) => setTeam(data))
+        .catch(() => { /* API unreachable — Team tab falls back to demo list */ })
+        .finally(() => setTeamLoaded(true));
+    }
+  }, [authed, accessToken, claimsHydrated, batchLoaded, teamLoaded]);
+
+  const sendTeamInvite = () => {
+    const email = inviteEmail.trim();
+    if (!email || !email.includes("@")) {
+      setInviteStatus({ kind: "error", message: lang === "en" ? "Enter a valid email address." : "Ingrese un correo electrónico válido." });
+      return;
+    }
+    if (!API_URL) {
+      // Demo mode — no backend to persist to. Reflect it locally so the
+      // interaction still feels real, but make the limitation explicit.
+      setInviteStatus({ kind: "error", message: lang === "en" ? "Demo mode — connect a backend (VITE_API_URL) to actually send invites." : "Modo demo — conecte un backend (VITE_API_URL) para enviar invitaciones reales." });
+      return;
+    }
+    setInviteStatus({ kind: "sending", message: lang === "en" ? "Sending…" : "Enviando…" });
+    fetch(`${API_URL}/api/team/invite`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ email, role: inviteRole }),
+    })
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
+        return data;
+      })
+      .then((invite) => {
+        setTeam((prev) => [invite, ...(prev || [])]);
+        setInviteEmail("");
+        setInviteStatus({ kind: "sent", message: lang === "en" ? `Invited ${invite.email}.` : `${invite.email} invitado.` });
+      })
+      .catch((err) => {
+        setInviteStatus({ kind: "error", message: err.message || (lang === "en" ? "Could not send invite." : "No se pudo enviar la invitación.") });
+      });
+  };
 
   // Parse a codes string like "90837 GT + H0004 ×8" into service_lines array
   // so the backend rules engine can inspect individual CPT codes and modifiers.
@@ -3707,11 +3754,24 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
             ];
             const avatarBg = (THEMES[userProfile.avatarColor] || acc).hex;
             const initials = (userProfile.firstName[0] || "D") + (userProfile.lastName[0] || "U");
+            // Fallback shown only when there's no backend to read real invites from
+            // (API_URL unset, or the team list hasn't loaded yet) — never shown
+            // once real data is available, even if that real list is empty.
             const demoTeam = [
-              { name: "Dr. Rivera, LCSW", email: "rivera@clinicapr.com",  role: t.coder,   color: THEMES.teal.hex },
-              { name: "Dr. Colón, PhD",   email: "colon@clinicapr.com",   role: t.coder,   color: THEMES.emerald.hex },
-              { name: "Dr. Méndez, MD",   email: "mendez@clinicapr.com",  role: t.manager, color: THEMES.indigo.hex },
+              { name: "Dr. Rivera, LCSW", email: "rivera@clinicapr.com",  role: t.coder,   color: THEMES.teal.hex,    status: "active" },
+              { name: "Dr. Colón, PhD",   email: "colon@clinicapr.com",   role: t.coder,   color: THEMES.emerald.hex, status: "active" },
+              { name: "Dr. Méndez, MD",   email: "mendez@clinicapr.com",  role: t.manager, color: THEMES.indigo.hex, status: "active" },
             ];
+            const teamColors = [THEMES.teal.hex, THEMES.emerald.hex, THEMES.indigo.hex, THEMES.violet.hex, THEMES.blue.hex];
+            const displayTeam = (API_URL && team !== null)
+              ? team.map((inv, i) => ({
+                  name:   inv.email.split("@")[0],
+                  email:  inv.email,
+                  role:   inv.role === "manager" ? t.manager : t.coder,
+                  color:  teamColors[i % teamColors.length],
+                  status: inv.status,
+                }))
+              : demoTeam;
             return (
               <div>
                 <Head title={t.settingsTitle} sub={t.settingsSub} />
@@ -4012,24 +4072,57 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                         </div>
                         <div style={{ fontSize: 13, color: C.txt2, marginBottom: 22 }}>{t.stTeamSub}</div>
                         <div style={{ marginBottom: 20 }}>
-                          {demoTeam.map((m, i) => (
-                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 0", borderBottom: i < demoTeam.length - 1 ? `1px solid ${C.lineSoft}` : "none" }}>
-                              <div style={{ width: 36, height: 36, borderRadius: "50%", background: m.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>{m.name[3]}{m.name.split(" ")[1]?.[0]}</div>
+                          {displayTeam.length === 0 && (
+                            <div style={{ fontSize: 13, color: C.txt3, padding: "13px 0" }}>{t.stTeamEmpty}</div>
+                          )}
+                          {displayTeam.map((m, i) => (
+                            <div key={m.email || i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 0", borderBottom: i < displayTeam.length - 1 ? `1px solid ${C.lineSoft}` : "none" }}>
+                              <div style={{ width: 36, height: 36, borderRadius: "50%", background: m.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>{(m.name[0] || "?").toUpperCase()}</div>
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: 13.5, fontWeight: 500, color: C.ink }}>{m.name}</div>
                                 <div style={{ fontSize: 12, color: C.txt3, marginTop: 1 }}>{m.email}</div>
                               </div>
                               <span style={{ fontSize: 12, fontWeight: 500, padding: "4px 12px", borderRadius: 20, background: acc.soft, color: acc.dk }}>{m.role}</span>
-                              <span style={{ fontSize: 11.5, color: C.teal }}>{t.stMemberActive}</span>
+                              <span style={{ fontSize: 11.5, color: m.status === "pending" ? C.txt3 : C.teal }}>{m.status === "pending" ? t.stMemberPending : t.stMemberActive}</span>
                             </div>
                           ))}
                         </div>
                         <div style={{ borderTop: `1px solid ${C.lineSoft}`, paddingTop: 20 }}>
                           <div style={{ fontSize: 13, fontWeight: 500, color: C.ink, marginBottom: 10 }}>{t.stInviteEmail}</div>
                           <div style={{ display: "flex", gap: 10 }}>
-                            <input placeholder="colleague@clinicapr.com" style={{ ...inp, flex: 1 }} />
-                            <button style={{ ...btnP, background: acc.hex, flexShrink: 0 }}>{t.stSendInvite}</button>
+                            <input
+                              value={inviteEmail}
+                              onChange={(e) => { setInviteEmail(e.target.value); setInviteStatus(null); }}
+                              onKeyDown={(e) => { if (e.key === "Enter") sendTeamInvite(); }}
+                              placeholder="colleague@clinicapr.com"
+                              style={{ ...inp, flex: 1 }}
+                            />
+                            <select
+                              value={inviteRole}
+                              onChange={(e) => setInviteRole(e.target.value)}
+                              style={{ ...inp, width: 130, flexShrink: 0 }}
+                            >
+                              <option value="coder">{t.coder}</option>
+                              <option value="manager">{t.manager}</option>
+                            </select>
+                            <button
+                              onClick={sendTeamInvite}
+                              disabled={inviteStatus?.kind === "sending"}
+                              style={{ ...btnP, background: acc.hex, flexShrink: 0, opacity: inviteStatus?.kind === "sending" ? 0.6 : 1, cursor: inviteStatus?.kind === "sending" ? "wait" : "pointer" }}
+                            >
+                              {inviteStatus?.kind === "sending" ? (lang === "en" ? "Sending…" : "Enviando…") : t.stSendInvite}
+                            </button>
                           </div>
+                          {inviteStatus && inviteStatus.kind !== "sending" && (
+                            <div style={{ fontSize: 12, marginTop: 8, color: inviteStatus.kind === "error" ? C.red : C.teal }}>
+                              {inviteStatus.message}
+                            </div>
+                          )}
+                          {!API_URL && (
+                            <div style={{ fontSize: 11.5, color: C.txt3, marginTop: 8 }}>
+                              {lang === "en" ? "No VITE_API_URL set — showing sample team data." : "Sin VITE_API_URL — mostrando datos de equipo de muestra."}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

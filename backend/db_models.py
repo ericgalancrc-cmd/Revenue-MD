@@ -163,6 +163,30 @@ class BAARecord(Base):
     version     = Column(String,  default="1.0")
 
 
+class TeamInvite(Base):
+    """
+    A pending or accepted invite for a staff member to join an org's shared
+    clinic data. Recording the invite here does NOT send an email — actually
+    delivering it requires either Auth0's own invite/Organizations flow or a
+    transactional email provider (e.g. SendGrid), neither of which is wired
+    up yet. This table just gives the Settings > Team page something real
+    to read and write instead of a hardcoded demo list.
+    """
+    __tablename__ = "team_invites"
+
+    id           = Column(String,  primary_key=True)
+    org_id       = Column(String,  nullable=False, index=True)
+    email        = Column(String,  nullable=False)
+    role         = Column(String,  default="coder")   # "coder" | "manager"
+    invited_by   = Column(String,  nullable=False)
+    invited_at   = Column(String,  nullable=False)
+    status       = Column(String,  default="pending")  # "pending" | "active" | "revoked"
+
+    __table_args__ = (
+        Index("ix_team_invites_org_email", "org_id", "email"),
+    )
+
+
 class AuditLog(Base):
     """HIPAA-required audit trail: every batch/claim operation is logged."""
     __tablename__ = "audit_logs"

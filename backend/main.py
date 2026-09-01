@@ -14,6 +14,8 @@ POST /api/smart-entry         Medical record + claim lines (text/images) → AI-
 GET  /api/baa/status          Check if the org has accepted the BAA
 POST /api/baa/accept          Record BAA acceptance for the org
 GET  /api/audit               Last 100 audit log entries for the org
+GET  /api/team                List this org's pending/active invites
+POST /api/team/invite         Record a new invite for this org (no email sent)
 
 Run locally
 -----------
@@ -37,10 +39,10 @@ from sqlalchemy.orm import Session
 
 from auth import get_current_user
 from database import get_db, init_db
-from db_models import AuditLog, BAARecord, BatchRecord, ClaimRecord
+from db_models import AuditLog, BAARecord, BatchRecord, ClaimRecord, TeamInvite
 from models import (
     BatchResponse, ClaimUpdate, DocFinding, Issue, ParsedClaim, ScrubResult,
-    ServiceLine, SmartEntryLine, SmartEntryResult,
+    ServiceLine, SmartEntryLine, SmartEntryResult, TeamInviteRequest,
 )
 from parser import parse_837
 from parsers.csv_claims import parse_csv
@@ -489,6 +491,89 @@ async def generate_appeal(
     _audit(db, org_id, user_id, "appeal_letter_generated", "claim", denial.get("id", ""), _client_ip(request))
     db.commit()
     return {"letter": letter}
+
+
+# ── Team endpoints ────────────────────────────────────────────────────────────
+#
+# NOTE: these endpoints persist invite records scoped to the org, but do NOT
+# send an email. Actually delivering an invite requires either Auth0's own
+# Organizations/invite flow or a transactional email provider (e.g. SendGrid) —
+# neither is wired up. Until one is, a manager has to relay the invited
+# person's login info out of band, and that person's first real login (once
+# Auth0 is configured — see docs/AUTH0_SETUP.md) is what actually grants them
+# access; this table is just the record of who's been invited.
+
+@app.get("/api/team")
+def list_team(
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """List invites (pending and active) for this org, newest first."""
+    org_id, _ = _identity(user)
+    rows = (
+        db.query(TeamInvite)
+        .filter(TeamInvite.org_id == org_id)
+        .order_by(TeamInvite.invited_at.desc())
+        .all()
+    )
+    return [
+        {
+            "id":         r.id,
+            "email":      r.email,
+            "role":       r.role,
+            "invited_by": r.invited_by,
+            "invited_at": r.invited_at,
+            "status":     r.status,
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/team/invite")
+def invite_team_member(
+    body: TeamInviteRequest,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Record a pending invite for this org. Does not send an email — see note above."""
+    email = body.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(400, "A valid email address is required.")
+    if body.role not in ("coder", "manager"):
+        raise HTTPException(400, "role must be 'coder' or 'manager'.")
+
+    org_id, user_id = _identity(user)
+
+    existing = (
+        db.query(TeamInvite)
+        .filter(TeamInvite.org_id == org_id, TeamInvite.email == email)
+        .first()
+    )
+    if existing and existing.status != "revoked":
+        raise HTTPException(409, f"{email} has already been invited to this org.")
+
+    now = datetime.now(timezone.utc).isoformat()
+    invite = TeamInvite(
+        id         = str(uuid.uuid4()),
+        org_id     = org_id,
+        email      = email,
+        role       = body.role,
+        invited_by = user_id,
+        invited_at = now,
+        status     = "pending",
+    )
+    db.add(invite)
+    _audit(db, org_id, user_id, "team_invite_created", "team_invite", invite.id)
+    db.commit()
+
+    return {
+        "id":         invite.id,
+        "email":      invite.email,
+        "role":       invite.role,
+        "invited_by": invite.invited_by,
+        "invited_at": invite.invited_at,
+        "status":     invite.status,
+    }
 
 
 # ── BAA endpoints ─────────────────────────────────────────────────────────────
