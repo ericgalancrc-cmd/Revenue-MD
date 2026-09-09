@@ -829,6 +829,56 @@ class TestMCSPayerNormalization:
         assert fired(r, "MCS-001"), "payer aliases should normalize to MCS"
 
 
+# ── HCC-001: HCC-relevant diagnosis flag ──────────────────────────────────────
+
+class TestHCC001:
+    def test_fires_for_chf(self):
+        c = make_claim(diagnoses=["I50.9"])
+        r = scrub(c)
+        assert fired(r, "HCC-001")
+        assert sev(r, "HCC-001") == "info"
+
+    def test_fires_for_diabetes_with_complication(self):
+        c = make_claim(diagnoses=["E11.22"])
+        r = scrub(c)
+        assert fired(r, "HCC-001")
+
+    def test_does_not_fire_for_plain_diabetes_unspecified(self):
+        # E11.9 has no complication — not itself an HCC category prefix match
+        c = make_claim(diagnoses=["E11.9"])
+        r = scrub(c)
+        assert not fired(r, "HCC-001")
+
+    def test_does_not_fire_for_unrelated_diagnosis(self):
+        c = make_claim(diagnoses=["Z00.00"])
+        r = scrub(c)
+        assert not fired(r, "HCC-001")
+
+    def test_fires_regardless_of_payer(self):
+        for payer in ("Plan Vital", "Medicare", "MCS", "Triple-S"):
+            c = make_claim(payer=payer, diagnoses=["I50.9"])
+            r = scrub(c)
+            assert fired(r, "HCC-001"), f"HCC-001 should fire regardless of payer ({payer})"
+
+    def test_does_not_force_needs_work_lane(self):
+        # Informational-only — shouldn't push an otherwise-clean claim into needs_work
+        c = make_claim(
+            codes="90834 GT", payer="Plan Vital", auth="AUTH-4421", pos="02",
+            diagnosis="I50.9", diagnoses=["I50.9"],
+            service_lines=[ServiceLine(cpt="90834", mods=["GT"], units=1)],
+        )
+        r = scrub(c)
+        assert fired(r, "HCC-001")
+        assert r.lane != Lane.needs_work
+
+    def test_multiple_matches_mentions_count(self):
+        c = make_claim(diagnoses=["I50.9", "J44.9", "F33.1"])
+        r = scrub(c)
+        assert fired(r, "HCC-001")
+        issue = next(i for i in r.issues if i.code == "HCC-001")
+        assert "+2 more" in issue.tEn
+
+
 # ── Score calculations ────────────────────────────────────────────────────────
 
 class TestScores:
