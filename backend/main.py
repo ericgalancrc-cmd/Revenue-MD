@@ -87,6 +87,22 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Baseline security headers. Cheap, has no dependency on any external
+    account/service, and meaningfully raises the floor against clickjacking,
+    MIME-sniffing, and protocol-downgrade attacks on a product handling PHI."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    # Render/Vercel terminate TLS in front of the app; HSTS is still safe to
+    # set here so browsers enforce HTTPS on every subsequent visit.
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+    return response
+
+
 @app.on_event("startup")
 def startup():
     init_db()
@@ -214,6 +230,55 @@ def _get_org_claim(db: Session, row_id: int, org_id: str) -> ClaimRecord:
     return row
 
 
+# ── Upload hardening ──────────────────────────────────────────────────────────
+# Caps chosen generously for real EDI 837/CSV claim files and scanned medical
+# record photos/PDFs, while still ruling out abuse (someone trying to exhaust
+# memory or disk with an oversized upload).
+MAX_CLAIM_FILE_BYTES = 10 * 1024 * 1024   # 10 MB — EDI 837 / CSV batch files
+MAX_RECORD_FILE_BYTES = 15 * 1024 * 1024  # 15 MB — per medical-record image/PDF
+MAX_SMART_ENTRY_FILES = 10                # combined record_files + claim_files per request
+
+ALLOWED_CLAIM_EXTENSIONS = (".edi", ".txt", ".csv", ".837", ".x12")
+ALLOWED_RECORD_CONTENT_TYPES = {
+    "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif",
+    "application/pdf",
+}
+
+
+def _read_capped(file: UploadFile, max_bytes: int) -> bytes:
+    """Read an UploadFile's content, rejecting anything over max_bytes.
+
+    Reads up to max_bytes + 1 so an oversized file is caught without ever
+    buffering the full (potentially huge) payload into memory.
+    """
+    # Starlette's UploadFile wraps a SpooledTemporaryFile; .file gives sync access.
+    content = file.file.read(max_bytes + 1)
+    if len(content) > max_bytes:
+        raise HTTPException(
+            413,
+            f"'{file.filename or 'upload'}' exceeds the {max_bytes // (1024*1024)} MB upload limit.",
+        )
+    return content
+
+
+def _validate_claim_filename(filename: str) -> None:
+    name = (filename or "").lower()
+    if not name.endswith(ALLOWED_CLAIM_EXTENSIONS):
+        raise HTTPException(
+            415,
+            f"Unsupported file type for '{filename}'. Expected one of: {', '.join(ALLOWED_CLAIM_EXTENSIONS)}.",
+        )
+
+
+def _validate_record_upload(file: UploadFile) -> None:
+    if file.content_type not in ALLOWED_RECORD_CONTENT_TYPES:
+        raise HTTPException(
+            415,
+            f"Unsupported file type '{file.content_type}' for '{file.filename}'. "
+            f"Expected an image (JPEG/PNG/WEBP/HEIC) or PDF.",
+        )
+
+
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.get("/health")
@@ -228,7 +293,8 @@ async def parse_file(
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
-    content = await file.read()
+    _validate_claim_filename(file.filename or "")
+    content = _read_capped(file, MAX_CLAIM_FILE_BYTES)
     claims = _detect_and_parse(content, file.filename or "upload.edi")
     if not claims:
         raise HTTPException(422, "No claims found in the uploaded file.")
@@ -263,8 +329,9 @@ async def batch(
     user: dict = Depends(get_current_user),
 ):
     org_id, user_id = _identity(user)
-    content = await file.read()
     filename = file.filename or "upload.edi"
+    _validate_claim_filename(filename)
+    content = _read_capped(file, MAX_CLAIM_FILE_BYTES)
 
     raw_claims = _detect_and_parse(content, filename)
     if not raw_claims:
@@ -426,8 +493,14 @@ async def smart_entry(
     if not ai.is_available():
         raise HTTPException(503, "Smart Entry requires ANTHROPIC_API_KEY to be configured on the backend.")
 
-    record_bytes = [(f.filename or "record", await f.read()) for f in record_files]
-    claim_bytes  = [(f.filename or "claim", await f.read()) for f in claim_files]
+    all_files = list(record_files) + list(claim_files)
+    if len(all_files) > MAX_SMART_ENTRY_FILES:
+        raise HTTPException(413, f"Too many files — max {MAX_SMART_ENTRY_FILES} per request.")
+    for f in all_files:
+        _validate_record_upload(f)
+
+    record_bytes = [(f.filename or "record", _read_capped(f, MAX_RECORD_FILE_BYTES)) for f in record_files]
+    claim_bytes  = [(f.filename or "claim",  _read_capped(f, MAX_RECORD_FILE_BYTES)) for f in claim_files]
 
     extracted = ai.smart_entry_extract(claim_text, record_bytes, claim_bytes, lang)
     if not extracted or not extracted.get("lines"):
@@ -525,17 +598,20 @@ async def generate_appeal(
 
 @app.get("/api/team")
 def list_team(
+    request: Request,
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
     """List invites (pending and active) for this org, newest first."""
-    org_id, _ = _identity(user)
+    org_id, user_id = _identity(user)
     rows = (
         db.query(TeamInvite)
         .filter(TeamInvite.org_id == org_id)
         .order_by(TeamInvite.invited_at.desc())
         .all()
     )
+    _audit(db, org_id, user_id, "team_listed", ip=_client_ip(request))
+    db.commit()
     return [
         {
             "id":         r.id,
