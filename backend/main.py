@@ -35,6 +35,9 @@ from typing import List, Optional
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
 
 from auth import get_current_user
@@ -69,6 +72,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _rate_limit_key(request: Request) -> str:
+    """Rate-limit by client IP, respecting X-Forwarded-For behind Render/Vercel's proxy."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return get_remote_address(request)
+
+
+limiter = Limiter(key_func=_rate_limit_key, default_limits=["120/minute"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 
 @app.on_event("startup")
@@ -239,6 +255,7 @@ async def scrub_claims(
 
 
 @app.post("/api/batch", response_model=BatchResponse)
+@limiter.limit("20/minute")
 async def batch(
     request: Request,
     file: UploadFile = File(...),
@@ -377,6 +394,7 @@ def delete_claim(
 
 
 @app.post("/api/analyze", response_model=ScrubResult)
+@limiter.limit("30/minute")
 async def analyze_claim(
     claim: ParsedClaim,
     request: Request,
@@ -391,6 +409,7 @@ async def analyze_claim(
 
 
 @app.post("/api/smart-entry", response_model=SmartEntryResult)
+@limiter.limit("15/minute")
 async def smart_entry(
     request: Request,
     claim_text: str = Form(""),
@@ -478,6 +497,7 @@ async def smart_entry(
 
 
 @app.post("/api/appeal")
+@limiter.limit("20/minute")
 async def generate_appeal(
     body: dict,
     request: Request,
@@ -530,8 +550,10 @@ def list_team(
 
 
 @app.post("/api/team/invite")
+@limiter.limit("10/minute")
 def invite_team_member(
     body: TeamInviteRequest,
+    request: Request,
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
