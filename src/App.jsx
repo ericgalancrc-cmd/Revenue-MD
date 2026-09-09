@@ -72,6 +72,11 @@ const T = {
     cdiMarkAnswered: "Mark answered", cdiMarkResolved: "Mark resolved", cdiResolvedCodePh: "Resolved code (optional)",
     cdiCandidates: "Candidate codes", cdiAiPersonalized: "AI-personalized", cdiEmpty: "No CDI queries yet — run a review above to get started.",
     cdiSourceCode: "Flagged as", cdiFamily: "Diagnosis family",
+    riTitle: "Denial Root Causes", riLoading: "Analyzing denied claims…",
+    riEmpty: "No denied claims recorded yet — mark a claim's status as \"denied\" to see root-cause analysis here.",
+    riTotalDenied: "Denied claims", riDenialRate: "Denial rate", riValueAtRisk: "Value at risk",
+    riByProvider: "By provider", riByPayer: "By payer", riOfDenials: "of denials",
+    riDemoNote: "No VITE_API_URL set — Denial Root Causes requires a connected backend.",
     nav_denials: "Denials", nav_revenue: "Revenue", nav_payers: "Payers", nav_compliance: "Compliance",
     nav_settings: "Settings", logout: "Sign out", nav_business: "Business", nav_batch: "Batch queue",
     nav_learn: "Learning Center",
@@ -284,6 +289,11 @@ const T = {
     cdiMarkAnswered: "Marcar contestada", cdiMarkResolved: "Marcar resuelta", cdiResolvedCodePh: "Código resuelto (opcional)",
     cdiCandidates: "Códigos candidatos", cdiAiPersonalized: "Personalizado por IA", cdiEmpty: "Aún no hay consultas CDI — ejecute una revisión arriba para comenzar.",
     cdiSourceCode: "Marcado como", cdiFamily: "Familia de diagnóstico",
+    riTitle: "Causas Raíz de Denegaciones", riLoading: "Analizando reclamos denegados…",
+    riEmpty: "Aún no hay reclamos denegados registrados — marque el estado de un reclamo como \"denegado\" para ver el análisis de causa raíz aquí.",
+    riTotalDenied: "Reclamos denegados", riDenialRate: "Tasa de denegación", riValueAtRisk: "Valor en riesgo",
+    riByProvider: "Por proveedor", riByPayer: "Por pagador", riOfDenials: "de denegaciones",
+    riDemoNote: "Sin VITE_API_URL — Causas Raíz de Denegaciones requiere un backend conectado.",
     nav_denials: "Denegaciones", nav_revenue: "Ingresos", nav_payers: "Pagadores", nav_compliance: "Cumplimiento",
     nav_settings: "Ajustes", logout: "Salir", nav_business: "Negocio", nav_batch: "Cola por lote",
     nav_learn: "Centro de aprendizaje",
@@ -1482,6 +1492,9 @@ export default function App({ auth0 = null }) {
   const [batchMeta, setBatchMeta] = useState(null);    // { total, auto_clear, needs_attention, at_risk }
   const batchFileRef = useRef(null);
   const [team, setTeam] = useState(null);              // null until loaded from API; falls back to demo list
+  const [revIntel, setRevIntel] = useState(null);
+  const [revIntelLoading, setRevIntelLoading] = useState(false);
+  const [revIntelError, setRevIntelError] = useState(null);
   const [teamLoaded, setTeamLoaded] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("coder");
@@ -1628,6 +1641,25 @@ export default function App({ auth0 = null }) {
         .finally(() => setCdiLoaded(true));
     }
   }, [authed, accessToken, claimsHydrated, batchLoaded, teamLoaded, cdiLoaded]);
+
+  // Lazy-load Denial Root Cause analytics only when the Revenue tab is opened
+  // (rather than at every login) — it's a heavier aggregate query.
+  useEffect(() => {
+    if (tab !== "revenue" || !API_URL || revIntel || revIntelLoading) return;
+    setRevIntelLoading(true);
+    setRevIntelError(null);
+    fetch(`${API_URL}/api/analytics/revenue-intelligence?lang=${lang}`, { headers: authHeaders() })
+      .then(async (r) => {
+        const data = await r.json().catch(() => null);
+        if (!r.ok) throw new Error((data && data.detail) || `HTTP ${r.status}`);
+        return data;
+      })
+      .then((data) => setRevIntel(data))
+      .catch((err) => setRevIntelError(err.message || (lang === "en" ? "Could not load revenue intelligence." : "No se pudo cargar la inteligencia de ingresos.")))
+      .finally(() => setRevIntelLoading(false));
+  }, [tab, API_URL, revIntel, revIntelLoading, lang]);
+
+  useEffect(() => { setRevIntel(null); }, [lang]);
 
   const runCdiReview = () => {
     const diagnoses = cdiDiagnosesInput.split(",").map((s) => s.trim()).filter(Boolean);
@@ -3255,10 +3287,80 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                   </div>
                 )}
               </div>
+
+              {/* Denial Root Cause Engine */}
+              <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 24, marginTop: 20 }}>
+                <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 6, fontFamily: FONT_DISPLAY }}>{t.riTitle}</div>
+
+                {!API_URL && (
+                  <div style={{ fontSize: 12.5, color: C.txt3, padding: "20px 0" }}>{t.riDemoNote}</div>
+                )}
+
+                {API_URL && revIntelLoading && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.txt3, fontSize: 13, padding: "20px 0" }}>
+                    <Loader2 size={15} className="spin" /> {t.riLoading}
+                  </div>
+                )}
+
+                {API_URL && revIntelError && (
+                  <div style={{ fontSize: 12.5, color: C.red, padding: "12px 0" }}>{revIntelError}</div>
+                )}
+
+                {API_URL && revIntel && revIntel.total_denied_claims === 0 && (
+                  <div style={{ fontSize: 13, color: C.txt3, padding: "20px 0" }}>{t.riEmpty}</div>
+                )}
+
+                {API_URL && revIntel && revIntel.total_denied_claims > 0 && (
+                  <div>
+                    <div style={{ fontSize: 13.5, color: C.txt, lineHeight: 1.6, background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: 12, padding: "14px 16px", margin: "14px 0 20px" }}>
+                      {revIntel.executive_summary}
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 14, marginBottom: 22 }}>
+                      <Metric i={0} label={t.riTotalDenied} value={String(revIntel.total_denied_claims)} />
+                      <Metric i={1} label={t.riDenialRate} value={`${revIntel.denial_rate_pct}%`} />
+                      <Metric i={2} label={t.riValueAtRisk} value={fmt(revIntel.total_denied_value)} />
+                    </div>
+
+                    <div style={{ marginBottom: 22 }}>
+                      {revIntel.root_causes.map((rc, i) => (
+                        <div key={rc.category} style={{ marginBottom: 12 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
+                            <span style={{ color: C.txt, fontWeight: 500 }}>{lang === "en" ? rc.category : rc.category_es}</span>
+                            <span style={{ color: C.txt2 }}>{rc.pct_of_denials}% {t.riOfDenials} · {fmt(rc.value_impact)}</span>
+                          </div>
+                          <div style={{ height: 8, background: C.lineSoft, borderRadius: 4, overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${rc.pct_of_denials}%`, background: `linear-gradient(90deg, ${C.teal}, ${C.tealDk})`, borderRadius: 4 }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 20 }}>
+                      <div>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: C.txt2, marginBottom: 10 }}>{t.riByProvider}</div>
+                        {revIntel.by_provider.map((p) => (
+                          <div key={p.provider} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "6px 0", borderBottom: `1px solid ${C.lineSoft}` }}>
+                            <span style={{ color: C.txt }}>{p.provider}</span>
+                            <span style={{ color: C.txt2 }}>{p.denied_claims} · {fmt(p.denied_value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: C.txt2, marginBottom: 10 }}>{t.riByPayer}</div>
+                        {revIntel.by_payer.map((p) => (
+                          <div key={p.payer} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "6px 0", borderBottom: `1px solid ${C.lineSoft}` }}>
+                            <span style={{ color: C.txt }}>{p.payer}</span>
+                            <span style={{ color: C.txt2 }}>{p.denied_claims} · {fmt(p.denied_value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
-
-          {/* PAYERS */}
           {tab === "payers" && (
             <div>
               <Head title={t.payersTitle} sub={t.payersSub} />

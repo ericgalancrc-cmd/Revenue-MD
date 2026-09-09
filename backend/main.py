@@ -14,6 +14,7 @@ POST /api/smart-entry         Medical record + claim lines (text/images) → AI-
 GET  /api/baa/status          Check if the org has accepted the BAA
 POST /api/baa/accept          Record BAA acceptance for the org
 GET  /api/audit               Last 100 audit log entries for the org
+GET  /api/analytics/revenue-intelligence   Denial root-cause breakdown + exec summary
 GET  /api/team                List this org's pending/active invites
 POST /api/team/invite         Record a new invite for this org (no email sent)
 POST /api/cdi/analyze         Scan diagnoses for CDI specificity opportunities → physician queries
@@ -48,6 +49,7 @@ from auth import get_current_user
 from database import get_db, init_db
 from db_models import AuditLog, BAARecord, BatchRecord, CDIQuery, ClaimRecord, TeamInvite
 from cdi.specificity_map import find_opportunities
+from analytics.engine import compute_revenue_intelligence
 from models import (
     BatchResponse, CDIAnalyzeRequest, CDIStatusUpdate, ClaimUpdate, DocFinding,
     Issue, ParsedClaim, ScrubResult, ServiceLine, SmartEntryLine,
@@ -609,6 +611,36 @@ async def generate_appeal(
     _audit(db, org_id, user_id, "appeal_letter_generated", "claim", denial.get("id", ""), _client_ip(request))
     db.commit()
     return {"letter": letter}
+
+
+# ── Revenue Intelligence (Denial Root Cause Engine) ───────────────────────────
+
+@app.get("/api/analytics/revenue-intelligence")
+@limiter.limit("20/minute")
+def revenue_intelligence(
+    request: Request,
+    lang: str = "en",
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Aggregate denial root-cause analytics for this org: what % of denied
+    claims trace back to which category (NCCI edits, documentation
+    support, modifier issues, payer-specific rules, etc.), broken down
+    by provider and by payer, plus a plain-English executive summary.
+    Computed entirely from claims already persisted — relies on
+    ClaimRecord.status == "denied" as the signal for a confirmed
+    (not just predicted) denial.
+    """
+    org_id, user_id = _identity(user)
+    rows = db.query(ClaimRecord).filter(ClaimRecord.org_id == org_id).all()
+
+    payload = compute_revenue_intelligence(rows)
+    payload["executive_summary"] = ai.revenue_intelligence_summary(payload, lang)
+
+    _audit(db, org_id, user_id, "revenue_intelligence_viewed", ip=_client_ip(request))
+    db.commit()
+    return payload
 
 
 # ── CDI (Clinical Documentation Improvement) endpoints ────────────────────────

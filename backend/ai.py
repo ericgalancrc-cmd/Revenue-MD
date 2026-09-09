@@ -127,6 +127,80 @@ def _appeal_template(denial: Dict[str, Any], lang: str, date_str: str) -> str:
         )
 
 
+def revenue_intelligence_summary(payload: Dict[str, Any], lang: str = "en") -> str:
+    """
+    Generate a short, plain-English executive summary of the Denial Root
+    Cause Engine output — the kind of one-paragraph translation a CFO or
+    RCM director would want instead of raw numbers. Falls back to a
+    template built directly from the numbers if AI is unavailable.
+    """
+    root_causes = payload.get("root_causes", [])
+    total_denied = payload.get("total_denied_claims", 0)
+    total_value = payload.get("total_denied_value", 0.0)
+    is_en = lang == "en"
+
+    if not root_causes or total_denied == 0:
+        return (
+            "No denied claims recorded yet — once claims are marked denied, this will "
+            "summarize the leading root causes and financial impact."
+            if is_en else
+            "Aún no hay reclamos denegados registrados — una vez que se marquen "
+            "reclamos como denegados, esto resumirá las principales causas raíz y el "
+            "impacto financiero."
+        )
+
+    def _template() -> str:
+        top = root_causes[:3]
+        cat_key = "category" if is_en else "category_es"
+        parts = [f"{c['pct_of_denials']}% {c[cat_key]}" for c in top]
+        if is_en:
+            return (
+                f"Of {total_denied} denied claims (${total_value:,.0f} at risk), "
+                f"the leading causes are: {', '.join(parts)}. "
+                f"Addressing the top cause first would have the largest impact on "
+                f"denial rate."
+            )
+        else:
+            return (
+                f"De {total_denied} reclamos denegados (${total_value:,.0f} en riesgo), "
+                f"las principales causas son: {', '.join(parts)}. "
+                f"Atender primero la causa principal tendría el mayor impacto en la "
+                f"tasa de denegación."
+            )
+
+    if not is_available():
+        return _template()
+
+    try:
+        causes_str = "; ".join(
+            f"{c['category']}: {c['pct_of_denials']}% of denials, ${c['value_impact']:,.0f}"
+            for c in root_causes[:5]
+        )
+        prompt = f"""You are a healthcare revenue-cycle analyst writing a one-paragraph
+executive summary for a CFO/Revenue Cycle Director, in {"English" if is_en else "Spanish"}.
+
+Data:
+- Total denied claims: {total_denied}
+- Total value at risk: ${total_value:,.0f}
+- Root causes (category: % of denials, $ value): {causes_str}
+
+Write 2-3 sentences, plain executive language (no jargon, no code names),
+that names the single biggest actionable opportunity first. Do not invent
+numbers beyond what's given. Return ONLY the summary text — no preamble."""
+
+        response = _client.messages.create(
+            model=MODEL,
+            max_tokens=250,
+            temperature=0,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = response.content[0].text.strip()
+        return text or _template()
+    except Exception as exc:
+        logger.warning("Revenue intelligence summary generation failed, using template: %s", exc)
+        return _template()
+
+
 def cdi_query(opportunity: Dict[str, Any], note_text: str, lang: str = "en") -> Dict[str, str]:
     """
     Generate a compliant, non-leading physician query for a CDI specificity
