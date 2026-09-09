@@ -987,6 +987,102 @@ class TestCPT2Finder:
         assert cpt2_issue.sev == Severity.info
 
 
+# ── MUE-001: Medically Unlikely Edits ──────────────────────────────────────────
+
+class TestMUE001:
+    def test_fires_when_over_cap(self):
+        c = make_claim(
+            codes="90837",
+            diagnosis="F32.1", diagnoses=["F32.1"],
+            service_lines=[ServiceLine(cpt="90837", units=2)],
+        )
+        r = scrub(c)
+        assert fired(r, "MUE-001")
+        assert sev(r, "MUE-001") == "error"
+
+    def test_does_not_fire_at_cap(self):
+        c = make_claim(
+            codes="90837",
+            diagnosis="F32.1", diagnoses=["F32.1"],
+            service_lines=[ServiceLine(cpt="90837", units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MUE-001")
+
+    def test_does_not_fire_for_uncapped_code(self):
+        c = make_claim(
+            codes="H0004",
+            service_lines=[ServiceLine(cpt="H0004", units=6)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MUE-001")
+
+    def test_does_not_overlap_with_ases001_for_h0004(self):
+        # H0004 is governed by ASES-001 (payer-scoped), not MUE-001 —
+        # confirm MUE-001 stays silent even when way over what would be
+        # a plausible unit count, since it's simply not in MUE_CAPS.
+        c = make_claim(
+            payer="ASES Mi Salud", auth="",
+            codes="H0004",
+            service_lines=[ServiceLine(cpt="H0004", units=10)],
+        )
+        r = scrub(c)
+        assert fired(r, "ASES-001")
+        assert not fired(r, "MUE-001")
+
+
+# ── MDX-001: Missing Diagnosis Support ────────────────────────────────────────
+
+class TestMDX001:
+    def test_fires_for_psychotherapy_with_unrelated_dx(self):
+        c = make_claim(
+            codes="90837",
+            diagnosis="I50.9", diagnoses=["I50.9"],
+            service_lines=[ServiceLine(cpt="90837", units=1)],
+        )
+        r = scrub(c)
+        assert fired(r, "MDX-001")
+        assert sev(r, "MDX-001") == "error"
+
+    def test_fires_for_psychotherapy_with_no_diagnosis(self):
+        c = make_claim(
+            codes="90837", diagnosis="", diagnoses=[],
+            service_lines=[ServiceLine(cpt="90837", units=1)],
+        )
+        r = scrub(c)
+        assert fired(r, "MDX-001")
+
+    def test_does_not_fire_with_behavioral_health_dx(self):
+        c = make_claim(
+            codes="90837",
+            diagnosis="F32.1", diagnoses=["F32.1"],
+            service_lines=[ServiceLine(cpt="90837", units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MDX-001")
+
+    def test_does_not_fire_for_general_em_code(self):
+        # 99213 isn't in the DX_SUPPORT_MAP — any diagnosis is plausible for
+        # a general office visit, so this should never fire for it.
+        c = make_claim(
+            codes="99213",
+            diagnosis="I50.9", diagnoses=["I50.9"],
+            service_lines=[ServiceLine(cpt="99213", units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MDX-001")
+
+    def test_checks_singular_diagnosis_field_too(self):
+        # Some claim sources only populate `diagnosis`, not the `diagnoses`
+        # list — confirm the check still passes correctly in that case.
+        c = make_claim(
+            codes="90837", diagnosis="F32.1", diagnoses=[],
+            service_lines=[ServiceLine(cpt="90837", units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MDX-001")
+
+
 # ── HCC-001: HCC-relevant diagnosis flag ──────────────────────────────────────
 
 class TestHCC001:
@@ -1019,11 +1115,14 @@ class TestHCC001:
             assert fired(r, "HCC-001"), f"HCC-001 should fire regardless of payer ({payer})"
 
     def test_does_not_force_needs_work_lane(self):
-        # Informational-only — shouldn't push an otherwise-clean claim into needs_work
+        # Informational-only — shouldn't push an otherwise-clean claim into needs_work.
+        # Uses 99213 (not a behavioral-health code) so MDX-001 (Missing Dx Support)
+        # doesn't also fire here — that's a separate, legitimate check that this
+        # test isn't about.
         c = make_claim(
-            codes="90834 GT", payer="Plan Vital", auth="AUTH-4421", pos="02",
+            codes="99213 GT", payer="Plan Vital", auth="AUTH-4421", pos="02",
             diagnosis="I50.9", diagnoses=["I50.9"],
-            service_lines=[ServiceLine(cpt="90834", mods=["GT"], units=1)],
+            service_lines=[ServiceLine(cpt="99213", mods=["GT"], units=1)],
         )
         r = scrub(c)
         assert fired(r, "HCC-001")

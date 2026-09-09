@@ -76,6 +76,7 @@ const T = {
     riEmpty: "No denied claims recorded yet — mark a claim's status as \"denied\" to see root-cause analysis here.",
     riTotalDenied: "Denied claims", riDenialRate: "Denial rate", riValueAtRisk: "Value at risk",
     riByProvider: "By provider", riByPayer: "By payer", riOfDenials: "of denials",
+    riTrends: "Denial trend by payer", riTrendsEmpty: "Not enough dated claims yet to show a trend.",
     riDemoNote: "No VITE_API_URL set — Denial Root Causes requires a connected backend.",
     nav_denials: "Denials", nav_revenue: "Revenue", nav_payers: "Payers", nav_compliance: "Compliance",
     nav_settings: "Settings", logout: "Sign out", nav_business: "Business", nav_batch: "Batch queue",
@@ -293,6 +294,7 @@ const T = {
     riEmpty: "Aún no hay reclamos denegados registrados — marque el estado de un reclamo como \"denegado\" para ver el análisis de causa raíz aquí.",
     riTotalDenied: "Reclamos denegados", riDenialRate: "Tasa de denegación", riValueAtRisk: "Valor en riesgo",
     riByProvider: "Por proveedor", riByPayer: "Por pagador", riOfDenials: "de denegaciones",
+    riTrends: "Tendencia de denegaciones por pagador", riTrendsEmpty: "Aún no hay suficientes reclamos con fecha para mostrar una tendencia.",
     riDemoNote: "Sin VITE_API_URL — Causas Raíz de Denegaciones requiere un backend conectado.",
     nav_denials: "Denegaciones", nav_revenue: "Ingresos", nav_payers: "Pagadores", nav_compliance: "Cumplimiento",
     nav_settings: "Ajustes", logout: "Salir", nav_business: "Negocio", nav_batch: "Cola por lote",
@@ -3356,6 +3358,33 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                         ))}
                       </div>
                     </div>
+
+                    {revIntel.trends && revIntel.trends.length > 0 && (
+                      <div style={{ marginTop: 26, borderTop: `1px solid ${C.lineSoft}`, paddingTop: 20 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: C.txt2, marginBottom: 14 }}>{t.riTrends}</div>
+                        {(() => {
+                          const byPayer = {};
+                          revIntel.trends.forEach((t2) => { (byPayer[t2.payer] = byPayer[t2.payer] || []).push(t2); });
+                          return Object.entries(byPayer).map(([payerName, series]) => {
+                            const maxV = Math.max(1, ...series.map((s) => s.denied_value));
+                            return (
+                              <div key={payerName} style={{ marginBottom: 18 }}>
+                                <div style={{ fontSize: 12, fontWeight: 500, color: C.txt, marginBottom: 8 }}>{payerName}</div>
+                                <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 90 }}>
+                                  {series.map((s) => (
+                                    <div key={s.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, maxWidth: 70 }}>
+                                      <div style={{ fontSize: 10.5, color: C.txt3 }}>{fmt(s.denied_value)}</div>
+                                      <div style={{ width: "100%", height: (s.denied_value / maxV) * 55, background: C.tealMute, borderRadius: "6px 6px 0 0" }} />
+                                      <div style={{ fontSize: 10.5, color: C.txt2 }}>{s.month}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

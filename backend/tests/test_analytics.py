@@ -47,12 +47,13 @@ class TestCategorize:
 
 class _FakeRow:
     """Minimal stand-in for a ClaimRecord ORM row."""
-    def __init__(self, status, billed, payer, provider, issue_codes):
+    def __init__(self, status, billed, payer, provider, issue_codes, dos="—"):
         self.status = status
         self.billed = billed
         self.payer = payer
         self.provider = provider
         self.prov = provider
+        self.dos = dos
         self.issues_json = json.dumps([{"code": c} for c in issue_codes])
 
 
@@ -162,6 +163,121 @@ def _seed_claim(client, payer="Plan Vital", codes="99213", diagnosis="F32.1"):
     r2 = client.patch(f"/api/claims/{row_id}", json={"status": "denied"})
     assert r2.status_code == 200
     return row_id
+
+
+class TestHistoricalImport:
+    """
+    Verifies the historical-import path: a CSV with a `status` column
+    (denied/paid) uploaded via /api/batch with source=historical_import
+    feeds the Denial Root Cause Engine exactly like a live-scrubbed claim,
+    while staying distinguishable via the source tag.
+    """
+    def test_batch_defaults_to_live_source(self, client):
+        csv_content = "claim_id,payer,codes,billed,status\nH1,MCS,99213,100,denied\n"
+        r = client.post("/api/batch", files={"file": ("test.csv", csv_content, "text/csv")})
+        assert r.status_code == 200
+        claims = client.get("/api/claims", params={"source": "live"}).json()
+        assert any(c["id"] == "H1" for c in claims)
+
+    def test_historical_import_source_tagging(self, client):
+        csv_content = "claim_id,payer,codes,billed,status\nH2,MCS,99213,200,denied\n"
+        r = client.post(
+            "/api/batch",
+            data={"source": "historical_import"},
+            files={"file": ("hist.csv", csv_content, "text/csv")},
+        )
+        assert r.status_code == 200
+
+        hist_claims = client.get("/api/claims", params={"source": "historical_import"}).json()
+        assert any(c["id"] == "H2" for c in hist_claims)
+
+        live_claims = client.get("/api/claims", params={"source": "live"}).json()
+        assert not any(c["id"] == "H2" for c in live_claims)
+
+    def test_invalid_source_rejected(self, client):
+        csv_content = "claim_id,payer,codes,billed,status\nH3,MCS,99213,100,denied\n"
+        r = client.post(
+            "/api/batch",
+            data={"source": "bogus"},
+            files={"file": ("bad.csv", csv_content, "text/csv")},
+        )
+        assert r.status_code == 400
+
+    def test_historical_denied_claim_feeds_revenue_intelligence(self, client):
+        csv_content = "claim_id,payer,provider,codes,billed,diagnosis,status\nH4,MCS,Dr. X,90839,500,F32.1,denied\n"
+        r = client.post(
+            "/api/batch",
+            data={"source": "historical_import"},
+            files={"file": ("hist2.csv", csv_content, "text/csv")},
+        )
+        assert r.status_code == 200
+        ri = client.get("/api/analytics/revenue-intelligence").json()
+        assert ri["total_denied_claims"] == 1
+        assert ri["total_denied_value"] == 500.0
+
+    def test_mixed_live_and_historical_both_count_toward_denial_analysis(self, client):
+        live_csv = "claim_id,payer,codes,billed,status\nL1,Triple-S,99213,150,denied\n"
+        client.post("/api/batch", files={"file": ("live.csv", live_csv, "text/csv")})
+
+        hist_csv = "claim_id,payer,codes,billed,status\nH5,Triple-S,99213,250,denied\n"
+        client.post(
+            "/api/batch",
+            data={"source": "historical_import"},
+            files={"file": ("hist3.csv", hist_csv, "text/csv")},
+        )
+
+        ri = client.get("/api/analytics/revenue-intelligence").json()
+        assert ri["total_denied_claims"] == 2
+        assert ri["total_denied_value"] == 400.0
+
+
+class TestComputeDenialTrends:
+    def test_groups_by_month_and_payer(self):
+        rows = [
+            _FakeRow("denied", 100.0, "MCS", "Dr. A", [], dos="2026-01-15"),
+            _FakeRow("denied", 200.0, "MCS", "Dr. B", [], dos="2026-01-20"),
+            _FakeRow("denied", 150.0, "MCS", "Dr. A", [], dos="2026-02-01"),
+        ]
+        result = compute_revenue_intelligence(rows)
+        trends = result["trends"]
+        jan = next(t for t in trends if t["month"] == "2026-01" and t["payer"] == "MCS")
+        feb = next(t for t in trends if t["month"] == "2026-02" and t["payer"] == "MCS")
+        assert jan["denied_claims"] == 2
+        assert jan["denied_value"] == 300.0
+        assert feb["denied_claims"] == 1
+        assert feb["denied_value"] == 150.0
+
+    def test_excludes_unparseable_dates(self):
+        rows = [
+            _FakeRow("denied", 100.0, "MCS", "Dr. A", [], dos="—"),
+            _FakeRow("denied", 100.0, "MCS", "Dr. A", [], dos=""),
+            _FakeRow("denied", 100.0, "MCS", "Dr. A", [], dos="not-a-date"),
+        ]
+        result = compute_revenue_intelligence(rows)
+        assert result["trends"] == []
+
+    def test_excludes_non_denied_claims(self):
+        rows = [
+            _FakeRow("paid", 100.0, "MCS", "Dr. A", [], dos="2026-01-15"),
+            _FakeRow("pending", 100.0, "MCS", "Dr. A", [], dos="2026-01-15"),
+        ]
+        result = compute_revenue_intelligence(rows)
+        assert result["trends"] == []
+
+    def test_handles_alternate_date_formats(self):
+        rows = [_FakeRow("denied", 100.0, "MCS", "Dr. A", [], dos="01/15/2026")]
+        result = compute_revenue_intelligence(rows)
+        assert result["trends"][0]["month"] == "2026-01"
+
+    def test_sorted_chronologically(self):
+        rows = [
+            _FakeRow("denied", 100.0, "MCS", "Dr. A", [], dos="2026-03-01"),
+            _FakeRow("denied", 100.0, "MCS", "Dr. A", [], dos="2026-01-01"),
+            _FakeRow("denied", 100.0, "MCS", "Dr. A", [], dos="2026-02-01"),
+        ]
+        result = compute_revenue_intelligence(rows)
+        months = [t["month"] for t in result["trends"]]
+        assert months == ["2026-01", "2026-02", "2026-03"]
 
 
 class TestRevenueIntelligenceEndpoint:

@@ -24,6 +24,7 @@ class BatchRecord(Base):
     needs_attention = Column(Integer, default=0)
     at_risk         = Column(Float,   default=0.0)
     org_id          = Column(String,  nullable=True, index=True, default="demo")
+    source          = Column(String,  nullable=False, default="live")  # "live" | "historical_import"
 
     claims = relationship(
         "ClaimRecord",
@@ -39,6 +40,7 @@ class ClaimRecord(Base):
     row_id   = Column(Integer, primary_key=True, autoincrement=True)
     batch_id = Column(String, ForeignKey("batches.id", ondelete="CASCADE"), nullable=False, index=True)
     org_id   = Column(String,  nullable=True, index=True, default="demo")
+    source   = Column(String,  nullable=False, default="live")  # "live" | "historical_import" — denormalized from the owning batch for simple analytics filtering
 
     # Scalar fields
     claim_id  = Column(String,  nullable=False)
@@ -80,11 +82,12 @@ class ClaimRecord(Base):
     # ── Serialisation helpers ─────────────────────────────────────────
 
     @classmethod
-    def from_result(cls, result, batch_id: str, org_id: str = "demo") -> "ClaimRecord":
+    def from_result(cls, result, batch_id: str, org_id: str = "demo", source: str = "live") -> "ClaimRecord":
         """Build a ClaimRecord from a ScrubResult Pydantic model."""
         return cls(
             batch_id           = batch_id,
             org_id             = org_id,
+            source             = source,
             claim_id           = result.id,
             patient            = result.patient,
             codes              = result.codes,

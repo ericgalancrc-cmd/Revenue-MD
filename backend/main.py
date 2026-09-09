@@ -138,7 +138,7 @@ def _audit(
     ))
 
 
-def _store_batch(results: List[ScrubResult], db: Session, org_id: str) -> BatchResponse:
+def _store_batch(results: List[ScrubResult], db: Session, org_id: str, source: str = "live") -> BatchResponse:
     auto_clear      = sum(1 for r in results if r.lane.value == "auto_clear")
     needs_attention = sum(1 for r in results if r.lane.value != "auto_clear")
     at_risk         = round(sum(r.val for r in results if r.lane.value == "needs_work"), 2)
@@ -154,10 +154,11 @@ def _store_batch(results: List[ScrubResult], db: Session, org_id: str) -> BatchR
         needs_attention = needs_attention,
         at_risk         = at_risk,
         org_id          = org_id,
+        source          = source,
     )
     db.add(batch_row)
 
-    claim_rows = [ClaimRecord.from_result(result, batch_id, org_id=org_id) for result in results]
+    claim_rows = [ClaimRecord.from_result(result, batch_id, org_id=org_id, source=source) for result in results]
     for row in claim_rows:
         db.add(row)
 
@@ -352,9 +353,13 @@ async def scrub_claims(
 async def batch(
     request: Request,
     file: UploadFile = File(...),
+    source: str = Form("live"),
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
+    if source not in ("live", "historical_import"):
+        raise HTTPException(400, "source must be 'live' or 'historical_import'.")
+
     org_id, user_id = _identity(user)
     filename = file.filename or "upload.edi"
     _validate_claim_filename(filename)
@@ -366,7 +371,7 @@ async def batch(
                                   "Verify it is an EDI 837P or a CSV with a header row.")
 
     results = scrub_many(raw_claims)
-    result_batch = _store_batch(results, db, org_id=org_id)
+    result_batch = _store_batch(results, db, org_id=org_id, source=source)
     _audit(db, org_id, user_id, "batch_created", "batch", result_batch.id, _client_ip(request))
     db.commit()
     return result_batch
@@ -375,13 +380,16 @@ async def batch(
 @app.get("/api/batches", response_model=List[BatchResponse])
 def list_batches(
     request: Request,
+    source: Optional[str] = None,
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
     org_id, user_id = _identity(user)
+    q = db.query(BatchRecord).filter(BatchRecord.org_id == org_id)
+    if source:
+        q = q.filter(BatchRecord.source == source)
     rows = (
-        db.query(BatchRecord)
-        .filter(BatchRecord.org_id == org_id)
+        q
         .order_by(BatchRecord.created.desc())
         .limit(20)
         .all()
@@ -417,14 +425,17 @@ def get_batch(
 def list_claims(
     request: Request,
     limit: int = 200,
+    source: Optional[str] = None,
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
     """Return the org's claims across all batches, newest first."""
     org_id, user_id = _identity(user)
+    q = db.query(ClaimRecord).filter(ClaimRecord.org_id == org_id)
+    if source:
+        q = q.filter(ClaimRecord.source == source)
     rows = (
-        db.query(ClaimRecord)
-        .filter(ClaimRecord.org_id == org_id)
+        q
         .order_by(ClaimRecord.row_id.desc())
         .limit(limit)
         .all()

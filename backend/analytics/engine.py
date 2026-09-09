@@ -13,8 +13,51 @@ confirmed post-submission outcome, not a pre-submission risk guess.
 from __future__ import annotations
 from typing import Any, Dict, List
 import json
+from datetime import datetime
 
 from analytics.category_map import categorize, categorize_es
+
+
+def _month_key(dos: str) -> str | None:
+    """Extract a YYYY-MM bucket from a claim's date-of-service string.
+    Returns None for unparseable/placeholder dates ('—', blank, etc.) —
+    those claims are simply excluded from trend analysis rather than
+    guessed at."""
+    if not dos or dos == "—":
+        return None
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%Y/%m/%d"):
+        try:
+            return datetime.strptime(dos.strip(), fmt).strftime("%Y-%m")
+        except ValueError:
+            continue
+    return None
+
+
+def compute_denial_trends(claim_rows: List[Any]) -> List[Dict[str, Any]]:
+    """
+    Month-over-month denial trend, grouped by payer — the "is this payer
+    getting worse" view that a single-snapshot root-cause breakdown can't
+    answer. Only claims with a parseable date-of-service contribute;
+    unparseable dates are silently excluded rather than mis-bucketed.
+    """
+    denied = [r for r in claim_rows if (r.status or "").lower() == "denied"]
+
+    buckets: Dict[tuple, Dict[str, Any]] = {}
+    for row in denied:
+        month = _month_key(row.dos)
+        if month is None:
+            continue
+        payer = row.payer or "Unknown"
+        key = (month, payer)
+        if key not in buckets:
+            buckets[key] = {"month": month, "payer": payer, "denied_claims": 0, "denied_value": 0.0}
+        buckets[key]["denied_claims"] += 1
+        buckets[key]["denied_value"] += (row.billed or 0.0)
+
+    trends = sorted(buckets.values(), key=lambda x: (x["month"], x["payer"]))
+    for t in trends:
+        t["denied_value"] = round(t["denied_value"], 2)
+    return trends
 
 
 def compute_revenue_intelligence(claim_rows: List[Any]) -> Dict[str, Any]:
@@ -38,6 +81,7 @@ def compute_revenue_intelligence(claim_rows: List[Any]) -> Dict[str, Any]:
             "root_causes": [],
             "by_provider": [],
             "by_payer": [],
+            "trends": [],
         }
 
     # ── Root causes: each denied claim can contribute to multiple
@@ -120,4 +164,5 @@ def compute_revenue_intelligence(claim_rows: List[Any]) -> Dict[str, Any]:
         "root_causes": root_causes,
         "by_provider": by_provider,
         "by_payer": by_payer,
+        "trends": compute_denial_trends(claim_rows),
     }
