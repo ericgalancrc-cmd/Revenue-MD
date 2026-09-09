@@ -11,6 +11,7 @@ import {
   Palette, UserRound, Sliders, Sun, Moon,
   Smartphone, Mail, QrCode, KeyRound, ShieldAlert, RefreshCw, Copy,
   Menu, X, ChevronDown, XCircle, FileSignature, Wand2, FileImage, Trash2,
+  ClipboardCheck,
 } from "lucide-react";
 
 // ============================================================================
@@ -61,6 +62,16 @@ const T = {
     email: "Work email", password: "Password", role: "Your role", signIn: "Enter platform",
     demoNote: "Demo — any credentials work", coder: "Coder / Biller", manager: "Manager",
     nav_dash: "Overview", nav_intake: "Import", nav_claims: "Claims", nav_analysis: "AI Analysis",
+    nav_cdi: "CDI",
+    cdiTitle: "Clinical Documentation Improvement", cdiSub: "Find specificity opportunities in unspecified diagnosis codes and generate compliant physician queries.",
+    cdiRunReview: "Run CDI review", cdiDiagnosesLabel: "Diagnosis codes (ICD-10, comma-separated)", cdiDiagnosesPh: "E11.9, I50.9, J44.9…",
+    cdiNoteLabel: "Clinical note (optional — personalizes the query)", cdiNotePh: "Paste relevant chart documentation…",
+    cdiAnalyzing: "Analyzing…", cdiAnalyze: "Analyze",
+    cdiNoOpportunities: "No specificity opportunities found for these codes.",
+    cdiOpen: "Open", cdiAnswered: "Answered", cdiResolved: "Resolved", cdiAll: "All",
+    cdiMarkAnswered: "Mark answered", cdiMarkResolved: "Mark resolved", cdiResolvedCodePh: "Resolved code (optional)",
+    cdiCandidates: "Candidate codes", cdiAiPersonalized: "AI-personalized", cdiEmpty: "No CDI queries yet — run a review above to get started.",
+    cdiSourceCode: "Flagged as", cdiFamily: "Diagnosis family",
     nav_denials: "Denials", nav_revenue: "Revenue", nav_payers: "Payers", nav_compliance: "Compliance",
     nav_settings: "Settings", logout: "Sign out", nav_business: "Business", nav_batch: "Batch queue",
     nav_learn: "Learning Center",
@@ -263,6 +274,16 @@ const T = {
     email: "Correo de trabajo", password: "Contraseña", role: "Tu rol", signIn: "Entrar a la plataforma",
     demoNote: "Demo — cualquier credencial funciona", coder: "Codificador / Facturador", manager: "Gerente",
     nav_dash: "Resumen", nav_intake: "Importar", nav_claims: "Reclamos", nav_analysis: "Análisis IA",
+    nav_cdi: "CDI",
+    cdiTitle: "Mejora de Documentación Clínica", cdiSub: "Encuentre oportunidades de especificidad en códigos de diagnóstico no especificados y genere consultas médicas conformes.",
+    cdiRunReview: "Ejecutar revisión CDI", cdiDiagnosesLabel: "Códigos de diagnóstico (ICD-10, separados por coma)", cdiDiagnosesPh: "E11.9, I50.9, J44.9…",
+    cdiNoteLabel: "Nota clínica (opcional — personaliza la consulta)", cdiNotePh: "Pegue la documentación relevante del expediente…",
+    cdiAnalyzing: "Analizando…", cdiAnalyze: "Analizar",
+    cdiNoOpportunities: "No se encontraron oportunidades de especificidad para estos códigos.",
+    cdiOpen: "Abierta", cdiAnswered: "Contestada", cdiResolved: "Resuelta", cdiAll: "Todas",
+    cdiMarkAnswered: "Marcar contestada", cdiMarkResolved: "Marcar resuelta", cdiResolvedCodePh: "Código resuelto (opcional)",
+    cdiCandidates: "Códigos candidatos", cdiAiPersonalized: "Personalizado por IA", cdiEmpty: "Aún no hay consultas CDI — ejecute una revisión arriba para comenzar.",
+    cdiSourceCode: "Marcado como", cdiFamily: "Familia de diagnóstico",
     nav_denials: "Denegaciones", nav_revenue: "Ingresos", nav_payers: "Pagadores", nav_compliance: "Cumplimiento",
     nav_settings: "Ajustes", logout: "Salir", nav_business: "Negocio", nav_batch: "Cola por lote",
     nav_learn: "Centro de aprendizaje",
@@ -1465,6 +1486,14 @@ export default function App({ auth0 = null }) {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("coder");
   const [inviteStatus, setInviteStatus] = useState(null); // { kind: "sending"|"sent"|"error", message }
+  const [cdiQueries, setCdiQueries] = useState([]);
+  const [cdiLoaded, setCdiLoaded] = useState(false);
+  const [cdiDiagnosesInput, setCdiDiagnosesInput] = useState("");
+  const [cdiNoteInput, setCdiNoteInput] = useState("");
+  const [cdiAnalyzing, setCdiAnalyzing] = useState(false);
+  const [cdiError, setCdiError] = useState(null);
+  const [cdiFilter, setCdiFilter] = useState("all"); // "all" | "open" | "answered" | "resolved"
+  const [cdiResolvedCodeInput, setCdiResolvedCodeInput] = useState({}); // { [queryId]: string }
   const intakeFileRef = useRef(null);
   const smartRecordRef = useRef(null);
   const smartImgRef    = useRef(null);
@@ -1591,7 +1620,64 @@ export default function App({ auth0 = null }) {
         .catch(() => { /* API unreachable — Team tab falls back to demo list */ })
         .finally(() => setTeamLoaded(true));
     }
-  }, [authed, accessToken, claimsHydrated, batchLoaded, teamLoaded]);
+    if (!cdiLoaded) {
+      fetch(`${API_URL}/api/cdi`, { headers: authHeaders() })
+        .then((r) => r.ok ? r.json() : [])
+        .then((data) => setCdiQueries(data))
+        .catch(() => { /* API unreachable — CDI tab stays empty until a review is run */ })
+        .finally(() => setCdiLoaded(true));
+    }
+  }, [authed, accessToken, claimsHydrated, batchLoaded, teamLoaded, cdiLoaded]);
+
+  const runCdiReview = () => {
+    const diagnoses = cdiDiagnosesInput.split(",").map((s) => s.trim()).filter(Boolean);
+    if (!diagnoses.length) {
+      setCdiError(lang === "en" ? "Enter at least one ICD-10 code." : "Ingrese al menos un código ICD-10.");
+      return;
+    }
+    if (!API_URL) {
+      setCdiError(lang === "en" ? "Demo mode — connect a backend (VITE_API_URL) to run a real CDI review." : "Modo demo — conecte un backend (VITE_API_URL) para ejecutar una revisión CDI real.");
+      return;
+    }
+    setCdiError(null);
+    setCdiAnalyzing(true);
+    fetch(`${API_URL}/api/cdi/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ diagnoses, note_text: cdiNoteInput, lang }),
+    })
+      .then(async (r) => {
+        const data = await r.json().catch(() => []);
+        if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
+        return data;
+      })
+      .then((results) => {
+        setCdiQueries((prev) => [...results, ...prev]);
+        if (!results.length) {
+          setCdiError(t.cdiNoOpportunities);
+        }
+      })
+      .catch((err) => {
+        setCdiError(err.message || (lang === "en" ? "CDI review failed." : "La revisión CDI falló."));
+      })
+      .finally(() => setCdiAnalyzing(false));
+  };
+
+  const updateCdiStatus = (queryId, status) => {
+    if (!API_URL) return;
+    const resolved_code = cdiResolvedCodeInput[queryId] || undefined;
+    fetch(`${API_URL}/api/cdi/${queryId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ status, resolved_code }),
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((updated) => {
+        if (!updated) return;
+        setCdiQueries((prev) => prev.map((q) => (q.id === queryId ? updated : q)));
+      })
+      .catch(() => {});
+  };
 
   const sendTeamInvite = () => {
     const email = inviteEmail.trim();
@@ -2172,6 +2258,7 @@ export default function App({ auth0 = null }) {
     { id: "batch",      icon: Layers,          label: t.nav_batch },      // 2 — primary daily workspace
     { id: "intake",     icon: FileScan,        label: t.nav_intake },     // 3 — import new claims
     { id: "claims",     icon: ClipboardList,   label: t.nav_claims },     // 4 — individual claim work
+    { id: "cdi",        icon: ClipboardCheck,  label: t.nav_cdi },        // 5 — clinical documentation improvement
 
     { id: "denials",    icon: ReceiptText,     label: t.nav_denials },    // 6 — denial tracking & appeals
     { id: "payers",     icon: Building2,       label: t.nav_payers },     // 7 — payer rules reference
@@ -3740,6 +3827,116 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                     </div>
                   </div>
                 )}
+              </div>
+            );
+          })()}
+          {/* CDI — Clinical Documentation Improvement */}
+          {tab === "cdi" && (() => {
+            const filteredCdi = cdiFilter === "all" ? cdiQueries : cdiQueries.filter((q) => q.status === cdiFilter);
+            const statusColor = (s) => s === "resolved" ? C.teal : s === "answered" ? C.blue : C.amber;
+            const statusLabel = (s) => s === "resolved" ? t.cdiResolved : s === "answered" ? t.cdiAnswered : t.cdiOpen;
+            return (
+              <div>
+                <Head title={t.cdiTitle} sub={t.cdiSub} />
+
+                <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 28, marginBottom: 24 }}>
+                  <label style={{ fontSize: 12.5, fontWeight: 500, color: C.txt2, display: "block", marginBottom: 8 }}>{t.cdiDiagnosesLabel}</label>
+                  <input
+                    value={cdiDiagnosesInput}
+                    onChange={(e) => { setCdiDiagnosesInput(e.target.value); setCdiError(null); }}
+                    placeholder={t.cdiDiagnosesPh}
+                    style={{ ...inp, marginBottom: 16 }}
+                  />
+                  <label style={{ fontSize: 12.5, fontWeight: 500, color: C.txt2, display: "block", marginBottom: 8 }}>{t.cdiNoteLabel}</label>
+                  <textarea
+                    value={cdiNoteInput}
+                    onChange={(e) => setCdiNoteInput(e.target.value)}
+                    placeholder={t.cdiNotePh}
+                    rows={4}
+                    style={{ ...inp, resize: "vertical", fontFamily: FONT_SANS, marginBottom: 16 }}
+                  />
+                  <button
+                    onClick={runCdiReview}
+                    disabled={cdiAnalyzing}
+                    style={{ ...btnP, opacity: cdiAnalyzing ? 0.6 : 1, cursor: cdiAnalyzing ? "wait" : "pointer" }}
+                  >
+                    {cdiAnalyzing ? <><Loader2 size={15} className="spin" /> {t.cdiAnalyzing}</> : <><ClipboardCheck size={15} /> {t.cdiRunReview}</>}
+                  </button>
+                  {cdiError && (
+                    <div style={{ fontSize: 12.5, marginTop: 12, color: C.red }}>{cdiError}</div>
+                  )}
+                  {!API_URL && (
+                    <div style={{ fontSize: 11.5, color: C.txt3, marginTop: 12 }}>
+                      {lang === "en" ? "No VITE_API_URL set — CDI review requires a connected backend." : "Sin VITE_API_URL — la revisión CDI requiere un backend conectado."}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
+                  {["all", "open", "answered", "resolved"].map((s) => {
+                    const active = cdiFilter === s;
+                    const label = s === "all" ? t.cdiAll : s === "open" ? t.cdiOpen : s === "answered" ? t.cdiAnswered : t.cdiResolved;
+                    return (
+                      <button key={s} onClick={() => setCdiFilter(s)} style={{ padding: "7px 16px", borderRadius: 20, border: `1px solid ${active ? acc.hex : C.line}`, cursor: "pointer", fontSize: 12.5, background: active ? acc.soft : "transparent", color: active ? acc.dk : C.txt2, fontWeight: active ? 600 : 400, fontFamily: FONT_SANS }}>
+                        {label}{s !== "all" && ` (${cdiQueries.filter((q) => q.status === s).length})`}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {filteredCdi.length === 0 && (
+                  <div style={{ textAlign: "center", padding: "48px 20px", color: C.txt3, fontSize: 13.5 }}>{t.cdiEmpty}</div>
+                )}
+
+                {filteredCdi.map((q) => (
+                  <div key={q.id} className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 22, marginBottom: 14 }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink, fontFamily: FONT_DISPLAY }}>{q.family}</div>
+                        <div style={{ fontSize: 12, color: C.txt3, marginTop: 3 }}>{t.cdiSourceCode}: <strong>{q.source_code}</strong></div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        {q.ai_enhanced && <span style={{ fontSize: 10.5, fontWeight: 600, padding: "3px 9px", borderRadius: 20, background: C.tealSoft, color: C.tealDk, display: "flex", alignItems: "center", gap: 3 }}><Sparkles size={10} /> {t.cdiAiPersonalized}</span>}
+                        <span style={{ fontSize: 11.5, fontWeight: 600, padding: "4px 12px", borderRadius: 20, background: `${statusColor(q.status)}22`, color: statusColor(q.status) }}>{statusLabel(q.status)}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: 13.5, color: C.txt, lineHeight: 1.6, background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
+                      {lang === "en" ? q.query_en : q.query_es}
+                    </div>
+
+                    <div style={{ fontSize: 12, color: C.txt2, marginBottom: 14 }}>
+                      <div style={{ fontWeight: 500, marginBottom: 6 }}>{t.cdiCandidates}:</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {q.candidates.map((c, i) => (
+                          <span key={i} style={{ fontSize: 11.5, padding: "4px 10px", borderRadius: 8, background: C.lineSoft, color: C.txt2 }}>
+                            <strong>{c.code}</strong> — {c.desc}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {q.status !== "resolved" && (
+                      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", borderTop: `1px solid ${C.lineSoft}`, paddingTop: 14 }}>
+                        <input
+                          value={cdiResolvedCodeInput[q.id] || ""}
+                          onChange={(e) => setCdiResolvedCodeInput((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                          placeholder={t.cdiResolvedCodePh}
+                          style={{ ...inp, width: 200, padding: "8px 12px", fontSize: 12.5 }}
+                        />
+                        {q.status === "open" && (
+                          <button onClick={() => updateCdiStatus(q.id, "answered")} style={{ ...btnG, background: C.blueSoft, color: C.blue, borderRadius: 10 }}>{t.cdiMarkAnswered}</button>
+                        )}
+                        <button onClick={() => updateCdiStatus(q.id, "resolved")} style={{ ...btnP, background: C.teal, fontSize: 12.5 }}>{t.cdiMarkResolved}</button>
+                      </div>
+                    )}
+                    {q.status === "resolved" && q.resolved_code && (
+                      <div style={{ fontSize: 12, color: C.teal, borderTop: `1px solid ${C.lineSoft}`, paddingTop: 12 }}>
+                        {lang === "en" ? "Resolved to" : "Resuelto a"}: <strong>{q.resolved_code}</strong>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             );
           })()}

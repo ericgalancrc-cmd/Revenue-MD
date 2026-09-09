@@ -98,6 +98,18 @@ class TeamInviteRequest(BaseModel):
     role:  str = "coder"   # "coder" | "manager"
 
 
+class CDIAnalyzeRequest(BaseModel):
+    diagnoses:    List[str] = []
+    note_text:    str = ""
+    claim_row_id: Optional[int] = None
+    lang:         str = "en"
+
+
+class CDIStatusUpdate(BaseModel):
+    status:        str            # "answered" | "resolved"
+    resolved_code: Optional[str] = None
+
+
 class BatchResponse(BaseModel):
     id:              str
     created:         str

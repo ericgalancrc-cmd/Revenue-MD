@@ -187,6 +187,34 @@ class TeamInvite(Base):
     )
 
 
+class CDIQuery(Base):
+    """A Clinical Documentation Improvement query — flags a documentation
+    specificity opportunity (e.g. an unspecified diabetes code that could be
+    more specific with better chart documentation) and tracks the physician
+    query sent to resolve it through to a coded outcome."""
+    __tablename__ = "cdi_queries"
+
+    id               = Column(String,  primary_key=True)
+    org_id           = Column(String,  nullable=False, index=True)
+    claim_row_id     = Column(Integer, nullable=True, index=True)  # optional link to claim_records.row_id
+    opportunity_id   = Column(String,  nullable=False)             # e.g. "diabetes-unspecified"
+    family           = Column(String,  nullable=False)             # human label, e.g. "Type 2 diabetes mellitus, unspecified"
+    source_code      = Column(String,  nullable=False)             # the unspecified code that triggered this, e.g. "E11.9"
+    candidates_json  = Column(Text,    default="[]")               # candidate more-specific codes
+    query_en         = Column(Text,    default="")
+    query_es         = Column(Text,    default="")
+    ai_enhanced       = Column(Integer, default=0)                   # 0/1 — whether Claude personalized the query text
+    status           = Column(String,  default="open")             # "open" | "answered" | "resolved"
+    resolved_code    = Column(String,  default="")
+    created_by       = Column(String,  nullable=False)
+    created_at       = Column(String,  nullable=False)
+    resolved_at      = Column(String,  nullable=True)
+
+    __table_args__ = (
+        Index("ix_cdi_queries_org_status", "org_id", "status"),
+    )
+
+
 class AuditLog(Base):
     """HIPAA-required audit trail: every batch/claim operation is logged."""
     __tablename__ = "audit_logs"

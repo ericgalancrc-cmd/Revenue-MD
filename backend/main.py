@@ -16,6 +16,9 @@ POST /api/baa/accept          Record BAA acceptance for the org
 GET  /api/audit               Last 100 audit log entries for the org
 GET  /api/team                List this org's pending/active invites
 POST /api/team/invite         Record a new invite for this org (no email sent)
+POST /api/cdi/analyze         Scan diagnoses for CDI specificity opportunities → physician queries
+GET  /api/cdi                 List this org's CDI queries (optional ?status= filter)
+PATCH /api/cdi/{id}           Mark a CDI query answered/resolved
 
 Run locally
 -----------
@@ -27,6 +30,7 @@ Set AUTH0_DOMAIN + AUTH0_AUDIENCE to enable JWT auth; omit for demo mode.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import uuid
@@ -42,10 +46,12 @@ from sqlalchemy.orm import Session
 
 from auth import get_current_user
 from database import get_db, init_db
-from db_models import AuditLog, BAARecord, BatchRecord, ClaimRecord, TeamInvite
+from db_models import AuditLog, BAARecord, BatchRecord, CDIQuery, ClaimRecord, TeamInvite
+from cdi.specificity_map import find_opportunities
 from models import (
-    BatchResponse, ClaimUpdate, DocFinding, Issue, ParsedClaim, ScrubResult,
-    ServiceLine, SmartEntryLine, SmartEntryResult, TeamInviteRequest,
+    BatchResponse, CDIAnalyzeRequest, CDIStatusUpdate, ClaimUpdate, DocFinding,
+    Issue, ParsedClaim, ScrubResult, ServiceLine, SmartEntryLine,
+    SmartEntryResult, TeamInviteRequest,
 )
 from parser import parse_837
 from parsers.csv_claims import parse_csv
@@ -277,6 +283,25 @@ def _validate_record_upload(file: UploadFile) -> None:
             f"Unsupported file type '{file.content_type}' for '{file.filename}'. "
             f"Expected an image (JPEG/PNG/WEBP/HEIC) or PDF.",
         )
+
+
+def _cdi_row_to_dict(row: CDIQuery) -> dict:
+    return {
+        "id":             row.id,
+        "claim_row_id":   row.claim_row_id,
+        "opportunity_id": row.opportunity_id,
+        "family":         row.family,
+        "source_code":    row.source_code,
+        "candidates":     json.loads(row.candidates_json or "[]"),
+        "query_en":       row.query_en,
+        "query_es":       row.query_es,
+        "ai_enhanced":    bool(row.ai_enhanced),
+        "status":         row.status,
+        "resolved_code":  row.resolved_code,
+        "created_by":     row.created_by,
+        "created_at":     row.created_at,
+        "resolved_at":    row.resolved_at,
+    }
 
 
 # ── Routes ───────────────────────────────────────────────────────────────────
@@ -584,6 +609,109 @@ async def generate_appeal(
     _audit(db, org_id, user_id, "appeal_letter_generated", "claim", denial.get("id", ""), _client_ip(request))
     db.commit()
     return {"letter": letter}
+
+
+# ── CDI (Clinical Documentation Improvement) endpoints ────────────────────────
+
+@app.post("/api/cdi/analyze")
+@limiter.limit("20/minute")
+async def cdi_analyze(
+    body: CDIAnalyzeRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Scan a claim's diagnoses for CDI specificity opportunities (e.g. an
+    unspecified diabetes code that better documentation could make more
+    specific), generate a physician query for each, and persist them as
+    open CDIQuery records for tracking through to resolution."""
+    org_id, user_id = _identity(user)
+    ip = _client_ip(request)
+
+    opportunities = find_opportunities(body.diagnoses)
+    if not opportunities:
+        return []
+
+    now = datetime.now(timezone.utc).isoformat()
+    created = []
+    for opp in opportunities:
+        generated = ai.cdi_query({**opp, "source_code": opp["code_prefix"]}, body.note_text, body.lang)
+        row = CDIQuery(
+            id             = str(uuid.uuid4()),
+            org_id         = org_id,
+            claim_row_id   = body.claim_row_id,
+            opportunity_id = opp["id"],
+            family         = opp["family"],
+            source_code    = opp["code_prefix"],
+            candidates_json= json.dumps(opp["candidates"]),
+            query_en       = generated["query_en"],
+            query_es       = generated["query_es"],
+            ai_enhanced    = 1 if generated["ai_enhanced"] else 0,
+            status         = "open",
+            created_by     = user_id,
+            created_at     = now,
+        )
+        db.add(row)
+        created.append(row)
+
+    _audit(db, org_id, user_id, "cdi_analyzed", "cdi_query", "", ip)
+    db.commit()
+    for row in created:
+        db.refresh(row)
+
+    return [_cdi_row_to_dict(row) for row in created]
+
+
+@app.get("/api/cdi")
+def list_cdi(
+    request: Request,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """List this org's CDI queries, newest first, optionally filtered by status."""
+    org_id, user_id = _identity(user)
+    q = db.query(CDIQuery).filter(CDIQuery.org_id == org_id)
+    if status:
+        q = q.filter(CDIQuery.status == status)
+    rows = q.order_by(CDIQuery.created_at.desc()).limit(200).all()
+    _audit(db, org_id, user_id, "cdi_listed", ip=_client_ip(request))
+    db.commit()
+    return [_cdi_row_to_dict(row) for row in rows]
+
+
+@app.patch("/api/cdi/{query_id}")
+def update_cdi(
+    query_id: str,
+    body: CDIStatusUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Mark a CDI query as answered or resolved, optionally recording the
+    final code the physician's response supports."""
+    if body.status not in ("answered", "resolved"):
+        raise HTTPException(400, "status must be 'answered' or 'resolved'.")
+
+    org_id, user_id = _identity(user)
+    row = (
+        db.query(CDIQuery)
+        .filter(CDIQuery.id == query_id, CDIQuery.org_id == org_id)
+        .first()
+    )
+    if row is None:
+        raise HTTPException(404, f"CDI query '{query_id}' not found.")
+
+    row.status = body.status
+    if body.resolved_code:
+        row.resolved_code = body.resolved_code
+    if body.status == "resolved":
+        row.resolved_at = datetime.now(timezone.utc).isoformat()
+
+    _audit(db, org_id, user_id, "cdi_status_updated", "cdi_query", query_id, _client_ip(request))
+    db.commit()
+    db.refresh(row)
+    return _cdi_row_to_dict(row)
 
 
 # ── Team endpoints ────────────────────────────────────────────────────────────

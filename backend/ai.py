@@ -127,6 +127,70 @@ def _appeal_template(denial: Dict[str, Any], lang: str, date_str: str) -> str:
         )
 
 
+def cdi_query(opportunity: Dict[str, Any], note_text: str, lang: str = "en") -> Dict[str, str]:
+    """
+    Generate a compliant, non-leading physician query for a CDI specificity
+    opportunity (e.g. an unspecified diabetes code that chart documentation
+    might support coding more specifically). Personalizes the template query
+    against any clinical note text provided; falls back to the opportunity's
+    static template query when AI is unavailable.
+
+    Returns {"query_en": ..., "query_es": ..., "ai_enhanced": bool}.
+    """
+    template = {
+        "query_en": opportunity["query_en"],
+        "query_es": opportunity["query_es"],
+        "ai_enhanced": False,
+    }
+
+    if not is_available() or not (note_text or "").strip():
+        return template
+
+    try:
+        is_en = lang == "en"
+        candidates_str = "; ".join(f"{c['code']} ({c['desc']})" for c in opportunity["candidates"])
+        prompt = f"""You are a Clinical Documentation Improvement (CDI) specialist writing a
+physician query for a Puerto Rico medical practice.
+
+A claim was coded with an unspecified diagnosis: {opportunity['source_code'] if 'source_code' in opportunity else opportunity['code_prefix']} ({opportunity['family']}).
+More specific candidate codes this could support, IF the documentation backs them up: {candidates_str}
+
+Clinical note excerpt from the chart:
+\"\"\"{note_text[:3000]}\"\"\"
+
+Write a single physician query, in {"English" if is_en else "Spanish"}, that:
+- Is NON-LEADING per AHIMA/ACDIS query practice standards: present the clinical
+  indicators actually found in the note excerpt above (if any), and ask the
+  physician to clarify/document — do NOT tell them which specific code to use
+  or assert a diagnosis that isn't supported by the note.
+- If the note excerpt doesn't clearly support any single candidate, ask an
+  open, multiple-choice-style clinical question rather than guessing.
+- Is 2-4 sentences, professional, and ready to send as-is.
+- Ends by asking the physician to document their clinical judgment in the
+  chart (not just answer the query directly), consistent with compliant CDI
+  query practice.
+
+Return ONLY the query text — no JSON, no markdown, no preamble."""
+
+        response = _client.messages.create(
+            model=MODEL,
+            max_tokens=400,
+            temperature=0,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        query_text = response.content[0].text.strip()
+        if not query_text:
+            return template
+        return {
+            "query_en": query_text if is_en else template["query_en"],
+            "query_es": query_text if not is_en else template["query_es"],
+            "ai_enhanced": True,
+        }
+    except Exception as exc:
+        logger.warning("CDI query generation failed, using template: %s", exc)
+        return template
+
+
 def enhance(result: Dict[str, Any]) -> Dict[str, Any]:
     """
     Takes a ScrubResult dict from the rules engine, calls Claude to enrich it.
