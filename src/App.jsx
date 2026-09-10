@@ -1070,10 +1070,10 @@ const fmt = (n) => "$" + n.toLocaleString("en-US");
 // ── Notification panel ────────────────────────────────────────────────────────
 const DAYS_TO_RENEW = 7; // demo: subscription renews in 7 days
 
-function NotifPanel({ t, lang, role, onClose, patternAlerts = [] }) {
+function NotifPanel({ t, lang, role, onClose, patternAlerts = [], hccAlerts = [], onOpenClaims }) {
   const [readIds, setReadIds] = useState(new Set());
   const mark = (id) => setReadIds(p => new Set([...p, id]));
-  const markAll = () => setReadIds(new Set(["sub", "claims", "ases-update", "pv-update", "outcome-win", ...patternAlerts.map((_, i) => `pattern-${i}`)]));
+  const markAll = () => setReadIds(new Set(["sub", "claims", "ases-update", "pv-update", "outcome-win", "hcc-review", ...patternAlerts.map((_, i) => `pattern-${i}`)]));
   const isEn = lang === "en";
 
   const notifs = [
@@ -1096,6 +1096,20 @@ function NotifPanel({ t, lang, role, onClose, patternAlerts = [] }) {
       date:  isEn ? "Today" : "Hoy",
       cta:   isEn ? "View claims" : "Ver reclamos",
     })),
+    ...(hccAlerts.length > 0 ? [{
+      id: "hcc-review",
+      icon: ShieldAlert,
+      color: C.tealDk, bg: C.tealSoft,
+      title: isEn
+        ? `${hccAlerts.length} claim${hccAlerts.length > 1 ? "s" : ""} with an HCC-relevant diagnosis`
+        : `${hccAlerts.length} reclamo${hccAlerts.length > 1 ? "s" : ""} con diagnóstico relevante para HCC`,
+      body:  isEn
+        ? `${hccAlerts.slice(0, 3).map(c => c.patient).join(", ")}${hccAlerts.length > 3 ? `, +${hccAlerts.length - 3} more` : ""} — verify in your EHR whether these have been recaptured for the current calendar year.`
+        : `${hccAlerts.slice(0, 3).map(c => c.patient).join(", ")}${hccAlerts.length > 3 ? `, +${hccAlerts.length - 3} más` : ""} — verifique en su EHR si estos han sido recapturados para el año calendario actual.`,
+      date:  isEn ? "Today" : "Hoy",
+      cta:   isEn ? "Review claims" : "Revisar reclamos",
+      onCta: onOpenClaims,
+    }] : []),
     {
       id: "claims",
       icon: ClipboardList,
@@ -1165,7 +1179,12 @@ function NotifPanel({ t, lang, role, onClose, patternAlerts = [] }) {
                     <p style={{ margin: "0 0 8px", fontSize: 12.5, color: C.txt2, lineHeight: 1.55 }}>{n.body}</p>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontSize: 11.5, color: C.txt3 }}>{n.date}</span>
-                      <button style={{ fontSize: 12, color: C.teal, background: "none", border: "none", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 500 }}>{n.cta} →</button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); mark(n.id); if (n.onCta) n.onCta(); }}
+                        style={{ fontSize: 12, color: C.teal, background: "none", border: "none", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 500 }}
+                      >
+                        {n.cta} →
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1562,7 +1581,6 @@ export default function App({ auth0 = null }) {
     return Array.from({ length: 16 }, () => chars[Math.floor(Math.random() * 32)]).join("");
   });
   const acc = THEMES[accentKey] || THEMES.teal;
-  const notifBadge = notifSeen ? 0 : role === "manager" ? 2 : 1;
   const t = T[lang];
 
   useEffect(() => { setMounted(true); }, []);
@@ -2165,6 +2183,16 @@ export default function App({ auth0 = null }) {
     return Object.values(groups).filter(g => g.claims.length >= 2);
   }, [claims]);
 
+  // Claims whose diagnosis maps to a CMS-HCC risk-adjustment category (see
+  // backend/rules/hcc.py) — surfaced here so a biller/coder gets a real,
+  // proactive nudge to verify HCC recapture status in their EHR, instead of
+  // having to notice the HCC-001 issue while reviewing an individual claim.
+  const hccAlerts = useMemo(
+    () => claims.filter(c => (c.issues || []).some(i => i.code === "HCC-001")),
+    [claims]
+  );
+  const notifBadge = notifSeen ? 0 : (role === "manager" ? 2 : 1) + hccAlerts.length;
+
   // Days between a claim's originating batch date (or DOS as fallback) and today.
   // Year-less date strings (e.g. demo data's "May 8") parse inconsistently
   // across engines — some default to a fixed past year — so results outside
@@ -2493,7 +2521,7 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
       {FONTS}
       {helpOpen && <HelpModal t={t} lang={lang} onClose={() => setHelpOpen(false)} />}
       {legalModal && <LegalModal type={legalModal} lang={lang} onClose={() => setLegalModal(null)} />}
-      {notifOpen && <NotifPanel t={t} lang={lang} role={role} onClose={() => setNotifOpen(false)} patternAlerts={patternAlerts} />}
+      {notifOpen && <NotifPanel t={t} lang={lang} role={role} onClose={() => setNotifOpen(false)} patternAlerts={patternAlerts} hccAlerts={hccAlerts} onOpenClaims={() => { setTab("claims"); setNotifOpen(false); }} />}
       {deleteSelectedConfirm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(16,36,92,.65)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(3px)" }}>
           <div className="rise" style={{ background: C.paper2, borderRadius: 20, padding: 28, width: "100%", maxWidth: 380, boxShadow: "0 32px 80px -16px rgba(16,36,92,.35)" }}>
