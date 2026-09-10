@@ -475,7 +475,10 @@ def update_claim(
 ):
     org_id, user_id = _identity(user)
     row = _get_org_claim(db, row_id, org_id)
-    for field, value in patch.model_dump(exclude_unset=True).items():
+    updates = patch.model_dump(exclude_unset=True)
+    if "outcome" in updates and "outcome_updated_at" not in updates:
+        updates["outcome_updated_at"] = datetime.now(timezone.utc).isoformat()
+    for field, value in updates.items():
         setattr(row, field, value)
     _audit(db, org_id, user_id, "claim_updated", "claim", str(row_id), _client_ip(request))
     db.commit()

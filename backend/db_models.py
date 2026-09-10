@@ -58,6 +58,9 @@ class ClaimRecord(Base):
     diagnosis = Column(String,  default="")
     member_id = Column(String,  default="")
     status    = Column(String,  default="pending")
+    outcome           = Column(String,  default="")    # "" | "paid" | "denied" | "appealed" | "written_off" | "resolved"
+    recovered_amount  = Column(Float,   default=0.0)    # $ recovered — meaningful once outcome == "resolved"
+    outcome_updated_at = Column(String, nullable=True)
     lane      = Column(String,  default="auto_clear")
     risk      = Column(Integer, default=0)
     comp      = Column(Integer, default=100)
@@ -103,6 +106,9 @@ class ClaimRecord(Base):
             diagnosis          = result.diagnosis,
             member_id          = result.member_id,
             status             = result.status,
+            outcome            = result.outcome,
+            recovered_amount   = result.recovered_amount,
+            outcome_updated_at = result.outcome_updated_at,
             lane               = result.lane.value,
             risk               = result.risk,
             comp               = result.comp,
@@ -140,6 +146,9 @@ class ClaimRecord(Base):
             member_id     = self.member_id,
             service_lines = [ServiceLine(**sl) for sl in json.loads(self.service_lines_json or "[]")],
             status        = self.status,
+            outcome       = self.outcome,
+            recovered_amount = self.recovered_amount,
+            outcome_updated_at = self.outcome_updated_at,
             lane          = Lane(self.lane),
             risk          = self.risk,
             comp          = self.comp,

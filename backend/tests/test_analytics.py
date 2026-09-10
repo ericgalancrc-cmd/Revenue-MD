@@ -280,6 +280,59 @@ class TestComputeDenialTrends:
         assert months == ["2026-01", "2026-02", "2026-03"]
 
 
+class TestOutcomeRecoveryTracking:
+    def test_resolved_outcome_contributes_to_recovered_value(self):
+        rows = [_FakeRow("denied", 200.0, "MCS", "Dr. A", [], dos="2026-01-01")]
+        rows[0].outcome = "resolved"
+        rows[0].recovered_amount = 150.0
+        result = compute_revenue_intelligence(rows)
+        assert result["total_recovered_value"] == 150.0
+        assert result["outcome_counts"] == {"resolved": 1}
+
+    def test_recovery_rate_computed_against_total_denied_value(self):
+        rows = [
+            _FakeRow("denied", 200.0, "MCS", "Dr. A", [], dos="2026-01-01"),
+            _FakeRow("denied", 200.0, "MCS", "Dr. B", [], dos="2026-01-01"),
+        ]
+        rows[0].outcome, rows[0].recovered_amount = "resolved", 100.0
+        rows[1].outcome, rows[1].recovered_amount = "appealed", 0.0
+        result = compute_revenue_intelligence(rows)
+        # $100 recovered of $400 total denied = 25%
+        assert result["recovery_rate_pct"] == 25.0
+        assert result["outcome_counts"] == {"resolved": 1, "appealed": 1}
+
+    def test_untracked_outcome_defaults_gracefully(self):
+        rows = [_FakeRow("denied", 100.0, "MCS", "Dr. A", [], dos="2026-01-01")]
+        # No .outcome attribute set at all — simulates older data / a fake
+        # row without the new field.
+        result = compute_revenue_intelligence(rows)
+        assert result["outcome_counts"] == {"not_tracked": 1}
+        assert result["total_recovered_value"] == 0.0
+
+
+class TestOutcomeUpdateEndpoint:
+    def test_marking_resolved_with_recovered_amount_feeds_revenue_intelligence(self, client):
+        create = client.post("/api/claims", json={
+            "id": "OUT-1", "patient": "Test", "codes": "99213", "payer": "MCS",
+            "provider": "Dr. X", "npi": "1234567890", "dos": "2026-04-01",
+            "billed": 300.0, "val": 300.0, "auth": "", "pos": "11",
+            "diagnosis": "F32.1", "diagnoses": ["F32.1"],
+            "service_lines": [{"cpt": "99213", "mods": [], "units": 1, "charge": 300.0}],
+        })
+        row_id = create.json()["row_id"]
+        client.patch(f"/api/claims/{row_id}", json={"status": "denied"})
+        r = client.patch(f"/api/claims/{row_id}", json={"outcome": "resolved", "recovered_amount": 250.0})
+        assert r.status_code == 200
+        body = r.json()
+        assert body["outcome"] == "resolved"
+        assert body["recovered_amount"] == 250.0
+        assert body["outcome_updated_at"] is not None  # auto-stamped
+
+        ri = client.get("/api/analytics/revenue-intelligence").json()
+        assert ri["total_recovered_value"] >= 250.0
+        assert ri["outcome_counts"].get("resolved", 0) >= 1
+
+
 class TestRevenueIntelligenceEndpoint:
     def test_empty_org_returns_zero_state(self, client):
         r = client.get("/api/analytics/revenue-intelligence")

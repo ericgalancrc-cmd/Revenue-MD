@@ -57,6 +57,9 @@ class ParsedClaim(BaseModel):
     member_id:   str = ""
     service_lines: List[ServiceLine] = []
     status:      str = "pending"
+    outcome:            str = ""     # "" | "paid" | "denied" | "appealed" | "written_off" | "resolved"
+    recovered_amount:   float = 0.0  # $ recovered — meaningful once outcome == "resolved"
+    outcome_updated_at: Optional[str] = None
 
 
 class ScrubResult(ParsedClaim):
@@ -91,6 +94,8 @@ class ClaimUpdate(BaseModel):
     diagnosis: Optional[str]   = None
     member_id: Optional[str]   = None
     status:    Optional[str]   = None
+    outcome:          Optional[str]   = None   # "paid" | "denied" | "appealed" | "written_off" | "resolved"
+    recovered_amount: Optional[float] = None   # $ recovered if outcome == "resolved"
 
 
 class TeamInviteRequest(BaseModel):

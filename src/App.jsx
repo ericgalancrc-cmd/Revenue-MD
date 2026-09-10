@@ -75,6 +75,7 @@ const T = {
     riTitle: "Denial Root Causes", riLoading: "Analyzing denied claims…",
     riEmpty: "No denied claims recorded yet — mark a claim's status as \"denied\" to see root-cause analysis here.",
     riTotalDenied: "Denied claims", riDenialRate: "Denial rate", riValueAtRisk: "Value at risk",
+    riRecovered: "Recovered", riRecoveryRate: "Recovery rate",
     riByProvider: "By provider", riByPayer: "By payer", riOfDenials: "of denials",
     riTrends: "Denial trend by payer", riTrendsEmpty: "Not enough dated claims yet to show a trend.",
     riDemoNote: "No VITE_API_URL set — Denial Root Causes requires a connected backend.",
@@ -133,6 +134,7 @@ const T = {
     lostRevenue: "Lost", toAppeal: "left to appeal", aiStrategy: "AI appeal strategy", buildAppeal: "Generate appeal letter", reviewed: "Reviewed",
     outcomeTitle: "Record resubmission outcome", outcomeHelp: "What happened after you resubmitted this claim?",
     outcomePaid: "Paid ✓", outcomeDenied: "Denied again", outcomeAppealed: "Under appeal", outcomeWrittenOff: "Written off",
+    outcomeResolved: "Resolved — recovered $", outcomeRecoveredPh: "Amount recovered",
     outcomeRecorded: "Outcome recorded",
     patternTitle: "Denial pattern detected",
     sendTitle: "Send to clearinghouse", sendConfirm: "Confirm & send to Inmediata", sendSending: "Sending…", sendSent: "Submitted ✓", sendPayer: "Clearinghouse",
@@ -293,6 +295,7 @@ const T = {
     riTitle: "Causas Raíz de Denegaciones", riLoading: "Analizando reclamos denegados…",
     riEmpty: "Aún no hay reclamos denegados registrados — marque el estado de un reclamo como \"denegado\" para ver el análisis de causa raíz aquí.",
     riTotalDenied: "Reclamos denegados", riDenialRate: "Tasa de denegación", riValueAtRisk: "Valor en riesgo",
+    riRecovered: "Recuperado", riRecoveryRate: "Tasa de recuperación",
     riByProvider: "Por proveedor", riByPayer: "Por pagador", riOfDenials: "de denegaciones",
     riTrends: "Tendencia de denegaciones por pagador", riTrendsEmpty: "Aún no hay suficientes reclamos con fecha para mostrar una tendencia.",
     riDemoNote: "Sin VITE_API_URL — Causas Raíz de Denegaciones requiere un backend conectado.",
@@ -351,6 +354,7 @@ const T = {
     lostRevenue: "Perdido", toAppeal: "para apelar", aiStrategy: "Estrategia de apelación IA", buildAppeal: "Generar carta de apelación", reviewed: "Revisado",
     outcomeTitle: "Registrar resultado de re-sometimiento", outcomeHelp: "¿Qué pasó después de re-someter este reclamo?",
     outcomePaid: "Pagado ✓", outcomeDenied: "Denegado nuevamente", outcomeAppealed: "En apelación", outcomeWrittenOff: "Cancelado",
+    outcomeResolved: "Resuelto — recuperado $", outcomeRecoveredPh: "Monto recuperado",
     outcomeRecorded: "Resultado registrado",
     patternTitle: "Patrón de denegación detectado",
     sendTitle: "Enviar al clearinghouse", sendConfirm: "Confirmar y enviar a Inmediata", sendSending: "Enviando…", sendSent: "Enviado ✓", sendPayer: "Clearinghouse",
@@ -1472,6 +1476,7 @@ export default function App({ auth0 = null }) {
   const [reviewed, setReviewed] = useState(() => { try { const s = localStorage.getItem("rmd_reviewed"); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [appeal, setAppeal] = useState(null);
   const [outcomes, setOutcomes] = useState(() => { try { const s = localStorage.getItem("rmd_outcomes"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
+  const [recoveredAmountInput, setRecoveredAmountInput] = useState({}); // { [claimId]: string }
   const [appealLetters, setAppealLetters] = useState({});
   const [appealLoading, setAppealLoading] = useState(null);
   const [submitModal, setSubmitModal] = useState(null);
@@ -1711,6 +1716,23 @@ export default function App({ auth0 = null }) {
         setCdiQueries((prev) => prev.map((q) => (q.id === queryId ? updated : q)));
       })
       .catch(() => {});
+  };
+
+  // Maps the resubmission-outcome buttons in the Claims workspace to real
+  // backend state — every outcome here reflects a *confirmed post-submission*
+  // result, so status is always set to a resolved value alongside the more
+  // granular `outcome` field the Denial Root Cause Engine reads.
+  const recordClaimOutcome = (claim, outcomeKey, recoveredAmount) => {
+    setOutcomes((p) => ({ ...p, [claim.id]: outcomeKey })); // immediate UI feedback / demo-mode fallback
+    if (!API_URL || claim.row_id == null) return;
+    const statusMap = { paid: "paid", denied: "denied", appealed: "denied", writtenOff: "denied", resolved: "denied" };
+    const body = { status: statusMap[outcomeKey] || "denied", outcome: outcomeKey };
+    if (outcomeKey === "resolved" && recoveredAmount) body.recovered_amount = parseFloat(recoveredAmount) || 0;
+    fetch(`${API_URL}/api/claims/${claim.row_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(body),
+    }).catch(() => { /* local outcome state already reflects the attempt */ });
   };
 
   const sendTeamInvite = () => {
@@ -3195,12 +3217,29 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                                 <button onClick={() => setOutcomes(p => { const n = {...p}; delete n[c.id]; return n; })} style={{ marginLeft: 8, fontSize: 11, color: C.txt3, background: "none", border: "none", cursor: "pointer" }}>{lang === "en" ? "change" : "cambiar"}</button>
                               </div>
                             ) : (
-                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                                {[["paid", C.teal, C.tealSoft, CheckCircle2], ["denied", C.red, C.redSoft, XCircle], ["appealed", C.blue, C.blueSoft, FileSignature], ["writtenOff", C.txt2, C.lineSoft, ReceiptText]].map(([key, color, bg, Icon]) => (
-                                  <button key={key} onClick={() => setOutcomes(p => ({ ...p, [c.id]: key }))} style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 12px", borderRadius: 10, border: `1px solid ${color}55`, background: bg, color, fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: FONT_SANS }}>
-                                    <Icon size={14} /> {t[`outcome${key.charAt(0).toUpperCase()}${key.slice(1)}`]}
+                              <div>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                                  {[["paid", C.teal, C.tealSoft, CheckCircle2], ["denied", C.red, C.redSoft, XCircle], ["appealed", C.blue, C.blueSoft, FileSignature], ["writtenOff", C.txt2, C.lineSoft, ReceiptText]].map(([key, color, bg, Icon]) => (
+                                    <button key={key} onClick={() => recordClaimOutcome(c, key)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 12px", borderRadius: 10, border: `1px solid ${color}55`, background: bg, color, fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: FONT_SANS }}>
+                                      <Icon size={14} /> {t[`outcome${key.charAt(0).toUpperCase()}${key.slice(1)}`]}
+                                    </button>
+                                  ))}
+                                </div>
+                                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                                  <input
+                                    type="number"
+                                    value={recoveredAmountInput[c.id] || ""}
+                                    onChange={(e) => setRecoveredAmountInput((p) => ({ ...p, [c.id]: e.target.value }))}
+                                    placeholder={t.outcomeRecoveredPh}
+                                    style={{ ...inp, flex: 1, padding: "9px 12px", fontSize: 12.5 }}
+                                  />
+                                  <button
+                                    onClick={() => recordClaimOutcome(c, "resolved", recoveredAmountInput[c.id])}
+                                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 10, border: `1px solid ${C.teal}55`, background: C.tealSoft, color: C.tealDk, fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: FONT_SANS, whiteSpace: "nowrap" }}
+                                  >
+                                    <CheckCircle2 size={14} /> {t.outcomeResolved}
                                   </button>
-                                ))}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -3322,6 +3361,8 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                       <Metric i={0} label={t.riTotalDenied} value={String(revIntel.total_denied_claims)} />
                       <Metric i={1} label={t.riDenialRate} value={`${revIntel.denial_rate_pct}%`} />
                       <Metric i={2} label={t.riValueAtRisk} value={fmt(revIntel.total_denied_value)} />
+                      <Metric i={3} label={t.riRecovered} value={fmt(revIntel.total_recovered_value)} />
+                      <Metric i={4} label={t.riRecoveryRate} value={`${revIntel.recovery_rate_pct}%`} />
                     </div>
 
                     <div style={{ marginBottom: 22 }}>

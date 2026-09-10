@@ -72,6 +72,23 @@ def compute_revenue_intelligence(claim_rows: List[Any]) -> Dict[str, Any]:
     total_denied = len(denied)
     total_denied_value = round(sum(r.billed or 0.0 for r in denied), 2)
 
+    # ── Outcome/recovery tracking — the "did we actually get the money
+    # back" loop, distinct from the root-cause breakdown above. Counts
+    # every denied claim's current outcome status, and sums $ actually
+    # recovered (only meaningful once outcome == "resolved").
+    outcome_counts: Dict[str, int] = {}
+    total_recovered_value = 0.0
+    for row in denied:
+        outcome = (getattr(row, "outcome", "") or "not_tracked")
+        outcome_counts[outcome] = outcome_counts.get(outcome, 0) + 1
+        if outcome == "resolved":
+            total_recovered_value += (getattr(row, "recovered_amount", 0.0) or 0.0)
+    total_recovered_value = round(total_recovered_value, 2)
+    recovery_rate_pct = (
+        round(100 * total_recovered_value / total_denied_value, 1)
+        if total_denied_value else 0.0
+    )
+
     if total_denied == 0:
         return {
             "total_claims": total_claims,
@@ -82,6 +99,9 @@ def compute_revenue_intelligence(claim_rows: List[Any]) -> Dict[str, Any]:
             "by_provider": [],
             "by_payer": [],
             "trends": [],
+            "outcome_counts": {},
+            "total_recovered_value": 0.0,
+            "recovery_rate_pct": 0.0,
         }
 
     # ── Root causes: each denied claim can contribute to multiple
@@ -165,4 +185,7 @@ def compute_revenue_intelligence(claim_rows: List[Any]) -> Dict[str, Any]:
         "by_provider": by_provider,
         "by_payer": by_payer,
         "trends": compute_denial_trends(claim_rows),
+        "outcome_counts": outcome_counts,
+        "total_recovered_value": total_recovered_value,
+        "recovery_rate_pct": recovery_rate_pct,
     }
