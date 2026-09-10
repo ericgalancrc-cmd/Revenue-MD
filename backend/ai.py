@@ -127,6 +127,144 @@ def _appeal_template(denial: Dict[str, Any], lang: str, date_str: str) -> str:
         )
 
 
+def revenue_intelligence_summary(payload: Dict[str, Any], lang: str = "en") -> str:
+    """
+    Generate a short, plain-English executive summary of the Denial Root
+    Cause Engine output — the kind of one-paragraph translation a CFO or
+    RCM director would want instead of raw numbers. Falls back to a
+    template built directly from the numbers if AI is unavailable.
+    """
+    root_causes = payload.get("root_causes", [])
+    total_denied = payload.get("total_denied_claims", 0)
+    total_value = payload.get("total_denied_value", 0.0)
+    is_en = lang == "en"
+
+    if not root_causes or total_denied == 0:
+        return (
+            "No denied claims recorded yet — once claims are marked denied, this will "
+            "summarize the leading root causes and financial impact."
+            if is_en else
+            "Aún no hay reclamos denegados registrados — una vez que se marquen "
+            "reclamos como denegados, esto resumirá las principales causas raíz y el "
+            "impacto financiero."
+        )
+
+    def _template() -> str:
+        top = root_causes[:3]
+        cat_key = "category" if is_en else "category_es"
+        parts = [f"{c['pct_of_denials']}% {c[cat_key]}" for c in top]
+        if is_en:
+            return (
+                f"Of {total_denied} denied claims (${total_value:,.0f} at risk), "
+                f"the leading causes are: {', '.join(parts)}. "
+                f"Addressing the top cause first would have the largest impact on "
+                f"denial rate."
+            )
+        else:
+            return (
+                f"De {total_denied} reclamos denegados (${total_value:,.0f} en riesgo), "
+                f"las principales causas son: {', '.join(parts)}. "
+                f"Atender primero la causa principal tendría el mayor impacto en la "
+                f"tasa de denegación."
+            )
+
+    if not is_available():
+        return _template()
+
+    try:
+        causes_str = "; ".join(
+            f"{c['category']}: {c['pct_of_denials']}% of denials, ${c['value_impact']:,.0f}"
+            for c in root_causes[:5]
+        )
+        prompt = f"""You are a healthcare revenue-cycle analyst writing a one-paragraph
+executive summary for a CFO/Revenue Cycle Director, in {"English" if is_en else "Spanish"}.
+
+Data:
+- Total denied claims: {total_denied}
+- Total value at risk: ${total_value:,.0f}
+- Root causes (category: % of denials, $ value): {causes_str}
+
+Write 2-3 sentences, plain executive language (no jargon, no code names),
+that names the single biggest actionable opportunity first. Do not invent
+numbers beyond what's given. Return ONLY the summary text — no preamble."""
+
+        response = _client.messages.create(
+            model=MODEL,
+            max_tokens=250,
+            temperature=0,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        text = response.content[0].text.strip()
+        return text or _template()
+    except Exception as exc:
+        logger.warning("Revenue intelligence summary generation failed, using template: %s", exc)
+        return _template()
+
+
+def cdi_query(opportunity: Dict[str, Any], note_text: str, lang: str = "en") -> Dict[str, str]:
+    """
+    Generate a compliant, non-leading physician query for a CDI specificity
+    opportunity (e.g. an unspecified diabetes code that chart documentation
+    might support coding more specifically). Personalizes the template query
+    against any clinical note text provided; falls back to the opportunity's
+    static template query when AI is unavailable.
+
+    Returns {"query_en": ..., "query_es": ..., "ai_enhanced": bool}.
+    """
+    template = {
+        "query_en": opportunity["query_en"],
+        "query_es": opportunity["query_es"],
+        "ai_enhanced": False,
+    }
+
+    if not is_available() or not (note_text or "").strip():
+        return template
+
+    try:
+        is_en = lang == "en"
+        candidates_str = "; ".join(f"{c['code']} ({c['desc']})" for c in opportunity["candidates"])
+        prompt = f"""You are a Clinical Documentation Improvement (CDI) specialist writing a
+physician query for a Puerto Rico medical practice.
+
+A claim was coded with an unspecified diagnosis: {opportunity['source_code'] if 'source_code' in opportunity else opportunity['code_prefix']} ({opportunity['family']}).
+More specific candidate codes this could support, IF the documentation backs them up: {candidates_str}
+
+Clinical note excerpt from the chart:
+\"\"\"{note_text[:3000]}\"\"\"
+
+Write a single physician query, in {"English" if is_en else "Spanish"}, that:
+- Is NON-LEADING per AHIMA/ACDIS query practice standards: present the clinical
+  indicators actually found in the note excerpt above (if any), and ask the
+  physician to clarify/document — do NOT tell them which specific code to use
+  or assert a diagnosis that isn't supported by the note.
+- If the note excerpt doesn't clearly support any single candidate, ask an
+  open, multiple-choice-style clinical question rather than guessing.
+- Is 2-4 sentences, professional, and ready to send as-is.
+- Ends by asking the physician to document their clinical judgment in the
+  chart (not just answer the query directly), consistent with compliant CDI
+  query practice.
+
+Return ONLY the query text — no JSON, no markdown, no preamble."""
+
+        response = _client.messages.create(
+            model=MODEL,
+            max_tokens=400,
+            temperature=0,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        query_text = response.content[0].text.strip()
+        if not query_text:
+            return template
+        return {
+            "query_en": query_text if is_en else template["query_en"],
+            "query_es": query_text if not is_en else template["query_es"],
+            "ai_enhanced": True,
+        }
+    except Exception as exc:
+        logger.warning("CDI query generation failed, using template: %s", exc)
+        return template
+
+
 def enhance(result: Dict[str, Any]) -> Dict[str, Any]:
     """
     Takes a ScrubResult dict from the rules engine, calls Claude to enrich it.

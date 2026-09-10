@@ -11,6 +11,7 @@ import {
   Palette, UserRound, Sliders, Sun, Moon,
   Smartphone, Mail, QrCode, KeyRound, ShieldAlert, RefreshCw, Copy,
   Menu, X, ChevronDown, XCircle, FileSignature, Wand2, FileImage, Trash2,
+  ClipboardCheck,
 } from "lucide-react";
 
 // ============================================================================
@@ -61,6 +62,23 @@ const T = {
     email: "Work email", password: "Password", role: "Your role", signIn: "Enter platform",
     demoNote: "Demo — any credentials work", coder: "Coder / Biller", manager: "Manager",
     nav_dash: "Overview", nav_intake: "Import", nav_claims: "Claims", nav_analysis: "AI Analysis",
+    nav_cdi: "CDI",
+    cdiTitle: "Clinical Documentation Improvement", cdiSub: "Find specificity opportunities in unspecified diagnosis codes and generate compliant physician queries.",
+    cdiRunReview: "Run CDI review", cdiDiagnosesLabel: "Diagnosis codes (ICD-10, comma-separated)", cdiDiagnosesPh: "E11.9, I50.9, J44.9…",
+    cdiNoteLabel: "Clinical note (optional — personalizes the query)", cdiNotePh: "Paste relevant chart documentation…",
+    cdiAnalyzing: "Analyzing…", cdiAnalyze: "Analyze",
+    cdiNoOpportunities: "No specificity opportunities found for these codes.",
+    cdiOpen: "Open", cdiAnswered: "Answered", cdiResolved: "Resolved", cdiAll: "All",
+    cdiMarkAnswered: "Mark answered", cdiMarkResolved: "Mark resolved", cdiResolvedCodePh: "Resolved code (optional)",
+    cdiCandidates: "Candidate codes", cdiAiPersonalized: "AI-personalized", cdiEmpty: "No CDI queries yet — run a review above to get started.",
+    cdiSourceCode: "Flagged as", cdiFamily: "Diagnosis family",
+    riTitle: "Denial Root Causes", riLoading: "Analyzing denied claims…",
+    riEmpty: "No denied claims recorded yet — mark a claim's status as \"denied\" to see root-cause analysis here.",
+    riTotalDenied: "Denied claims", riDenialRate: "Denial rate", riValueAtRisk: "Value at risk",
+    riRecovered: "Recovered", riRecoveryRate: "Recovery rate",
+    riByProvider: "By provider", riByPayer: "By payer", riOfDenials: "of denials",
+    riTrends: "Denial trend by payer", riTrendsEmpty: "Not enough dated claims yet to show a trend.",
+    riDemoNote: "No VITE_API_URL set — Denial Root Causes requires a connected backend.",
     nav_denials: "Denials", nav_revenue: "Revenue", nav_payers: "Payers", nav_compliance: "Compliance",
     nav_settings: "Settings", logout: "Sign out", nav_business: "Business", nav_batch: "Batch queue",
     nav_learn: "Learning Center",
@@ -116,6 +134,7 @@ const T = {
     lostRevenue: "Lost", toAppeal: "left to appeal", aiStrategy: "AI appeal strategy", buildAppeal: "Generate appeal letter", reviewed: "Reviewed",
     outcomeTitle: "Record resubmission outcome", outcomeHelp: "What happened after you resubmitted this claim?",
     outcomePaid: "Paid ✓", outcomeDenied: "Denied again", outcomeAppealed: "Under appeal", outcomeWrittenOff: "Written off",
+    outcomeResolved: "Resolved — recovered $", outcomeRecoveredPh: "Amount recovered",
     outcomeRecorded: "Outcome recorded",
     patternTitle: "Denial pattern detected",
     sendTitle: "Send to clearinghouse", sendConfirm: "Confirm & send to Inmediata", sendSending: "Sending…", sendSent: "Submitted ✓", sendPayer: "Clearinghouse",
@@ -251,6 +270,7 @@ const T = {
     stAuthEnabled: "Active", stAuthDisabled: "Not enabled",
     stTeamSub: "Manage who has access to your organization's RevenueMD account.",
     stAddMember: "Add member", stMemberName: "Name", stMemberRole: "Role", stMemberStatus: "Status", stMemberActive: "Active",
+    stMemberPending: "Pending", stTeamEmpty: "No team members invited yet.",
     stInviteEmail: "Invite by email", stSendInvite: "Send invite",
     stLanguage: "Language", stLanguageSub: "Choose the platform language.",
     mobileManagerOnly: "This view is for managers only",
@@ -262,6 +282,23 @@ const T = {
     email: "Correo de trabajo", password: "Contraseña", role: "Tu rol", signIn: "Entrar a la plataforma",
     demoNote: "Demo — cualquier credencial funciona", coder: "Codificador / Facturador", manager: "Gerente",
     nav_dash: "Resumen", nav_intake: "Importar", nav_claims: "Reclamos", nav_analysis: "Análisis IA",
+    nav_cdi: "CDI",
+    cdiTitle: "Mejora de Documentación Clínica", cdiSub: "Encuentre oportunidades de especificidad en códigos de diagnóstico no especificados y genere consultas médicas conformes.",
+    cdiRunReview: "Ejecutar revisión CDI", cdiDiagnosesLabel: "Códigos de diagnóstico (ICD-10, separados por coma)", cdiDiagnosesPh: "E11.9, I50.9, J44.9…",
+    cdiNoteLabel: "Nota clínica (opcional — personaliza la consulta)", cdiNotePh: "Pegue la documentación relevante del expediente…",
+    cdiAnalyzing: "Analizando…", cdiAnalyze: "Analizar",
+    cdiNoOpportunities: "No se encontraron oportunidades de especificidad para estos códigos.",
+    cdiOpen: "Abierta", cdiAnswered: "Contestada", cdiResolved: "Resuelta", cdiAll: "Todas",
+    cdiMarkAnswered: "Marcar contestada", cdiMarkResolved: "Marcar resuelta", cdiResolvedCodePh: "Código resuelto (opcional)",
+    cdiCandidates: "Códigos candidatos", cdiAiPersonalized: "Personalizado por IA", cdiEmpty: "Aún no hay consultas CDI — ejecute una revisión arriba para comenzar.",
+    cdiSourceCode: "Marcado como", cdiFamily: "Familia de diagnóstico",
+    riTitle: "Causas Raíz de Denegaciones", riLoading: "Analizando reclamos denegados…",
+    riEmpty: "Aún no hay reclamos denegados registrados — marque el estado de un reclamo como \"denegado\" para ver el análisis de causa raíz aquí.",
+    riTotalDenied: "Reclamos denegados", riDenialRate: "Tasa de denegación", riValueAtRisk: "Valor en riesgo",
+    riRecovered: "Recuperado", riRecoveryRate: "Tasa de recuperación",
+    riByProvider: "Por proveedor", riByPayer: "Por pagador", riOfDenials: "de denegaciones",
+    riTrends: "Tendencia de denegaciones por pagador", riTrendsEmpty: "Aún no hay suficientes reclamos con fecha para mostrar una tendencia.",
+    riDemoNote: "Sin VITE_API_URL — Causas Raíz de Denegaciones requiere un backend conectado.",
     nav_denials: "Denegaciones", nav_revenue: "Ingresos", nav_payers: "Pagadores", nav_compliance: "Cumplimiento",
     nav_settings: "Ajustes", logout: "Salir", nav_business: "Negocio", nav_batch: "Cola por lote",
     nav_learn: "Centro de aprendizaje",
@@ -317,6 +354,7 @@ const T = {
     lostRevenue: "Perdido", toAppeal: "para apelar", aiStrategy: "Estrategia de apelación IA", buildAppeal: "Generar carta de apelación", reviewed: "Revisado",
     outcomeTitle: "Registrar resultado de re-sometimiento", outcomeHelp: "¿Qué pasó después de re-someter este reclamo?",
     outcomePaid: "Pagado ✓", outcomeDenied: "Denegado nuevamente", outcomeAppealed: "En apelación", outcomeWrittenOff: "Cancelado",
+    outcomeResolved: "Resuelto — recuperado $", outcomeRecoveredPh: "Monto recuperado",
     outcomeRecorded: "Resultado registrado",
     patternTitle: "Patrón de denegación detectado",
     sendTitle: "Enviar al clearinghouse", sendConfirm: "Confirmar y enviar a Inmediata", sendSending: "Enviando…", sendSent: "Enviado ✓", sendPayer: "Clearinghouse",
@@ -453,6 +491,7 @@ const T = {
     stAuthEnabled: "Activo", stAuthDisabled: "No habilitado",
     stTeamSub: "Gestiona quién tiene acceso a la cuenta de tu organización.",
     stAddMember: "Agregar miembro", stMemberName: "Nombre", stMemberRole: "Rol", stMemberStatus: "Estado", stMemberActive: "Activo",
+    stMemberPending: "Pendiente", stTeamEmpty: "Aún no se ha invitado a ningún miembro del equipo.",
     stInviteEmail: "Invitar por correo", stSendInvite: "Enviar invitación",
     stLanguage: "Idioma", stLanguageSub: "Elige el idioma de la plataforma.",
     mobileManagerOnly: "Esta vista es solo para gerentes",
@@ -1031,10 +1070,10 @@ const fmt = (n) => "$" + n.toLocaleString("en-US");
 // ── Notification panel ────────────────────────────────────────────────────────
 const DAYS_TO_RENEW = 7; // demo: subscription renews in 7 days
 
-function NotifPanel({ t, lang, role, onClose, patternAlerts = [] }) {
+function NotifPanel({ t, lang, role, onClose, patternAlerts = [], hccAlerts = [], onOpenClaims }) {
   const [readIds, setReadIds] = useState(new Set());
   const mark = (id) => setReadIds(p => new Set([...p, id]));
-  const markAll = () => setReadIds(new Set(["sub", "claims", "ases-update", "pv-update", "outcome-win", ...patternAlerts.map((_, i) => `pattern-${i}`)]));
+  const markAll = () => setReadIds(new Set(["sub", "claims", "ases-update", "pv-update", "outcome-win", "hcc-review", ...patternAlerts.map((_, i) => `pattern-${i}`)]));
   const isEn = lang === "en";
 
   const notifs = [
@@ -1057,6 +1096,20 @@ function NotifPanel({ t, lang, role, onClose, patternAlerts = [] }) {
       date:  isEn ? "Today" : "Hoy",
       cta:   isEn ? "View claims" : "Ver reclamos",
     })),
+    ...(hccAlerts.length > 0 ? [{
+      id: "hcc-review",
+      icon: ShieldAlert,
+      color: C.tealDk, bg: C.tealSoft,
+      title: isEn
+        ? `${hccAlerts.length} claim${hccAlerts.length > 1 ? "s" : ""} with an HCC-relevant diagnosis`
+        : `${hccAlerts.length} reclamo${hccAlerts.length > 1 ? "s" : ""} con diagnóstico relevante para HCC`,
+      body:  isEn
+        ? `${hccAlerts.slice(0, 3).map(c => c.patient).join(", ")}${hccAlerts.length > 3 ? `, +${hccAlerts.length - 3} more` : ""} — verify in your EHR whether these have been recaptured for the current calendar year.`
+        : `${hccAlerts.slice(0, 3).map(c => c.patient).join(", ")}${hccAlerts.length > 3 ? `, +${hccAlerts.length - 3} más` : ""} — verifique en su EHR si estos han sido recapturados para el año calendario actual.`,
+      date:  isEn ? "Today" : "Hoy",
+      cta:   isEn ? "Review claims" : "Revisar reclamos",
+      onCta: onOpenClaims,
+    }] : []),
     {
       id: "claims",
       icon: ClipboardList,
@@ -1126,7 +1179,12 @@ function NotifPanel({ t, lang, role, onClose, patternAlerts = [] }) {
                     <p style={{ margin: "0 0 8px", fontSize: 12.5, color: C.txt2, lineHeight: 1.55 }}>{n.body}</p>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontSize: 11.5, color: C.txt3 }}>{n.date}</span>
-                      <button style={{ fontSize: 12, color: C.teal, background: "none", border: "none", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 500 }}>{n.cta} →</button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); mark(n.id); if (n.onCta) n.onCta(); }}
+                        style={{ fontSize: 12, color: C.teal, background: "none", border: "none", cursor: "pointer", fontFamily: FONT_SANS, fontWeight: 500 }}
+                      >
+                        {n.cta} →
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1437,6 +1495,7 @@ export default function App({ auth0 = null }) {
   const [reviewed, setReviewed] = useState(() => { try { const s = localStorage.getItem("rmd_reviewed"); return s ? JSON.parse(s) : []; } catch { return []; } });
   const [appeal, setAppeal] = useState(null);
   const [outcomes, setOutcomes] = useState(() => { try { const s = localStorage.getItem("rmd_outcomes"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
+  const [recoveredAmountInput, setRecoveredAmountInput] = useState({}); // { [claimId]: string }
   const [appealLetters, setAppealLetters] = useState({});
   const [appealLoading, setAppealLoading] = useState(null);
   const [submitModal, setSubmitModal] = useState(null);
@@ -1458,6 +1517,22 @@ export default function App({ auth0 = null }) {
   const [batchReading, setBatchReading] = useState(false);
   const [batchMeta, setBatchMeta] = useState(null);    // { total, auto_clear, needs_attention, at_risk }
   const batchFileRef = useRef(null);
+  const [team, setTeam] = useState(null);              // null until loaded from API; falls back to demo list
+  const [revIntel, setRevIntel] = useState(null);
+  const [revIntelLoading, setRevIntelLoading] = useState(false);
+  const [revIntelError, setRevIntelError] = useState(null);
+  const [teamLoaded, setTeamLoaded] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState("coder");
+  const [inviteStatus, setInviteStatus] = useState(null); // { kind: "sending"|"sent"|"error", message }
+  const [cdiQueries, setCdiQueries] = useState([]);
+  const [cdiLoaded, setCdiLoaded] = useState(false);
+  const [cdiDiagnosesInput, setCdiDiagnosesInput] = useState("");
+  const [cdiNoteInput, setCdiNoteInput] = useState("");
+  const [cdiAnalyzing, setCdiAnalyzing] = useState(false);
+  const [cdiError, setCdiError] = useState(null);
+  const [cdiFilter, setCdiFilter] = useState("all"); // "all" | "open" | "answered" | "resolved"
+  const [cdiResolvedCodeInput, setCdiResolvedCodeInput] = useState({}); // { [queryId]: string }
   const intakeFileRef = useRef(null);
   const smartRecordRef = useRef(null);
   const smartImgRef    = useRef(null);
@@ -1506,7 +1581,6 @@ export default function App({ auth0 = null }) {
     return Array.from({ length: 16 }, () => chars[Math.floor(Math.random() * 32)]).join("");
   });
   const acc = THEMES[accentKey] || THEMES.teal;
-  const notifBadge = notifSeen ? 0 : role === "manager" ? 2 : 1;
   const t = T[lang];
 
   useEffect(() => { setMounted(true); }, []);
@@ -1577,7 +1651,140 @@ export default function App({ auth0 = null }) {
         })
         .catch(() => { /* no API — demo mode, batch stays seeded locally */ });
     }
-  }, [authed, accessToken, claimsHydrated, batchLoaded]);
+    if (!teamLoaded) {
+      fetch(`${API_URL}/api/team`, { headers: authHeaders() })
+        .then((r) => r.ok ? r.json() : [])
+        .then((data) => setTeam(data))
+        .catch(() => { /* API unreachable — Team tab falls back to demo list */ })
+        .finally(() => setTeamLoaded(true));
+    }
+    if (!cdiLoaded) {
+      fetch(`${API_URL}/api/cdi`, { headers: authHeaders() })
+        .then((r) => r.ok ? r.json() : [])
+        .then((data) => setCdiQueries(data))
+        .catch(() => { /* API unreachable — CDI tab stays empty until a review is run */ })
+        .finally(() => setCdiLoaded(true));
+    }
+  }, [authed, accessToken, claimsHydrated, batchLoaded, teamLoaded, cdiLoaded]);
+
+  // Lazy-load Denial Root Cause analytics only when the Revenue tab is opened
+  // (rather than at every login) — it's a heavier aggregate query.
+  useEffect(() => {
+    if (tab !== "revenue" || !API_URL || revIntel || revIntelLoading) return;
+    setRevIntelLoading(true);
+    setRevIntelError(null);
+    fetch(`${API_URL}/api/analytics/revenue-intelligence?lang=${lang}`, { headers: authHeaders() })
+      .then(async (r) => {
+        const data = await r.json().catch(() => null);
+        if (!r.ok) throw new Error((data && data.detail) || `HTTP ${r.status}`);
+        return data;
+      })
+      .then((data) => setRevIntel(data))
+      .catch((err) => setRevIntelError(err.message || (lang === "en" ? "Could not load revenue intelligence." : "No se pudo cargar la inteligencia de ingresos.")))
+      .finally(() => setRevIntelLoading(false));
+  }, [tab, API_URL, revIntel, revIntelLoading, lang]);
+
+  useEffect(() => { setRevIntel(null); }, [lang]);
+
+  const runCdiReview = () => {
+    const diagnoses = cdiDiagnosesInput.split(",").map((s) => s.trim()).filter(Boolean);
+    if (!diagnoses.length) {
+      setCdiError(lang === "en" ? "Enter at least one ICD-10 code." : "Ingrese al menos un código ICD-10.");
+      return;
+    }
+    if (!API_URL) {
+      setCdiError(lang === "en" ? "Demo mode — connect a backend (VITE_API_URL) to run a real CDI review." : "Modo demo — conecte un backend (VITE_API_URL) para ejecutar una revisión CDI real.");
+      return;
+    }
+    setCdiError(null);
+    setCdiAnalyzing(true);
+    fetch(`${API_URL}/api/cdi/analyze`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ diagnoses, note_text: cdiNoteInput, lang }),
+    })
+      .then(async (r) => {
+        const data = await r.json().catch(() => []);
+        if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
+        return data;
+      })
+      .then((results) => {
+        setCdiQueries((prev) => [...results, ...prev]);
+        if (!results.length) {
+          setCdiError(t.cdiNoOpportunities);
+        }
+      })
+      .catch((err) => {
+        setCdiError(err.message || (lang === "en" ? "CDI review failed." : "La revisión CDI falló."));
+      })
+      .finally(() => setCdiAnalyzing(false));
+  };
+
+  const updateCdiStatus = (queryId, status) => {
+    if (!API_URL) return;
+    const resolved_code = cdiResolvedCodeInput[queryId] || undefined;
+    fetch(`${API_URL}/api/cdi/${queryId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ status, resolved_code }),
+    })
+      .then((r) => r.ok ? r.json() : null)
+      .then((updated) => {
+        if (!updated) return;
+        setCdiQueries((prev) => prev.map((q) => (q.id === queryId ? updated : q)));
+      })
+      .catch(() => {});
+  };
+
+  // Maps the resubmission-outcome buttons in the Claims workspace to real
+  // backend state — every outcome here reflects a *confirmed post-submission*
+  // result, so status is always set to a resolved value alongside the more
+  // granular `outcome` field the Denial Root Cause Engine reads.
+  const recordClaimOutcome = (claim, outcomeKey, recoveredAmount) => {
+    setOutcomes((p) => ({ ...p, [claim.id]: outcomeKey })); // immediate UI feedback / demo-mode fallback
+    if (!API_URL || claim.row_id == null) return;
+    const statusMap = { paid: "paid", denied: "denied", appealed: "denied", writtenOff: "denied", resolved: "denied" };
+    const body = { status: statusMap[outcomeKey] || "denied", outcome: outcomeKey };
+    if (outcomeKey === "resolved" && recoveredAmount) body.recovered_amount = parseFloat(recoveredAmount) || 0;
+    fetch(`${API_URL}/api/claims/${claim.row_id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify(body),
+    }).catch(() => { /* local outcome state already reflects the attempt */ });
+  };
+
+  const sendTeamInvite = () => {
+    const email = inviteEmail.trim();
+    if (!email || !email.includes("@")) {
+      setInviteStatus({ kind: "error", message: lang === "en" ? "Enter a valid email address." : "Ingrese un correo electrónico válido." });
+      return;
+    }
+    if (!API_URL) {
+      // Demo mode — no backend to persist to. Reflect it locally so the
+      // interaction still feels real, but make the limitation explicit.
+      setInviteStatus({ kind: "error", message: lang === "en" ? "Demo mode — connect a backend (VITE_API_URL) to actually send invites." : "Modo demo — conecte un backend (VITE_API_URL) para enviar invitaciones reales." });
+      return;
+    }
+    setInviteStatus({ kind: "sending", message: lang === "en" ? "Sending…" : "Enviando…" });
+    fetch(`${API_URL}/api/team/invite`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...authHeaders() },
+      body: JSON.stringify({ email, role: inviteRole }),
+    })
+      .then(async (r) => {
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.detail || `HTTP ${r.status}`);
+        return data;
+      })
+      .then((invite) => {
+        setTeam((prev) => [invite, ...(prev || [])]);
+        setInviteEmail("");
+        setInviteStatus({ kind: "sent", message: lang === "en" ? `Invited ${invite.email}.` : `${invite.email} invitado.` });
+      })
+      .catch((err) => {
+        setInviteStatus({ kind: "error", message: err.message || (lang === "en" ? "Could not send invite." : "No se pudo enviar la invitación.") });
+      });
+  };
 
   // Parse a codes string like "90837 GT + H0004 ×8" into service_lines array
   // so the backend rules engine can inspect individual CPT codes and modifiers.
@@ -1976,6 +2183,16 @@ export default function App({ auth0 = null }) {
     return Object.values(groups).filter(g => g.claims.length >= 2);
   }, [claims]);
 
+  // Claims whose diagnosis maps to a CMS-HCC risk-adjustment category (see
+  // backend/rules/hcc.py) — surfaced here so a biller/coder gets a real,
+  // proactive nudge to verify HCC recapture status in their EHR, instead of
+  // having to notice the HCC-001 issue while reviewing an individual claim.
+  const hccAlerts = useMemo(
+    () => claims.filter(c => (c.issues || []).some(i => i.code === "HCC-001")),
+    [claims]
+  );
+  const notifBadge = notifSeen ? 0 : (role === "manager" ? 2 : 1) + hccAlerts.length;
+
   // Days between a claim's originating batch date (or DOS as fallback) and today.
   // Year-less date strings (e.g. demo data's "May 8") parse inconsistently
   // across engines — some default to a fixed past year — so results outside
@@ -2125,6 +2342,7 @@ export default function App({ auth0 = null }) {
     { id: "batch",      icon: Layers,          label: t.nav_batch },      // 2 — primary daily workspace
     { id: "intake",     icon: FileScan,        label: t.nav_intake },     // 3 — import new claims
     { id: "claims",     icon: ClipboardList,   label: t.nav_claims },     // 4 — individual claim work
+    { id: "cdi",        icon: ClipboardCheck,  label: t.nav_cdi },        // 5 — clinical documentation improvement
 
     { id: "denials",    icon: ReceiptText,     label: t.nav_denials },    // 6 — denial tracking & appeals
     { id: "payers",     icon: Building2,       label: t.nav_payers },     // 7 — payer rules reference
@@ -2303,7 +2521,7 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
       {FONTS}
       {helpOpen && <HelpModal t={t} lang={lang} onClose={() => setHelpOpen(false)} />}
       {legalModal && <LegalModal type={legalModal} lang={lang} onClose={() => setLegalModal(null)} />}
-      {notifOpen && <NotifPanel t={t} lang={lang} role={role} onClose={() => setNotifOpen(false)} patternAlerts={patternAlerts} />}
+      {notifOpen && <NotifPanel t={t} lang={lang} role={role} onClose={() => setNotifOpen(false)} patternAlerts={patternAlerts} hccAlerts={hccAlerts} onOpenClaims={() => { setTab("claims"); setNotifOpen(false); }} />}
       {deleteSelectedConfirm && (
         <div style={{ position: "fixed", inset: 0, background: "rgba(16,36,92,.65)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24, backdropFilter: "blur(3px)" }}>
           <div className="rise" style={{ background: C.paper2, borderRadius: 20, padding: 28, width: "100%", maxWidth: 380, boxShadow: "0 32px 80px -16px rgba(16,36,92,.35)" }}>
@@ -3027,12 +3245,29 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                                 <button onClick={() => setOutcomes(p => { const n = {...p}; delete n[c.id]; return n; })} style={{ marginLeft: 8, fontSize: 11, color: C.txt3, background: "none", border: "none", cursor: "pointer" }}>{lang === "en" ? "change" : "cambiar"}</button>
                               </div>
                             ) : (
-                              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                                {[["paid", C.teal, C.tealSoft, CheckCircle2], ["denied", C.red, C.redSoft, XCircle], ["appealed", C.blue, C.blueSoft, FileSignature], ["writtenOff", C.txt2, C.lineSoft, ReceiptText]].map(([key, color, bg, Icon]) => (
-                                  <button key={key} onClick={() => setOutcomes(p => ({ ...p, [c.id]: key }))} style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 12px", borderRadius: 10, border: `1px solid ${color}55`, background: bg, color, fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: FONT_SANS }}>
-                                    <Icon size={14} /> {t[`outcome${key.charAt(0).toUpperCase()}${key.slice(1)}`]}
+                              <div>
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                                  {[["paid", C.teal, C.tealSoft, CheckCircle2], ["denied", C.red, C.redSoft, XCircle], ["appealed", C.blue, C.blueSoft, FileSignature], ["writtenOff", C.txt2, C.lineSoft, ReceiptText]].map(([key, color, bg, Icon]) => (
+                                    <button key={key} onClick={() => recordClaimOutcome(c, key)} style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 12px", borderRadius: 10, border: `1px solid ${color}55`, background: bg, color, fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: FONT_SANS }}>
+                                      <Icon size={14} /> {t[`outcome${key.charAt(0).toUpperCase()}${key.slice(1)}`]}
+                                    </button>
+                                  ))}
+                                </div>
+                                <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                                  <input
+                                    type="number"
+                                    value={recoveredAmountInput[c.id] || ""}
+                                    onChange={(e) => setRecoveredAmountInput((p) => ({ ...p, [c.id]: e.target.value }))}
+                                    placeholder={t.outcomeRecoveredPh}
+                                    style={{ ...inp, flex: 1, padding: "9px 12px", fontSize: 12.5 }}
+                                  />
+                                  <button
+                                    onClick={() => recordClaimOutcome(c, "resolved", recoveredAmountInput[c.id])}
+                                    style={{ display: "flex", alignItems: "center", gap: 7, padding: "9px 14px", borderRadius: 10, border: `1px solid ${C.teal}55`, background: C.tealSoft, color: C.tealDk, fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: FONT_SANS, whiteSpace: "nowrap" }}
+                                  >
+                                    <CheckCircle2 size={14} /> {t.outcomeResolved}
                                   </button>
-                                ))}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -3121,10 +3356,109 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                   </div>
                 )}
               </div>
+
+              {/* Denial Root Cause Engine */}
+              <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 24, marginTop: 20 }}>
+                <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 6, fontFamily: FONT_DISPLAY }}>{t.riTitle}</div>
+
+                {!API_URL && (
+                  <div style={{ fontSize: 12.5, color: C.txt3, padding: "20px 0" }}>{t.riDemoNote}</div>
+                )}
+
+                {API_URL && revIntelLoading && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, color: C.txt3, fontSize: 13, padding: "20px 0" }}>
+                    <Loader2 size={15} className="spin" /> {t.riLoading}
+                  </div>
+                )}
+
+                {API_URL && revIntelError && (
+                  <div style={{ fontSize: 12.5, color: C.red, padding: "12px 0" }}>{revIntelError}</div>
+                )}
+
+                {API_URL && revIntel && revIntel.total_denied_claims === 0 && (
+                  <div style={{ fontSize: 13, color: C.txt3, padding: "20px 0" }}>{t.riEmpty}</div>
+                )}
+
+                {API_URL && revIntel && revIntel.total_denied_claims > 0 && (
+                  <div>
+                    <div style={{ fontSize: 13.5, color: C.txt, lineHeight: 1.6, background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: 12, padding: "14px 16px", margin: "14px 0 20px" }}>
+                      {revIntel.executive_summary}
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 14, marginBottom: 22 }}>
+                      <Metric i={0} label={t.riTotalDenied} value={String(revIntel.total_denied_claims)} />
+                      <Metric i={1} label={t.riDenialRate} value={`${revIntel.denial_rate_pct}%`} />
+                      <Metric i={2} label={t.riValueAtRisk} value={fmt(revIntel.total_denied_value)} />
+                      <Metric i={3} label={t.riRecovered} value={fmt(revIntel.total_recovered_value)} />
+                      <Metric i={4} label={t.riRecoveryRate} value={`${revIntel.recovery_rate_pct}%`} />
+                    </div>
+
+                    <div style={{ marginBottom: 22 }}>
+                      {revIntel.root_causes.map((rc, i) => (
+                        <div key={rc.category} style={{ marginBottom: 12 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, marginBottom: 4 }}>
+                            <span style={{ color: C.txt, fontWeight: 500 }}>{lang === "en" ? rc.category : rc.category_es}</span>
+                            <span style={{ color: C.txt2 }}>{rc.pct_of_denials}% {t.riOfDenials} · {fmt(rc.value_impact)}</span>
+                          </div>
+                          <div style={{ height: 8, background: C.lineSoft, borderRadius: 4, overflow: "hidden" }}>
+                            <div style={{ height: "100%", width: `${rc.pct_of_denials}%`, background: `linear-gradient(90deg, ${C.teal}, ${C.tealDk})`, borderRadius: 4 }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 20 }}>
+                      <div>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: C.txt2, marginBottom: 10 }}>{t.riByProvider}</div>
+                        {revIntel.by_provider.map((p) => (
+                          <div key={p.provider} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "6px 0", borderBottom: `1px solid ${C.lineSoft}` }}>
+                            <span style={{ color: C.txt }}>{p.provider}</span>
+                            <span style={{ color: C.txt2 }}>{p.denied_claims} · {fmt(p.denied_value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: C.txt2, marginBottom: 10 }}>{t.riByPayer}</div>
+                        {revIntel.by_payer.map((p) => (
+                          <div key={p.payer} style={{ display: "flex", justifyContent: "space-between", fontSize: 12.5, padding: "6px 0", borderBottom: `1px solid ${C.lineSoft}` }}>
+                            <span style={{ color: C.txt }}>{p.payer}</span>
+                            <span style={{ color: C.txt2 }}>{p.denied_claims} · {fmt(p.denied_value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {revIntel.trends && revIntel.trends.length > 0 && (
+                      <div style={{ marginTop: 26, borderTop: `1px solid ${C.lineSoft}`, paddingTop: 20 }}>
+                        <div style={{ fontSize: 12.5, fontWeight: 600, color: C.txt2, marginBottom: 14 }}>{t.riTrends}</div>
+                        {(() => {
+                          const byPayer = {};
+                          revIntel.trends.forEach((t2) => { (byPayer[t2.payer] = byPayer[t2.payer] || []).push(t2); });
+                          return Object.entries(byPayer).map(([payerName, series]) => {
+                            const maxV = Math.max(1, ...series.map((s) => s.denied_value));
+                            return (
+                              <div key={payerName} style={{ marginBottom: 18 }}>
+                                <div style={{ fontSize: 12, fontWeight: 500, color: C.txt, marginBottom: 8 }}>{payerName}</div>
+                                <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 90 }}>
+                                  {series.map((s) => (
+                                    <div key={s.month} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, maxWidth: 70 }}>
+                                      <div style={{ fontSize: 10.5, color: C.txt3 }}>{fmt(s.denied_value)}</div>
+                                      <div style={{ width: "100%", height: (s.denied_value / maxV) * 55, background: C.tealMute, borderRadius: "6px 6px 0 0" }} />
+                                      <div style={{ fontSize: 10.5, color: C.txt2 }}>{s.month}</div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           )}
-
-          {/* PAYERS */}
           {tab === "payers" && (
             <div>
               <Head title={t.payersTitle} sub={t.payersSub} />
@@ -3696,6 +4030,116 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
               </div>
             );
           })()}
+          {/* CDI — Clinical Documentation Improvement */}
+          {tab === "cdi" && (() => {
+            const filteredCdi = cdiFilter === "all" ? cdiQueries : cdiQueries.filter((q) => q.status === cdiFilter);
+            const statusColor = (s) => s === "resolved" ? C.teal : s === "answered" ? C.blue : C.amber;
+            const statusLabel = (s) => s === "resolved" ? t.cdiResolved : s === "answered" ? t.cdiAnswered : t.cdiOpen;
+            return (
+              <div>
+                <Head title={t.cdiTitle} sub={t.cdiSub} />
+
+                <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 28, marginBottom: 24 }}>
+                  <label style={{ fontSize: 12.5, fontWeight: 500, color: C.txt2, display: "block", marginBottom: 8 }}>{t.cdiDiagnosesLabel}</label>
+                  <input
+                    value={cdiDiagnosesInput}
+                    onChange={(e) => { setCdiDiagnosesInput(e.target.value); setCdiError(null); }}
+                    placeholder={t.cdiDiagnosesPh}
+                    style={{ ...inp, marginBottom: 16 }}
+                  />
+                  <label style={{ fontSize: 12.5, fontWeight: 500, color: C.txt2, display: "block", marginBottom: 8 }}>{t.cdiNoteLabel}</label>
+                  <textarea
+                    value={cdiNoteInput}
+                    onChange={(e) => setCdiNoteInput(e.target.value)}
+                    placeholder={t.cdiNotePh}
+                    rows={4}
+                    style={{ ...inp, resize: "vertical", fontFamily: FONT_SANS, marginBottom: 16 }}
+                  />
+                  <button
+                    onClick={runCdiReview}
+                    disabled={cdiAnalyzing}
+                    style={{ ...btnP, opacity: cdiAnalyzing ? 0.6 : 1, cursor: cdiAnalyzing ? "wait" : "pointer" }}
+                  >
+                    {cdiAnalyzing ? <><Loader2 size={15} className="spin" /> {t.cdiAnalyzing}</> : <><ClipboardCheck size={15} /> {t.cdiRunReview}</>}
+                  </button>
+                  {cdiError && (
+                    <div style={{ fontSize: 12.5, marginTop: 12, color: C.red }}>{cdiError}</div>
+                  )}
+                  {!API_URL && (
+                    <div style={{ fontSize: 11.5, color: C.txt3, marginTop: 12 }}>
+                      {lang === "en" ? "No VITE_API_URL set — CDI review requires a connected backend." : "Sin VITE_API_URL — la revisión CDI requiere un backend conectado."}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
+                  {["all", "open", "answered", "resolved"].map((s) => {
+                    const active = cdiFilter === s;
+                    const label = s === "all" ? t.cdiAll : s === "open" ? t.cdiOpen : s === "answered" ? t.cdiAnswered : t.cdiResolved;
+                    return (
+                      <button key={s} onClick={() => setCdiFilter(s)} style={{ padding: "7px 16px", borderRadius: 20, border: `1px solid ${active ? acc.hex : C.line}`, cursor: "pointer", fontSize: 12.5, background: active ? acc.soft : "transparent", color: active ? acc.dk : C.txt2, fontWeight: active ? 600 : 400, fontFamily: FONT_SANS }}>
+                        {label}{s !== "all" && ` (${cdiQueries.filter((q) => q.status === s).length})`}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {filteredCdi.length === 0 && (
+                  <div style={{ textAlign: "center", padding: "48px 20px", color: C.txt3, fontSize: 13.5 }}>{t.cdiEmpty}</div>
+                )}
+
+                {filteredCdi.map((q) => (
+                  <div key={q.id} className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 16, padding: 22, marginBottom: 14 }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 14.5, fontWeight: 600, color: C.ink, fontFamily: FONT_DISPLAY }}>{q.family}</div>
+                        <div style={{ fontSize: 12, color: C.txt3, marginTop: 3 }}>{t.cdiSourceCode}: <strong>{q.source_code}</strong></div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                        {q.ai_enhanced && <span style={{ fontSize: 10.5, fontWeight: 600, padding: "3px 9px", borderRadius: 20, background: C.tealSoft, color: C.tealDk, display: "flex", alignItems: "center", gap: 3 }}><Sparkles size={10} /> {t.cdiAiPersonalized}</span>}
+                        <span style={{ fontSize: 11.5, fontWeight: 600, padding: "4px 12px", borderRadius: 20, background: `${statusColor(q.status)}22`, color: statusColor(q.status) }}>{statusLabel(q.status)}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ fontSize: 13.5, color: C.txt, lineHeight: 1.6, background: "#fff", border: `1px solid ${C.lineSoft}`, borderRadius: 12, padding: "14px 16px", marginBottom: 14 }}>
+                      {lang === "en" ? q.query_en : q.query_es}
+                    </div>
+
+                    <div style={{ fontSize: 12, color: C.txt2, marginBottom: 14 }}>
+                      <div style={{ fontWeight: 500, marginBottom: 6 }}>{t.cdiCandidates}:</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {q.candidates.map((c, i) => (
+                          <span key={i} style={{ fontSize: 11.5, padding: "4px 10px", borderRadius: 8, background: C.lineSoft, color: C.txt2 }}>
+                            <strong>{c.code}</strong> — {c.desc}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {q.status !== "resolved" && (
+                      <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", borderTop: `1px solid ${C.lineSoft}`, paddingTop: 14 }}>
+                        <input
+                          value={cdiResolvedCodeInput[q.id] || ""}
+                          onChange={(e) => setCdiResolvedCodeInput((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                          placeholder={t.cdiResolvedCodePh}
+                          style={{ ...inp, width: 200, padding: "8px 12px", fontSize: 12.5 }}
+                        />
+                        {q.status === "open" && (
+                          <button onClick={() => updateCdiStatus(q.id, "answered")} style={{ ...btnG, background: C.blueSoft, color: C.blue, borderRadius: 10 }}>{t.cdiMarkAnswered}</button>
+                        )}
+                        <button onClick={() => updateCdiStatus(q.id, "resolved")} style={{ ...btnP, background: C.teal, fontSize: 12.5 }}>{t.cdiMarkResolved}</button>
+                      </div>
+                    )}
+                    {q.status === "resolved" && q.resolved_code && (
+                      <div style={{ fontSize: 12, color: C.teal, borderTop: `1px solid ${C.lineSoft}`, paddingTop: 12 }}>
+                        {lang === "en" ? "Resolved to" : "Resuelto a"}: <strong>{q.resolved_code}</strong>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
           {/* SETTINGS */}
           {tab === "settings" && (() => {
             const stTabs = [
@@ -3707,11 +4151,24 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
             ];
             const avatarBg = (THEMES[userProfile.avatarColor] || acc).hex;
             const initials = (userProfile.firstName[0] || "D") + (userProfile.lastName[0] || "U");
+            // Fallback shown only when there's no backend to read real invites from
+            // (API_URL unset, or the team list hasn't loaded yet) — never shown
+            // once real data is available, even if that real list is empty.
             const demoTeam = [
-              { name: "Dr. Rivera, LCSW", email: "rivera@clinicapr.com",  role: t.coder,   color: THEMES.teal.hex },
-              { name: "Dr. Colón, PhD",   email: "colon@clinicapr.com",   role: t.coder,   color: THEMES.emerald.hex },
-              { name: "Dr. Méndez, MD",   email: "mendez@clinicapr.com",  role: t.manager, color: THEMES.indigo.hex },
+              { name: "Dr. Rivera, LCSW", email: "rivera@clinicapr.com",  role: t.coder,   color: THEMES.teal.hex,    status: "active" },
+              { name: "Dr. Colón, PhD",   email: "colon@clinicapr.com",   role: t.coder,   color: THEMES.emerald.hex, status: "active" },
+              { name: "Dr. Méndez, MD",   email: "mendez@clinicapr.com",  role: t.manager, color: THEMES.indigo.hex, status: "active" },
             ];
+            const teamColors = [THEMES.teal.hex, THEMES.emerald.hex, THEMES.indigo.hex, THEMES.violet.hex, THEMES.blue.hex];
+            const displayTeam = (API_URL && team !== null)
+              ? team.map((inv, i) => ({
+                  name:   inv.email.split("@")[0],
+                  email:  inv.email,
+                  role:   inv.role === "manager" ? t.manager : t.coder,
+                  color:  teamColors[i % teamColors.length],
+                  status: inv.status,
+                }))
+              : demoTeam;
             return (
               <div>
                 <Head title={t.settingsTitle} sub={t.settingsSub} />
@@ -4012,24 +4469,57 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                         </div>
                         <div style={{ fontSize: 13, color: C.txt2, marginBottom: 22 }}>{t.stTeamSub}</div>
                         <div style={{ marginBottom: 20 }}>
-                          {demoTeam.map((m, i) => (
-                            <div key={i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 0", borderBottom: i < demoTeam.length - 1 ? `1px solid ${C.lineSoft}` : "none" }}>
-                              <div style={{ width: 36, height: 36, borderRadius: "50%", background: m.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>{m.name[3]}{m.name.split(" ")[1]?.[0]}</div>
+                          {displayTeam.length === 0 && (
+                            <div style={{ fontSize: 13, color: C.txt3, padding: "13px 0" }}>{t.stTeamEmpty}</div>
+                          )}
+                          {displayTeam.map((m, i) => (
+                            <div key={m.email || i} style={{ display: "flex", alignItems: "center", gap: 14, padding: "13px 0", borderBottom: i < displayTeam.length - 1 ? `1px solid ${C.lineSoft}` : "none" }}>
+                              <div style={{ width: 36, height: 36, borderRadius: "50%", background: m.color, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>{(m.name[0] || "?").toUpperCase()}</div>
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: 13.5, fontWeight: 500, color: C.ink }}>{m.name}</div>
                                 <div style={{ fontSize: 12, color: C.txt3, marginTop: 1 }}>{m.email}</div>
                               </div>
                               <span style={{ fontSize: 12, fontWeight: 500, padding: "4px 12px", borderRadius: 20, background: acc.soft, color: acc.dk }}>{m.role}</span>
-                              <span style={{ fontSize: 11.5, color: C.teal }}>{t.stMemberActive}</span>
+                              <span style={{ fontSize: 11.5, color: m.status === "pending" ? C.txt3 : C.teal }}>{m.status === "pending" ? t.stMemberPending : t.stMemberActive}</span>
                             </div>
                           ))}
                         </div>
                         <div style={{ borderTop: `1px solid ${C.lineSoft}`, paddingTop: 20 }}>
                           <div style={{ fontSize: 13, fontWeight: 500, color: C.ink, marginBottom: 10 }}>{t.stInviteEmail}</div>
                           <div style={{ display: "flex", gap: 10 }}>
-                            <input placeholder="colleague@clinicapr.com" style={{ ...inp, flex: 1 }} />
-                            <button style={{ ...btnP, background: acc.hex, flexShrink: 0 }}>{t.stSendInvite}</button>
+                            <input
+                              value={inviteEmail}
+                              onChange={(e) => { setInviteEmail(e.target.value); setInviteStatus(null); }}
+                              onKeyDown={(e) => { if (e.key === "Enter") sendTeamInvite(); }}
+                              placeholder="colleague@clinicapr.com"
+                              style={{ ...inp, flex: 1 }}
+                            />
+                            <select
+                              value={inviteRole}
+                              onChange={(e) => setInviteRole(e.target.value)}
+                              style={{ ...inp, width: 130, flexShrink: 0 }}
+                            >
+                              <option value="coder">{t.coder}</option>
+                              <option value="manager">{t.manager}</option>
+                            </select>
+                            <button
+                              onClick={sendTeamInvite}
+                              disabled={inviteStatus?.kind === "sending"}
+                              style={{ ...btnP, background: acc.hex, flexShrink: 0, opacity: inviteStatus?.kind === "sending" ? 0.6 : 1, cursor: inviteStatus?.kind === "sending" ? "wait" : "pointer" }}
+                            >
+                              {inviteStatus?.kind === "sending" ? (lang === "en" ? "Sending…" : "Enviando…") : t.stSendInvite}
+                            </button>
                           </div>
+                          {inviteStatus && inviteStatus.kind !== "sending" && (
+                            <div style={{ fontSize: 12, marginTop: 8, color: inviteStatus.kind === "error" ? C.red : C.teal }}>
+                              {inviteStatus.message}
+                            </div>
+                          )}
+                          {!API_URL && (
+                            <div style={{ fontSize: 11.5, color: C.txt3, marginTop: 8 }}>
+                              {lang === "en" ? "No VITE_API_URL set — showing sample team data." : "Sin VITE_API_URL — mostrando datos de equipo de muestra."}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

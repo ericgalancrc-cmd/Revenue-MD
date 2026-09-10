@@ -739,6 +739,403 @@ class TestBilingualOutput:
         assert r.iEs == ""
 
 
+# ── MCS-001: NPI required for MA enrollment check ─────────────────────────────
+
+class TestMCS001:
+    def test_fires_when_npi_missing(self):
+        c = make_claim(
+            payer="MCS",
+            npi="",
+            service_lines=[ServiceLine(cpt="99213", units=1)],
+        )
+        r = scrub(c)
+        assert fired(r, "MCS-001")
+        assert sev(r, "MCS-001") == "error"
+
+    def test_does_not_fire_when_npi_present(self):
+        c = make_claim(
+            payer="MCS",
+            npi="1234567890",
+            service_lines=[ServiceLine(cpt="99213", units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MCS-001")
+
+    def test_does_not_fire_for_other_payers(self):
+        c = make_claim(payer="Plan Vital", npi="")
+        r = scrub(c)
+        assert not fired(r, "MCS-001")
+
+
+# ── MCS-002: MSP verification always flagged ──────────────────────────────────
+
+class TestMCS002:
+    def test_always_fires_for_mcs(self):
+        c = make_claim(payer="MCS")
+        r = scrub(c)
+        assert fired(r, "MCS-002")
+        assert sev(r, "MCS-002") == "warning"
+
+    def test_does_not_fire_for_other_payers(self):
+        c = make_claim(payer="Plan Vital")
+        r = scrub(c)
+        assert not fired(r, "MCS-002")
+
+
+# ── MCS-003: Specialist/high-cost imaging PA verification ────────────────────
+
+class TestMCS003:
+    def test_fires_for_flagged_cpt_without_auth(self):
+        c = make_claim(
+            payer="MCS",
+            codes="70551",
+            auth="",
+            service_lines=[ServiceLine(cpt="70551", units=1)],
+        )
+        r = scrub(c)
+        assert fired(r, "MCS-003")
+        assert sev(r, "MCS-003") == "warning"
+
+    def test_does_not_fire_when_auth_present(self):
+        c = make_claim(
+            payer="MCS",
+            codes="70551",
+            auth="AUTH-9001",
+            service_lines=[ServiceLine(cpt="70551", units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MCS-003")
+
+    def test_does_not_fire_for_non_flagged_cpt(self):
+        c = make_claim(
+            payer="MCS",
+            codes="99213",
+            auth="",
+            service_lines=[ServiceLine(cpt="99213", units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MCS-003")
+
+
+class TestMCSPayerNormalization:
+    def test_mcs_classicare_routes_to_mcs_rules(self):
+        c = make_claim(payer="MCS Classicare", npi="")
+        r = scrub(c)
+        assert fired(r, "MCS-001"), "payer aliases should normalize to MCS"
+
+    def test_mcs_platino_routes_to_mcs_rules(self):
+        c = make_claim(payer="MCS Platino", npi="")
+        r = scrub(c)
+        assert fired(r, "MCS-001"), "payer aliases should normalize to MCS"
+
+
+# ── MOD-001: Duplicate CPT without distinguishing modifier ───────────────────
+
+class TestMOD001:
+    def test_fires_for_duplicate_cpt_no_modifier(self):
+        c = make_claim(
+            codes="99213, 99213",
+            service_lines=[
+                ServiceLine(cpt="99213", mods=[], units=1),
+                ServiceLine(cpt="99213", mods=[], units=1),
+            ],
+        )
+        r = scrub(c)
+        assert fired(r, "MOD-001")
+        assert sev(r, "MOD-001") == "warning"
+
+    def test_does_not_fire_with_modifier_59(self):
+        c = make_claim(
+            service_lines=[
+                ServiceLine(cpt="99213", mods=[], units=1),
+                ServiceLine(cpt="99213", mods=["59"], units=1),
+            ],
+        )
+        r = scrub(c)
+        assert not fired(r, "MOD-001")
+
+    def test_does_not_fire_with_laterality_modifier(self):
+        c = make_claim(
+            service_lines=[
+                ServiceLine(cpt="99213", mods=["LT"], units=1),
+                ServiceLine(cpt="99213", mods=["RT"], units=1),
+            ],
+        )
+        r = scrub(c)
+        assert not fired(r, "MOD-001")
+
+    def test_does_not_fire_for_single_occurrence(self):
+        c = make_claim(service_lines=[ServiceLine(cpt="99213", mods=[], units=1)])
+        r = scrub(c)
+        assert not fired(r, "MOD-001")
+
+
+# ── MOD-002: E&M + separate procedure, no modifier 25 ─────────────────────────
+
+class TestMOD002:
+    def test_fires_for_em_plus_procedure_no_mod25(self):
+        c = make_claim(
+            codes="99214, 96127",
+            service_lines=[
+                ServiceLine(cpt="99214", mods=[], units=1),
+                ServiceLine(cpt="96127", mods=[], units=1),
+            ],
+        )
+        r = scrub(c)
+        assert fired(r, "MOD-002")
+
+    def test_does_not_fire_with_mod25_present(self):
+        c = make_claim(
+            service_lines=[
+                ServiceLine(cpt="99214", mods=["25"], units=1),
+                ServiceLine(cpt="96127", mods=[], units=1),
+            ],
+        )
+        r = scrub(c)
+        assert not fired(r, "MOD-002")
+
+    def test_does_not_fire_for_em_alone(self):
+        c = make_claim(service_lines=[ServiceLine(cpt="99214", mods=[], units=1)])
+        r = scrub(c)
+        assert not fired(r, "MOD-002")
+
+    def test_skips_addon_case_handled_by_cms002(self):
+        # 90833/90836 + E&M is CMS-002's job — MOD-002 should stay silent here
+        # to avoid a redundant duplicate issue for the same scenario.
+        c = make_claim(
+            payer="MMM",  # avoid MMM-001 BH-auth noise by using an unrelated code below
+            auth="AUTH-1",
+            service_lines=[
+                ServiceLine(cpt="99214", mods=[], units=1),
+                ServiceLine(cpt="90833", mods=[], units=1),
+            ],
+        )
+        r = scrub(c)
+        assert not fired(r, "MOD-002")
+
+
+# ── MOD-003: PC/TC split code in facility POS without modifier 26 ────────────
+
+class TestMOD003:
+    def test_fires_in_facility_pos_without_modifier(self):
+        c = make_claim(
+            pos="22",
+            service_lines=[ServiceLine(cpt="93000", mods=[], units=1)],
+        )
+        r = scrub(c)
+        assert fired(r, "MOD-003")
+
+    def test_does_not_fire_with_modifier_26(self):
+        c = make_claim(
+            pos="22",
+            service_lines=[ServiceLine(cpt="93000", mods=["26"], units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MOD-003")
+
+    def test_does_not_fire_in_office_pos(self):
+        c = make_claim(
+            pos="11",
+            service_lines=[ServiceLine(cpt="93000", mods=[], units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MOD-003")
+
+    def test_does_not_fire_for_non_split_code(self):
+        c = make_claim(
+            pos="22",
+            service_lines=[ServiceLine(cpt="99213", mods=[], units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MOD-003")
+
+
+# ── CPT II Code Finder ────────────────────────────────────────────────────────
+
+class TestCPT2Finder:
+    def test_fires_hba1c_opportunity_for_diabetes(self):
+        c = make_claim(diagnosis="E11.9", diagnoses=["E11.9"])
+        r = scrub(c)
+        assert any(i.code.startswith("CPT2-") for i in r.issues)
+
+    def test_does_not_fire_when_hba1c_code_already_present(self):
+        c = make_claim(
+            diagnosis="E11.9", diagnoses=["E11.9"],
+            codes="99213, 3044F",
+            service_lines=[
+                ServiceLine(cpt="99213", mods=[], units=1),
+                ServiceLine(cpt="3044F", mods=[], units=1),
+            ],
+        )
+        r = scrub(c)
+        assert not any(i.code.startswith("CPT2-") for i in r.issues)
+
+    def test_fires_bp_control_opportunity_for_hypertension(self):
+        c = make_claim(diagnosis="I10", diagnoses=["I10"])
+        r = scrub(c)
+        assert any(i.code.startswith("CPT2-") for i in r.issues)
+
+    def test_does_not_fire_for_unrelated_diagnosis(self):
+        c = make_claim(diagnosis="Z00.00", diagnoses=["Z00.00"])
+        r = scrub(c)
+        assert not any(i.code.startswith("CPT2-") for i in r.issues)
+
+    def test_is_informational_severity(self):
+        c = make_claim(diagnosis="E11.9", diagnoses=["E11.9"])
+        r = scrub(c)
+        cpt2_issue = next(i for i in r.issues if i.code.startswith("CPT2-"))
+        assert cpt2_issue.sev == Severity.info
+
+
+# ── MUE-001: Medically Unlikely Edits ──────────────────────────────────────────
+
+class TestMUE001:
+    def test_fires_when_over_cap(self):
+        c = make_claim(
+            codes="90837",
+            diagnosis="F32.1", diagnoses=["F32.1"],
+            service_lines=[ServiceLine(cpt="90837", units=2)],
+        )
+        r = scrub(c)
+        assert fired(r, "MUE-001")
+        assert sev(r, "MUE-001") == "error"
+
+    def test_does_not_fire_at_cap(self):
+        c = make_claim(
+            codes="90837",
+            diagnosis="F32.1", diagnoses=["F32.1"],
+            service_lines=[ServiceLine(cpt="90837", units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MUE-001")
+
+    def test_does_not_fire_for_uncapped_code(self):
+        c = make_claim(
+            codes="H0004",
+            service_lines=[ServiceLine(cpt="H0004", units=6)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MUE-001")
+
+    def test_does_not_overlap_with_ases001_for_h0004(self):
+        # H0004 is governed by ASES-001 (payer-scoped), not MUE-001 —
+        # confirm MUE-001 stays silent even when way over what would be
+        # a plausible unit count, since it's simply not in MUE_CAPS.
+        c = make_claim(
+            payer="ASES Mi Salud", auth="",
+            codes="H0004",
+            service_lines=[ServiceLine(cpt="H0004", units=10)],
+        )
+        r = scrub(c)
+        assert fired(r, "ASES-001")
+        assert not fired(r, "MUE-001")
+
+
+# ── MDX-001: Missing Diagnosis Support ────────────────────────────────────────
+
+class TestMDX001:
+    def test_fires_for_psychotherapy_with_unrelated_dx(self):
+        c = make_claim(
+            codes="90837",
+            diagnosis="I50.9", diagnoses=["I50.9"],
+            service_lines=[ServiceLine(cpt="90837", units=1)],
+        )
+        r = scrub(c)
+        assert fired(r, "MDX-001")
+        assert sev(r, "MDX-001") == "error"
+
+    def test_fires_for_psychotherapy_with_no_diagnosis(self):
+        c = make_claim(
+            codes="90837", diagnosis="", diagnoses=[],
+            service_lines=[ServiceLine(cpt="90837", units=1)],
+        )
+        r = scrub(c)
+        assert fired(r, "MDX-001")
+
+    def test_does_not_fire_with_behavioral_health_dx(self):
+        c = make_claim(
+            codes="90837",
+            diagnosis="F32.1", diagnoses=["F32.1"],
+            service_lines=[ServiceLine(cpt="90837", units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MDX-001")
+
+    def test_does_not_fire_for_general_em_code(self):
+        # 99213 isn't in the DX_SUPPORT_MAP — any diagnosis is plausible for
+        # a general office visit, so this should never fire for it.
+        c = make_claim(
+            codes="99213",
+            diagnosis="I50.9", diagnoses=["I50.9"],
+            service_lines=[ServiceLine(cpt="99213", units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MDX-001")
+
+    def test_checks_singular_diagnosis_field_too(self):
+        # Some claim sources only populate `diagnosis`, not the `diagnoses`
+        # list — confirm the check still passes correctly in that case.
+        c = make_claim(
+            codes="90837", diagnosis="F32.1", diagnoses=[],
+            service_lines=[ServiceLine(cpt="90837", units=1)],
+        )
+        r = scrub(c)
+        assert not fired(r, "MDX-001")
+
+
+# ── HCC-001: HCC-relevant diagnosis flag ──────────────────────────────────────
+
+class TestHCC001:
+    def test_fires_for_chf(self):
+        c = make_claim(diagnoses=["I50.9"])
+        r = scrub(c)
+        assert fired(r, "HCC-001")
+        assert sev(r, "HCC-001") == "info"
+
+    def test_fires_for_diabetes_with_complication(self):
+        c = make_claim(diagnoses=["E11.22"])
+        r = scrub(c)
+        assert fired(r, "HCC-001")
+
+    def test_does_not_fire_for_plain_diabetes_unspecified(self):
+        # E11.9 has no complication — not itself an HCC category prefix match
+        c = make_claim(diagnoses=["E11.9"])
+        r = scrub(c)
+        assert not fired(r, "HCC-001")
+
+    def test_does_not_fire_for_unrelated_diagnosis(self):
+        c = make_claim(diagnoses=["Z00.00"])
+        r = scrub(c)
+        assert not fired(r, "HCC-001")
+
+    def test_fires_regardless_of_payer(self):
+        for payer in ("Plan Vital", "Medicare", "MCS", "Triple-S"):
+            c = make_claim(payer=payer, diagnoses=["I50.9"])
+            r = scrub(c)
+            assert fired(r, "HCC-001"), f"HCC-001 should fire regardless of payer ({payer})"
+
+    def test_does_not_force_needs_work_lane(self):
+        # Informational-only — shouldn't push an otherwise-clean claim into needs_work.
+        # Uses 99213 (not a behavioral-health code) so MDX-001 (Missing Dx Support)
+        # doesn't also fire here — that's a separate, legitimate check that this
+        # test isn't about.
+        c = make_claim(
+            codes="99213 GT", payer="Plan Vital", auth="AUTH-4421", pos="02",
+            diagnosis="I50.9", diagnoses=["I50.9"],
+            service_lines=[ServiceLine(cpt="99213", mods=["GT"], units=1)],
+        )
+        r = scrub(c)
+        assert fired(r, "HCC-001")
+        assert r.lane != Lane.needs_work
+
+    def test_multiple_matches_mentions_count(self):
+        c = make_claim(diagnoses=["I50.9", "J44.9", "F33.1"])
+        r = scrub(c)
+        assert fired(r, "HCC-001")
+        issue = next(i for i in r.issues if i.code == "HCC-001")
+        assert "+2 more" in issue.tEn
+
+
 # ── Score calculations ────────────────────────────────────────────────────────
 
 class TestScores:

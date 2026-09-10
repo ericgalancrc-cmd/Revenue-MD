@@ -14,6 +14,12 @@ POST /api/smart-entry         Medical record + claim lines (text/images) → AI-
 GET  /api/baa/status          Check if the org has accepted the BAA
 POST /api/baa/accept          Record BAA acceptance for the org
 GET  /api/audit               Last 100 audit log entries for the org
+GET  /api/analytics/revenue-intelligence   Denial root-cause breakdown + exec summary
+GET  /api/team                List this org's pending/active invites
+POST /api/team/invite         Record a new invite for this org (no email sent)
+POST /api/cdi/analyze         Scan diagnoses for CDI specificity opportunities → physician queries
+GET  /api/cdi                 List this org's CDI queries (optional ?status= filter)
+PATCH /api/cdi/{id}           Mark a CDI query answered/resolved
 
 Run locally
 -----------
@@ -25,6 +31,7 @@ Set AUTH0_DOMAIN + AUTH0_AUDIENCE to enable JWT auth; omit for demo mode.
 """
 from __future__ import annotations
 
+import json
 import logging
 import os
 import uuid
@@ -33,14 +40,20 @@ from typing import List, Optional
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 from sqlalchemy.orm import Session
 
 from auth import get_current_user
 from database import get_db, init_db
-from db_models import AuditLog, BAARecord, BatchRecord, ClaimRecord
+from db_models import AuditLog, BAARecord, BatchRecord, CDIQuery, ClaimRecord, TeamInvite
+from cdi.specificity_map import find_opportunities
+from analytics.engine import compute_revenue_intelligence
 from models import (
-    BatchResponse, ClaimUpdate, DocFinding, Issue, ParsedClaim, ScrubResult,
-    ServiceLine, SmartEntryLine, SmartEntryResult,
+    BatchResponse, CDIAnalyzeRequest, CDIStatusUpdate, ClaimUpdate, DocFinding,
+    Issue, ParsedClaim, ScrubResult, ServiceLine, SmartEntryLine,
+    SmartEntryResult, TeamInviteRequest,
 )
 from parser import parse_837
 from parsers.csv_claims import parse_csv
@@ -67,6 +80,35 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def _rate_limit_key(request: Request) -> str:
+    """Rate-limit by client IP, respecting X-Forwarded-For behind Render/Vercel's proxy."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return get_remote_address(request)
+
+
+limiter = Limiter(key_func=_rate_limit_key, default_limits=["120/minute"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):
+    """Baseline security headers. Cheap, has no dependency on any external
+    account/service, and meaningfully raises the floor against clickjacking,
+    MIME-sniffing, and protocol-downgrade attacks on a product handling PHI."""
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    # Render/Vercel terminate TLS in front of the app; HSTS is still safe to
+    # set here so browsers enforce HTTPS on every subsequent visit.
+    response.headers["Strict-Transport-Security"] = "max-age=63072000; includeSubDomains"
+    return response
 
 
 @app.on_event("startup")
@@ -96,7 +138,7 @@ def _audit(
     ))
 
 
-def _store_batch(results: List[ScrubResult], db: Session, org_id: str) -> BatchResponse:
+def _store_batch(results: List[ScrubResult], db: Session, org_id: str, source: str = "live") -> BatchResponse:
     auto_clear      = sum(1 for r in results if r.lane.value == "auto_clear")
     needs_attention = sum(1 for r in results if r.lane.value != "auto_clear")
     at_risk         = round(sum(r.val for r in results if r.lane.value == "needs_work"), 2)
@@ -112,10 +154,11 @@ def _store_batch(results: List[ScrubResult], db: Session, org_id: str) -> BatchR
         needs_attention = needs_attention,
         at_risk         = at_risk,
         org_id          = org_id,
+        source          = source,
     )
     db.add(batch_row)
 
-    claim_rows = [ClaimRecord.from_result(result, batch_id, org_id=org_id) for result in results]
+    claim_rows = [ClaimRecord.from_result(result, batch_id, org_id=org_id, source=source) for result in results]
     for row in claim_rows:
         db.add(row)
 
@@ -196,6 +239,74 @@ def _get_org_claim(db: Session, row_id: int, org_id: str) -> ClaimRecord:
     return row
 
 
+# ── Upload hardening ──────────────────────────────────────────────────────────
+# Caps chosen generously for real EDI 837/CSV claim files and scanned medical
+# record photos/PDFs, while still ruling out abuse (someone trying to exhaust
+# memory or disk with an oversized upload).
+MAX_CLAIM_FILE_BYTES = 10 * 1024 * 1024   # 10 MB — EDI 837 / CSV batch files
+MAX_RECORD_FILE_BYTES = 15 * 1024 * 1024  # 15 MB — per medical-record image/PDF
+MAX_SMART_ENTRY_FILES = 10                # combined record_files + claim_files per request
+
+ALLOWED_CLAIM_EXTENSIONS = (".edi", ".txt", ".csv", ".837", ".x12")
+ALLOWED_RECORD_CONTENT_TYPES = {
+    "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif",
+    "application/pdf",
+}
+
+
+def _read_capped(file: UploadFile, max_bytes: int) -> bytes:
+    """Read an UploadFile's content, rejecting anything over max_bytes.
+
+    Reads up to max_bytes + 1 so an oversized file is caught without ever
+    buffering the full (potentially huge) payload into memory.
+    """
+    # Starlette's UploadFile wraps a SpooledTemporaryFile; .file gives sync access.
+    content = file.file.read(max_bytes + 1)
+    if len(content) > max_bytes:
+        raise HTTPException(
+            413,
+            f"'{file.filename or 'upload'}' exceeds the {max_bytes // (1024*1024)} MB upload limit.",
+        )
+    return content
+
+
+def _validate_claim_filename(filename: str) -> None:
+    name = (filename or "").lower()
+    if not name.endswith(ALLOWED_CLAIM_EXTENSIONS):
+        raise HTTPException(
+            415,
+            f"Unsupported file type for '{filename}'. Expected one of: {', '.join(ALLOWED_CLAIM_EXTENSIONS)}.",
+        )
+
+
+def _validate_record_upload(file: UploadFile) -> None:
+    if file.content_type not in ALLOWED_RECORD_CONTENT_TYPES:
+        raise HTTPException(
+            415,
+            f"Unsupported file type '{file.content_type}' for '{file.filename}'. "
+            f"Expected an image (JPEG/PNG/WEBP/HEIC) or PDF.",
+        )
+
+
+def _cdi_row_to_dict(row: CDIQuery) -> dict:
+    return {
+        "id":             row.id,
+        "claim_row_id":   row.claim_row_id,
+        "opportunity_id": row.opportunity_id,
+        "family":         row.family,
+        "source_code":    row.source_code,
+        "candidates":     json.loads(row.candidates_json or "[]"),
+        "query_en":       row.query_en,
+        "query_es":       row.query_es,
+        "ai_enhanced":    bool(row.ai_enhanced),
+        "status":         row.status,
+        "resolved_code":  row.resolved_code,
+        "created_by":     row.created_by,
+        "created_at":     row.created_at,
+        "resolved_at":    row.resolved_at,
+    }
+
+
 # ── Routes ───────────────────────────────────────────────────────────────────
 
 @app.get("/health")
@@ -210,7 +321,8 @@ async def parse_file(
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
-    content = await file.read()
+    _validate_claim_filename(file.filename or "")
+    content = _read_capped(file, MAX_CLAIM_FILE_BYTES)
     claims = _detect_and_parse(content, file.filename or "upload.edi")
     if not claims:
         raise HTTPException(422, "No claims found in the uploaded file.")
@@ -237,15 +349,21 @@ async def scrub_claims(
 
 
 @app.post("/api/batch", response_model=BatchResponse)
+@limiter.limit("20/minute")
 async def batch(
     request: Request,
     file: UploadFile = File(...),
+    source: str = Form("live"),
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
+    if source not in ("live", "historical_import"):
+        raise HTTPException(400, "source must be 'live' or 'historical_import'.")
+
     org_id, user_id = _identity(user)
-    content = await file.read()
     filename = file.filename or "upload.edi"
+    _validate_claim_filename(filename)
+    content = _read_capped(file, MAX_CLAIM_FILE_BYTES)
 
     raw_claims = _detect_and_parse(content, filename)
     if not raw_claims:
@@ -253,7 +371,7 @@ async def batch(
                                   "Verify it is an EDI 837P or a CSV with a header row.")
 
     results = scrub_many(raw_claims)
-    result_batch = _store_batch(results, db, org_id=org_id)
+    result_batch = _store_batch(results, db, org_id=org_id, source=source)
     _audit(db, org_id, user_id, "batch_created", "batch", result_batch.id, _client_ip(request))
     db.commit()
     return result_batch
@@ -262,13 +380,16 @@ async def batch(
 @app.get("/api/batches", response_model=List[BatchResponse])
 def list_batches(
     request: Request,
+    source: Optional[str] = None,
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
     org_id, user_id = _identity(user)
+    q = db.query(BatchRecord).filter(BatchRecord.org_id == org_id)
+    if source:
+        q = q.filter(BatchRecord.source == source)
     rows = (
-        db.query(BatchRecord)
-        .filter(BatchRecord.org_id == org_id)
+        q
         .order_by(BatchRecord.created.desc())
         .limit(20)
         .all()
@@ -304,14 +425,17 @@ def get_batch(
 def list_claims(
     request: Request,
     limit: int = 200,
+    source: Optional[str] = None,
     db: Session = Depends(get_db),
     user: dict = Depends(get_current_user),
 ):
     """Return the org's claims across all batches, newest first."""
     org_id, user_id = _identity(user)
+    q = db.query(ClaimRecord).filter(ClaimRecord.org_id == org_id)
+    if source:
+        q = q.filter(ClaimRecord.source == source)
     rows = (
-        db.query(ClaimRecord)
-        .filter(ClaimRecord.org_id == org_id)
+        q
         .order_by(ClaimRecord.row_id.desc())
         .limit(limit)
         .all()
@@ -351,7 +475,10 @@ def update_claim(
 ):
     org_id, user_id = _identity(user)
     row = _get_org_claim(db, row_id, org_id)
-    for field, value in patch.model_dump(exclude_unset=True).items():
+    updates = patch.model_dump(exclude_unset=True)
+    if "outcome" in updates and "outcome_updated_at" not in updates:
+        updates["outcome_updated_at"] = datetime.now(timezone.utc).isoformat()
+    for field, value in updates.items():
         setattr(row, field, value)
     _audit(db, org_id, user_id, "claim_updated", "claim", str(row_id), _client_ip(request))
     db.commit()
@@ -375,6 +502,7 @@ def delete_claim(
 
 
 @app.post("/api/analyze", response_model=ScrubResult)
+@limiter.limit("30/minute")
 async def analyze_claim(
     claim: ParsedClaim,
     request: Request,
@@ -389,6 +517,7 @@ async def analyze_claim(
 
 
 @app.post("/api/smart-entry", response_model=SmartEntryResult)
+@limiter.limit("15/minute")
 async def smart_entry(
     request: Request,
     claim_text: str = Form(""),
@@ -405,8 +534,14 @@ async def smart_entry(
     if not ai.is_available():
         raise HTTPException(503, "Smart Entry requires ANTHROPIC_API_KEY to be configured on the backend.")
 
-    record_bytes = [(f.filename or "record", await f.read()) for f in record_files]
-    claim_bytes  = [(f.filename or "claim", await f.read()) for f in claim_files]
+    all_files = list(record_files) + list(claim_files)
+    if len(all_files) > MAX_SMART_ENTRY_FILES:
+        raise HTTPException(413, f"Too many files — max {MAX_SMART_ENTRY_FILES} per request.")
+    for f in all_files:
+        _validate_record_upload(f)
+
+    record_bytes = [(f.filename or "record", _read_capped(f, MAX_RECORD_FILE_BYTES)) for f in record_files]
+    claim_bytes  = [(f.filename or "claim",  _read_capped(f, MAX_RECORD_FILE_BYTES)) for f in claim_files]
 
     extracted = ai.smart_entry_extract(claim_text, record_bytes, claim_bytes, lang)
     if not extracted or not extracted.get("lines"):
@@ -476,6 +611,7 @@ async def smart_entry(
 
 
 @app.post("/api/appeal")
+@limiter.limit("20/minute")
 async def generate_appeal(
     body: dict,
     request: Request,
@@ -489,6 +625,227 @@ async def generate_appeal(
     _audit(db, org_id, user_id, "appeal_letter_generated", "claim", denial.get("id", ""), _client_ip(request))
     db.commit()
     return {"letter": letter}
+
+
+# ── Revenue Intelligence (Denial Root Cause Engine) ───────────────────────────
+
+@app.get("/api/analytics/revenue-intelligence")
+@limiter.limit("20/minute")
+def revenue_intelligence(
+    request: Request,
+    lang: str = "en",
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Aggregate denial root-cause analytics for this org: what % of denied
+    claims trace back to which category (NCCI edits, documentation
+    support, modifier issues, payer-specific rules, etc.), broken down
+    by provider and by payer, plus a plain-English executive summary.
+    Computed entirely from claims already persisted — relies on
+    ClaimRecord.status == "denied" as the signal for a confirmed
+    (not just predicted) denial.
+    """
+    org_id, user_id = _identity(user)
+    rows = db.query(ClaimRecord).filter(ClaimRecord.org_id == org_id).all()
+
+    payload = compute_revenue_intelligence(rows)
+    payload["executive_summary"] = ai.revenue_intelligence_summary(payload, lang)
+
+    _audit(db, org_id, user_id, "revenue_intelligence_viewed", ip=_client_ip(request))
+    db.commit()
+    return payload
+
+
+# ── CDI (Clinical Documentation Improvement) endpoints ────────────────────────
+
+@app.post("/api/cdi/analyze")
+@limiter.limit("20/minute")
+async def cdi_analyze(
+    body: CDIAnalyzeRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Scan a claim's diagnoses for CDI specificity opportunities (e.g. an
+    unspecified diabetes code that better documentation could make more
+    specific), generate a physician query for each, and persist them as
+    open CDIQuery records for tracking through to resolution."""
+    org_id, user_id = _identity(user)
+    ip = _client_ip(request)
+
+    opportunities = find_opportunities(body.diagnoses)
+    if not opportunities:
+        return []
+
+    now = datetime.now(timezone.utc).isoformat()
+    created = []
+    for opp in opportunities:
+        generated = ai.cdi_query({**opp, "source_code": opp["code_prefix"]}, body.note_text, body.lang)
+        row = CDIQuery(
+            id             = str(uuid.uuid4()),
+            org_id         = org_id,
+            claim_row_id   = body.claim_row_id,
+            opportunity_id = opp["id"],
+            family         = opp["family"],
+            source_code    = opp["code_prefix"],
+            candidates_json= json.dumps(opp["candidates"]),
+            query_en       = generated["query_en"],
+            query_es       = generated["query_es"],
+            ai_enhanced    = 1 if generated["ai_enhanced"] else 0,
+            status         = "open",
+            created_by     = user_id,
+            created_at     = now,
+        )
+        db.add(row)
+        created.append(row)
+
+    _audit(db, org_id, user_id, "cdi_analyzed", "cdi_query", "", ip)
+    db.commit()
+    for row in created:
+        db.refresh(row)
+
+    return [_cdi_row_to_dict(row) for row in created]
+
+
+@app.get("/api/cdi")
+def list_cdi(
+    request: Request,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """List this org's CDI queries, newest first, optionally filtered by status."""
+    org_id, user_id = _identity(user)
+    q = db.query(CDIQuery).filter(CDIQuery.org_id == org_id)
+    if status:
+        q = q.filter(CDIQuery.status == status)
+    rows = q.order_by(CDIQuery.created_at.desc()).limit(200).all()
+    _audit(db, org_id, user_id, "cdi_listed", ip=_client_ip(request))
+    db.commit()
+    return [_cdi_row_to_dict(row) for row in rows]
+
+
+@app.patch("/api/cdi/{query_id}")
+def update_cdi(
+    query_id: str,
+    body: CDIStatusUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Mark a CDI query as answered or resolved, optionally recording the
+    final code the physician's response supports."""
+    if body.status not in ("answered", "resolved"):
+        raise HTTPException(400, "status must be 'answered' or 'resolved'.")
+
+    org_id, user_id = _identity(user)
+    row = (
+        db.query(CDIQuery)
+        .filter(CDIQuery.id == query_id, CDIQuery.org_id == org_id)
+        .first()
+    )
+    if row is None:
+        raise HTTPException(404, f"CDI query '{query_id}' not found.")
+
+    row.status = body.status
+    if body.resolved_code:
+        row.resolved_code = body.resolved_code
+    if body.status == "resolved":
+        row.resolved_at = datetime.now(timezone.utc).isoformat()
+
+    _audit(db, org_id, user_id, "cdi_status_updated", "cdi_query", query_id, _client_ip(request))
+    db.commit()
+    db.refresh(row)
+    return _cdi_row_to_dict(row)
+
+
+# ── Team endpoints ────────────────────────────────────────────────────────────
+#
+# NOTE: these endpoints persist invite records scoped to the org, but do NOT
+# send an email. Actually delivering an invite requires either Auth0's own
+# Organizations/invite flow or a transactional email provider (e.g. SendGrid) —
+# neither is wired up. Until one is, a manager has to relay the invited
+# person's login info out of band, and that person's first real login (once
+# Auth0 is configured — see docs/AUTH0_SETUP.md) is what actually grants them
+# access; this table is just the record of who's been invited.
+
+@app.get("/api/team")
+def list_team(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """List invites (pending and active) for this org, newest first."""
+    org_id, user_id = _identity(user)
+    rows = (
+        db.query(TeamInvite)
+        .filter(TeamInvite.org_id == org_id)
+        .order_by(TeamInvite.invited_at.desc())
+        .all()
+    )
+    _audit(db, org_id, user_id, "team_listed", ip=_client_ip(request))
+    db.commit()
+    return [
+        {
+            "id":         r.id,
+            "email":      r.email,
+            "role":       r.role,
+            "invited_by": r.invited_by,
+            "invited_at": r.invited_at,
+            "status":     r.status,
+        }
+        for r in rows
+    ]
+
+
+@app.post("/api/team/invite")
+@limiter.limit("10/minute")
+def invite_team_member(
+    body: TeamInviteRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Record a pending invite for this org. Does not send an email — see note above."""
+    email = body.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(400, "A valid email address is required.")
+    if body.role not in ("coder", "manager"):
+        raise HTTPException(400, "role must be 'coder' or 'manager'.")
+
+    org_id, user_id = _identity(user)
+
+    existing = (
+        db.query(TeamInvite)
+        .filter(TeamInvite.org_id == org_id, TeamInvite.email == email)
+        .first()
+    )
+    if existing and existing.status != "revoked":
+        raise HTTPException(409, f"{email} has already been invited to this org.")
+
+    now = datetime.now(timezone.utc).isoformat()
+    invite = TeamInvite(
+        id         = str(uuid.uuid4()),
+        org_id     = org_id,
+        email      = email,
+        role       = body.role,
+        invited_by = user_id,
+        invited_at = now,
+        status     = "pending",
+    )
+    db.add(invite)
+    _audit(db, org_id, user_id, "team_invite_created", "team_invite", invite.id)
+    db.commit()
+
+    return {
+        "id":         invite.id,
+        "email":      invite.email,
+        "role":       invite.role,
+        "invited_by": invite.invited_by,
+        "invited_at": invite.invited_at,
+        "status":     invite.status,
+    }
 
 
 # ── BAA endpoints ─────────────────────────────────────────────────────────────

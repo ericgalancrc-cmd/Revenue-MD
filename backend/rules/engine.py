@@ -11,10 +11,10 @@ from models import Issue, Fix, Lane, ParsedClaim, ScrubResult, Severity
 
 
 # ── Import rule modules ───────────────────────────────────────────────────────
-from rules import general, ases, plan_vital, medicare, triple_s, mmm
+from rules import general, ases, plan_vital, medicare, triple_s, mmm, mcs, hcc, modifiers, cpt2, mue, dx_support
 
 
-_RULE_MODULES = [general, ases, plan_vital, medicare, triple_s, mmm]
+_RULE_MODULES = [general, ases, plan_vital, medicare, triple_s, mmm, mcs, hcc, modifiers, cpt2, mue, dx_support]
 
 # ── Payer name normalization ──────────────────────────────────────────────────
 _PAYER_MAP = {
@@ -38,6 +38,10 @@ _PAYER_MAP = {
     "humana":           "Humana Military",
     "tricare":          "Humana Military",
     "humana military":  "Humana Military",
+    "mcs":              "MCS",
+    "mcs classicare":   "MCS",
+    "mcs platino":      "MCS",
+    "classicare":       "MCS",
 }
 
 

@@ -24,6 +24,7 @@ class BatchRecord(Base):
     needs_attention = Column(Integer, default=0)
     at_risk         = Column(Float,   default=0.0)
     org_id          = Column(String,  nullable=True, index=True, default="demo")
+    source          = Column(String,  nullable=False, default="live")  # "live" | "historical_import"
 
     claims = relationship(
         "ClaimRecord",
@@ -39,6 +40,7 @@ class ClaimRecord(Base):
     row_id   = Column(Integer, primary_key=True, autoincrement=True)
     batch_id = Column(String, ForeignKey("batches.id", ondelete="CASCADE"), nullable=False, index=True)
     org_id   = Column(String,  nullable=True, index=True, default="demo")
+    source   = Column(String,  nullable=False, default="live")  # "live" | "historical_import" — denormalized from the owning batch for simple analytics filtering
 
     # Scalar fields
     claim_id  = Column(String,  nullable=False)
@@ -56,6 +58,9 @@ class ClaimRecord(Base):
     diagnosis = Column(String,  default="")
     member_id = Column(String,  default="")
     status    = Column(String,  default="pending")
+    outcome           = Column(String,  default="")    # "" | "paid" | "denied" | "appealed" | "written_off" | "resolved"
+    recovered_amount  = Column(Float,   default=0.0)    # $ recovered — meaningful once outcome == "resolved"
+    outcome_updated_at = Column(String, nullable=True)
     lane      = Column(String,  default="auto_clear")
     risk      = Column(Integer, default=0)
     comp      = Column(Integer, default=100)
@@ -80,11 +85,12 @@ class ClaimRecord(Base):
     # ── Serialisation helpers ─────────────────────────────────────────
 
     @classmethod
-    def from_result(cls, result, batch_id: str, org_id: str = "demo") -> "ClaimRecord":
+    def from_result(cls, result, batch_id: str, org_id: str = "demo", source: str = "live") -> "ClaimRecord":
         """Build a ClaimRecord from a ScrubResult Pydantic model."""
         return cls(
             batch_id           = batch_id,
             org_id             = org_id,
+            source             = source,
             claim_id           = result.id,
             patient            = result.patient,
             codes              = result.codes,
@@ -100,6 +106,9 @@ class ClaimRecord(Base):
             diagnosis          = result.diagnosis,
             member_id          = result.member_id,
             status             = result.status,
+            outcome            = result.outcome,
+            recovered_amount   = result.recovered_amount,
+            outcome_updated_at = result.outcome_updated_at,
             lane               = result.lane.value,
             risk               = result.risk,
             comp               = result.comp,
@@ -137,6 +146,9 @@ class ClaimRecord(Base):
             member_id     = self.member_id,
             service_lines = [ServiceLine(**sl) for sl in json.loads(self.service_lines_json or "[]")],
             status        = self.status,
+            outcome       = self.outcome,
+            recovered_amount = self.recovered_amount,
+            outcome_updated_at = self.outcome_updated_at,
             lane          = Lane(self.lane),
             risk          = self.risk,
             comp          = self.comp,
@@ -161,6 +173,58 @@ class BAARecord(Base):
     accepted_at = Column(String,  nullable=False)
     ip_address  = Column(String,  default="")
     version     = Column(String,  default="1.0")
+
+
+class TeamInvite(Base):
+    """
+    A pending or accepted invite for a staff member to join an org's shared
+    clinic data. Recording the invite here does NOT send an email — actually
+    delivering it requires either Auth0's own invite/Organizations flow or a
+    transactional email provider (e.g. SendGrid), neither of which is wired
+    up yet. This table just gives the Settings > Team page something real
+    to read and write instead of a hardcoded demo list.
+    """
+    __tablename__ = "team_invites"
+
+    id           = Column(String,  primary_key=True)
+    org_id       = Column(String,  nullable=False, index=True)
+    email        = Column(String,  nullable=False)
+    role         = Column(String,  default="coder")   # "coder" | "manager"
+    invited_by   = Column(String,  nullable=False)
+    invited_at   = Column(String,  nullable=False)
+    status       = Column(String,  default="pending")  # "pending" | "active" | "revoked"
+
+    __table_args__ = (
+        Index("ix_team_invites_org_email", "org_id", "email"),
+    )
+
+
+class CDIQuery(Base):
+    """A Clinical Documentation Improvement query — flags a documentation
+    specificity opportunity (e.g. an unspecified diabetes code that could be
+    more specific with better chart documentation) and tracks the physician
+    query sent to resolve it through to a coded outcome."""
+    __tablename__ = "cdi_queries"
+
+    id               = Column(String,  primary_key=True)
+    org_id           = Column(String,  nullable=False, index=True)
+    claim_row_id     = Column(Integer, nullable=True, index=True)  # optional link to claim_records.row_id
+    opportunity_id   = Column(String,  nullable=False)             # e.g. "diabetes-unspecified"
+    family           = Column(String,  nullable=False)             # human label, e.g. "Type 2 diabetes mellitus, unspecified"
+    source_code      = Column(String,  nullable=False)             # the unspecified code that triggered this, e.g. "E11.9"
+    candidates_json  = Column(Text,    default="[]")               # candidate more-specific codes
+    query_en         = Column(Text,    default="")
+    query_es         = Column(Text,    default="")
+    ai_enhanced       = Column(Integer, default=0)                   # 0/1 — whether Claude personalized the query text
+    status           = Column(String,  default="open")             # "open" | "answered" | "resolved"
+    resolved_code    = Column(String,  default="")
+    created_by       = Column(String,  nullable=False)
+    created_at       = Column(String,  nullable=False)
+    resolved_at      = Column(String,  nullable=True)
+
+    __table_args__ = (
+        Index("ix_cdi_queries_org_status", "org_id", "status"),
+    )
 
 
 class AuditLog(Base):
