@@ -1092,6 +1092,36 @@ class TestHCC001:
         assert fired(r, "HCC-001")
         assert sev(r, "HCC-001") == "info"
 
+    def test_fires_for_active_cancer(self):
+        c = make_claim(diagnoses=["C50.911"])  # breast cancer
+        r = scrub(c)
+        assert fired(r, "HCC-001")
+
+    def test_fires_for_hiv(self):
+        c = make_claim(diagnoses=["B20"])
+        r = scrub(c)
+        assert fired(r, "HCC-001")
+
+    def test_fires_for_substance_dependence(self):
+        c = make_claim(diagnoses=["F11.20"])  # opioid dependence
+        r = scrub(c)
+        assert fired(r, "HCC-001")
+
+    def test_fires_for_amputation_status(self):
+        c = make_claim(diagnoses=["Z89.511"])
+        r = scrub(c)
+        assert fired(r, "HCC-001")
+
+    def test_fires_for_transplant_status(self):
+        c = make_claim(diagnoses=["Z94.0"])
+        r = scrub(c)
+        assert fired(r, "HCC-001")
+
+    def test_fires_for_cirrhosis(self):
+        c = make_claim(diagnoses=["K74.60"])
+        r = scrub(c)
+        assert fired(r, "HCC-001")
+
     def test_fires_for_diabetes_with_complication(self):
         c = make_claim(diagnoses=["E11.22"])
         r = scrub(c)
