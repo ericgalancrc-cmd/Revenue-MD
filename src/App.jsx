@@ -79,6 +79,9 @@ const T = {
     riByProvider: "By provider", riByPayer: "By payer", riOfDenials: "of denials",
     riTrends: "Denial trend by payer", riTrendsEmpty: "Not enough dated claims yet to show a trend.",
     riDemoNote: "No VITE_API_URL set — Denial Root Causes requires a connected backend.",
+    stManagerRole: "Focus area", stManagerRoleHelp: "Changes what's highlighted on your Revenue dashboard — doesn't restrict access to anything.",
+    roleCfo: "CFO", roleRcmDirector: "RCM Director", roleCompliance: "Compliance Officer", roleCodingManager: "Coding Manager",
+    spotlightCfoTitle: "Financial snapshot", spotlightComplianceTitle: "Compliance attention needed", spotlightCodingTitle: "Coaching opportunities",
     riExportPdf: "Export PDF", riExportCsv: "Export CSV",
     billingTrialActive: "day trial", billingTrialExpired: "Your trial has ended",
     billingStartTrial: "Start free trial", billingActive: "Active",
@@ -302,6 +305,9 @@ const T = {
     riByProvider: "Por proveedor", riByPayer: "Por pagador", riOfDenials: "de denegaciones",
     riTrends: "Tendencia de denegaciones por pagador", riTrendsEmpty: "Aún no hay suficientes reclamos con fecha para mostrar una tendencia.",
     riDemoNote: "Sin VITE_API_URL — Causas Raíz de Denegaciones requiere un backend conectado.",
+    stManagerRole: "Área de enfoque", stManagerRoleHelp: "Cambia lo que se destaca en su panel de Ingresos — no restringe el acceso a nada.",
+    roleCfo: "Director Financiero", roleRcmDirector: "Director de Ciclo de Ingresos", roleCompliance: "Oficial de Cumplimiento", roleCodingManager: "Gerente de Codificación",
+    spotlightCfoTitle: "Panorama financiero", spotlightComplianceTitle: "Atención de cumplimiento requerida", spotlightCodingTitle: "Oportunidades de capacitación",
     riExportPdf: "Exportar PDF", riExportCsv: "Exportar CSV",
     billingTrialActive: "días de prueba", billingTrialExpired: "Su prueba ha finalizado",
     billingStartTrial: "Iniciar prueba gratis", billingActive: "Activo",
@@ -1490,6 +1496,7 @@ export default function App({ auth0 = null }) {
   const [authed, setAuthed] = useState(false);
   const [accessToken, setAccessToken] = useState("");
   const [role, setRole] = useState(() => { try { return localStorage.getItem("rmd_role") || "manager"; } catch { return "manager"; } });
+  const [managerRole, setManagerRole] = useState(() => { try { return localStorage.getItem("rmd_manager_role") || "rcm_director"; } catch { return "rcm_director"; } });
   const [tab, setTab] = useState("dash");
   const [filter, setFilter] = useState("all");
   const [payerFilter, setPayerFilter] = useState("all");
@@ -1526,6 +1533,7 @@ export default function App({ auth0 = null }) {
   const [team, setTeam] = useState(null);              // null until loaded from API; falls back to demo list
   const [revIntel, setRevIntel] = useState(null);
   const [billingStatus, setBillingStatus] = useState(null);
+  const [providerScorecards, setProviderScorecards] = useState(null);
   const [revIntelLoading, setRevIntelLoading] = useState(false);
   const [revIntelError, setRevIntelError] = useState(null);
   const [teamLoaded, setTeamLoaded] = useState(false);
@@ -1601,6 +1609,7 @@ export default function App({ auth0 = null }) {
   useEffect(() => { try { localStorage.setItem("rmd_batch_queue", JSON.stringify(batchQueue));  } catch {} }, [batchQueue]);
   useEffect(() => { try { localStorage.setItem("rmd_lang",        lang);                        } catch {} }, [lang]);
   useEffect(() => { try { localStorage.setItem("rmd_role",        role);                        } catch {} }, [role]);
+  useEffect(() => { try { localStorage.setItem("rmd_manager_role", managerRole);                 } catch {} }, [managerRole]);
   useEffect(() => { try { localStorage.setItem("rmd_baa",         baaConfirmed ? "1" : "0");    } catch {} }, [baaConfirmed]);
 
   // Auto-authenticate when Auth0 confirms the user is logged in, then grab an access token
@@ -1690,6 +1699,14 @@ export default function App({ auth0 = null }) {
       .catch((err) => setRevIntelError(err.message || (lang === "en" ? "Could not load revenue intelligence." : "No se pudo cargar la inteligencia de ingresos.")))
       .finally(() => setRevIntelLoading(false));
   }, [tab, API_URL, revIntel, revIntelLoading, lang]);
+
+  useEffect(() => {
+    if (tab !== "revenue" || !API_URL || providerScorecards) return;
+    fetch(`${API_URL}/api/analytics/provider-scorecards`, { headers: authHeaders() })
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setProviderScorecards(data))
+      .catch(() => {});
+  }, [tab, API_URL, providerScorecards]);
 
   useEffect(() => { setRevIntel(null); }, [lang]);
 
@@ -3395,6 +3412,46 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                 )}
               </div>
 
+              {/* Role-based spotlight — same underlying data, different emphasis per manager sub-role */}
+              {role === "manager" && API_URL && revIntel && revIntel.total_denied_claims > 0 && (() => {
+                if (managerRole === "cfo") {
+                  return (
+                    <div className="rise" style={{ background: `linear-gradient(135deg, ${C.ink}, #1E293B)`, borderRadius: 18, padding: 24, marginTop: 20, color: "#fff" }}>
+                      <div style={{ fontSize: 12.5, opacity: 0.7, marginBottom: 10 }}>{t.spotlightCfoTitle}</div>
+                      <div style={{ display: "flex", gap: 32, flexWrap: "wrap" }}>
+                        <div><div style={{ fontSize: 26, fontWeight: 600, fontFamily: FONT_DISPLAY }}>{fmt(revIntel.total_denied_value)}</div><div style={{ fontSize: 12, opacity: 0.7 }}>{t.riValueAtRisk}</div></div>
+                        <div><div style={{ fontSize: 26, fontWeight: 600, fontFamily: FONT_DISPLAY }}>{fmt(revIntel.total_recovered_value)}</div><div style={{ fontSize: 12, opacity: 0.7 }}>{t.riRecovered}</div></div>
+                        <div><div style={{ fontSize: 26, fontWeight: 600, fontFamily: FONT_DISPLAY }}>{revIntel.recovery_rate_pct}%</div><div style={{ fontSize: 12, opacity: 0.7 }}>{t.riRecoveryRate}</div></div>
+                      </div>
+                    </div>
+                  );
+                }
+                if (managerRole === "compliance") {
+                  return (
+                    <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 24, marginTop: 20 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 12 }}>{t.spotlightComplianceTitle}</div>
+                      <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}><ShieldAlert size={16} color={C.tealDk} /><span style={{ fontSize: 13 }}>{hccAlerts.length} {lang === "en" ? "HCC claims to verify" : "reclamos HCC para verificar"}</span></div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}><ClipboardCheck size={16} color={acc.hex} /><span style={{ fontSize: 13 }}>{cdiQueries.filter(q => q.status === "open").length} {lang === "en" ? "open CDI queries" : "consultas CDI abiertas"}</span></div>
+                      </div>
+                    </div>
+                  );
+                }
+                if (managerRole === "coding_manager" && providerScorecards && providerScorecards.length > 0) {
+                  const top = providerScorecards[0];
+                  return (
+                    <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 24, marginTop: 20 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: C.ink, marginBottom: 12 }}>{t.spotlightCodingTitle}</div>
+                      <div style={{ fontSize: 13, color: C.txt2 }}>
+                        <strong style={{ color: C.ink }}>{top.provider}</strong> — {top.denial_rate_pct}% {lang === "en" ? "denial rate" : "tasa de denegación"}
+                        {top.top_causes.length > 0 && (lang === "en" ? `, mostly from ${top.top_causes[0].category}` : `, principalmente por ${top.top_causes[0].category}`)}
+                      </div>
+                    </div>
+                  );
+                }
+                return null; // rcm_director sees the default full view below, unchanged
+              })()}
+
               {/* Denial Root Cause Engine */}
               <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 24, marginTop: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
@@ -4265,6 +4322,19 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                             <span style={{ fontSize: 11.5, fontWeight: 600, padding: "3px 10px", borderRadius: 20, background: acc.soft, color: acc.dk, marginTop: 6, display: "inline-block" }}>{t[role]}</span>
                           </div>
                         </div>
+
+                        {role === "manager" && (
+                          <div style={{ marginBottom: 22, paddingBottom: 22, borderBottom: `1px solid ${C.lineSoft}` }}>
+                            <label style={{ fontSize: 12.5, fontWeight: 500, color: C.txt2, display: "block", marginBottom: 6 }}>{t.stManagerRole}</label>
+                            <select value={managerRole} onChange={(e) => setManagerRole(e.target.value)} style={inp}>
+                              <option value="rcm_director">{t.roleRcmDirector}</option>
+                              <option value="cfo">{t.roleCfo}</option>
+                              <option value="compliance">{t.roleCompliance}</option>
+                              <option value="coding_manager">{t.roleCodingManager}</option>
+                            </select>
+                            <div style={{ fontSize: 11.5, color: C.txt3, marginTop: 6 }}>{t.stManagerRoleHelp}</div>
+                          </div>
+                        )}
 
                         {/* form */}
                         <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16, marginBottom: 16 }}>
