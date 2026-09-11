@@ -16,6 +16,7 @@ POST /api/baa/accept          Record BAA acceptance for the org
 GET  /api/audit               Last 100 audit log entries for the org
 GET  /api/analytics/revenue-intelligence   Denial root-cause breakdown + exec summary
 GET  /api/analytics/provider-scorecards    Per-provider denial rate + top causes + recovery
+POST /api/analytics/predict-denial         Calibrated denial-probability estimate for a claim
 GET  /api/reports/claims.csv               Export claims as CSV
 GET  /api/reports/revenue-intelligence.csv Export denial root-cause breakdown as CSV
 GET  /api/reports/revenue-intelligence.pdf Export a board-ready PDF denial report
@@ -57,6 +58,7 @@ from db_models import AuditLog, BAARecord, BatchRecord, CDIQuery, ClaimRecord, S
 from billing.subscription import compute_status, new_trial_fields
 from cdi.specificity_map import find_opportunities
 from analytics.engine import compute_revenue_intelligence, compute_provider_scorecards
+from analytics.risk_calibration import compute_org_denial_stats, estimate_denial_probability
 from reports.pdf_report import build_revenue_intelligence_pdf
 from reports.csv_export import claims_to_csv, revenue_intelligence_to_csv
 from models import (
@@ -664,6 +666,43 @@ def revenue_intelligence(
     _audit(db, org_id, user_id, "revenue_intelligence_viewed", ip=_client_ip(request))
     db.commit()
     return payload
+
+
+@app.post("/api/analytics/predict-denial")
+@limiter.limit("30/minute")
+def predict_denial_probability(
+    claim: ParsedClaim,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """
+    Scrub a claim and estimate its real denial probability, calibrated
+    against this org's own historical outcomes — not just the
+    deterministic rules-based risk score. See
+    analytics/risk_calibration.py for the full explanation of the
+    method (Bayesian shrinkage per issue code, not a black-box model).
+    """
+    org_id, user_id = _identity(user)
+    result = scrub(claim)
+
+    rows = db.query(ClaimRecord).filter(ClaimRecord.org_id == org_id).all()
+    org_stats = compute_org_denial_stats(rows)
+    issue_codes = [i.code for i in result.issues]
+    prediction = estimate_denial_probability(issue_codes, org_stats)
+
+    _audit(db, org_id, user_id, "denial_probability_predicted", ip=_client_ip(request))
+    db.commit()
+
+    return {
+        "risk": result.risk,
+        "lane": result.lane,
+        "issues": [i.model_dump() for i in result.issues],
+        "denial_probability": prediction["probability"],
+        "confidence": prediction["confidence"],
+        "basis": prediction["basis"],
+        "sample_size": prediction["sample_size"],
+    }
 
 
 @app.get("/api/analytics/provider-scorecards")
