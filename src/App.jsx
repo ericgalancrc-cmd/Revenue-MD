@@ -136,6 +136,9 @@ const T = {
     compGood: "No action needed", compMid: "Verify rules", compLow: "Fix before sending",
     docGood: "No action needed", docMid: "Add missing notes", docLow: "Complete chart first",
     runAnalysis: "Run AI analysis", analyzing: "Analyzing…", issues: "What we found", sugg: "Suggested fixes",
+    predictDenialBtn: "Predict denial risk", predictingLabel: "Predicting…",
+    predDenialProbability: "Denial probability", predConfidenceNone: "No historical data yet",
+    predConfidenceLow: "Low confidence", predConfidenceModerate: "Moderate confidence", predConfidenceHigh: "High confidence",
     aiSummary: "AI assessment", markReviewed: "Approve & mark reviewed", apply: "Apply fix", dismiss: "Dismiss", back: "Back to claims",
     lostRevenue: "Lost", toAppeal: "left to appeal", aiStrategy: "AI appeal strategy", buildAppeal: "Generate appeal letter", reviewed: "Reviewed",
     outcomeTitle: "Record resubmission outcome", outcomeHelp: "What happened after you resubmitted this claim?",
@@ -362,6 +365,9 @@ const T = {
     compGood: "Sin acción requerida", compMid: "Verificar reglas", compLow: "Corregir antes de enviar",
     docGood: "Sin acción requerida", docMid: "Agregar notas faltantes", docLow: "Completar expediente",
     runAnalysis: "Ejecutar análisis IA", analyzing: "Analizando…", issues: "Lo que encontramos", sugg: "Correcciones sugeridas",
+    predictDenialBtn: "Predecir riesgo de denegación", predictingLabel: "Prediciendo…",
+    predDenialProbability: "Probabilidad de denegación", predConfidenceNone: "Aún no hay datos históricos",
+    predConfidenceLow: "Confianza baja", predConfidenceModerate: "Confianza moderada", predConfidenceHigh: "Confianza alta",
     aiSummary: "Evaluación IA", markReviewed: "Aprobar y marcar revisado", apply: "Aplicar", dismiss: "Descartar", back: "Volver a reclamos",
     lostRevenue: "Perdido", toAppeal: "para apelar", aiStrategy: "Estrategia de apelación IA", buildAppeal: "Generar carta de apelación", reviewed: "Revisado",
     outcomeTitle: "Registrar resultado de re-sometimiento", outcomeHelp: "¿Qué pasó después de re-someter este reclamo?",
@@ -1511,6 +1517,8 @@ export default function App({ auth0 = null }) {
   const [recoveredAmountInput, setRecoveredAmountInput] = useState({}); // { [claimId]: string }
   const [appealLetters, setAppealLetters] = useState({});
   const [appealLoading, setAppealLoading] = useState(null);
+  const [denialPredictions, setDenialPredictions] = useState({}); // { [claimId]: { probability, confidence, basis, sample_size } }
+  const [predictionLoading, setPredictionLoading] = useState(null); // claim id currently predicting
   const [submitModal, setSubmitModal] = useState(null);
   const [submissions, setSubmissions] = useState(() => { try { const s = localStorage.getItem("rmd_submissions"); return s ? JSON.parse(s) : {}; } catch { return {}; } });
   const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -2451,6 +2459,28 @@ export default function App({ auth0 = null }) {
     setAnalyzed((p) => ({ ...p, [id]: true }));
   };
 
+  const predictDenialRisk = async (id) => {
+    if (!API_URL) return;
+    setPredictionLoading(id);
+    try {
+      const claim = claims.find((x) => x.id === id);
+      if (claim) {
+        const res = await fetch(`${API_URL}/api/analytics/predict-denial`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeaders() },
+          body: JSON.stringify(claim),
+        });
+        if (res.ok) {
+          const result = await res.json();
+          setDenialPredictions((p) => ({ ...p, [id]: result }));
+        }
+      }
+    } catch (e) {
+      console.error("Prediction error:", e);
+    }
+    setPredictionLoading(null);
+  };
+
   const generateAppealLetter = async (denial) => {
     setAppealLoading(denial.id);
     if (API_URL) {
@@ -3229,6 +3259,32 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                     <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4,1fr)", gap: 12, marginBottom: 20, padding: "14px 0", borderTop: `1px solid ${C.lineSoft}`, borderBottom: `1px solid ${C.lineSoft}` }}>
                       <Field label={t.cpt} value={c.codes} /><Field label="Payer" value={c.payer} /><Field label={t.dos} value={c.dos} /><Field label="Billed" value={fmt(c.billed)} />
                     </div>
+
+                    {API_URL && (
+                      <div style={{ marginBottom: 20, padding: "14px 16px", background: C.paper, border: `1px solid ${C.lineSoft}`, borderRadius: 12 }}>
+                        {!denialPredictions[c.id] ? (
+                          <button onClick={() => predictDenialRisk(c.id)} disabled={predictionLoading === c.id} style={{ ...btnG, display: "flex", alignItems: "center", gap: 7, fontSize: 12.5, opacity: predictionLoading === c.id ? 0.7 : 1 }}>
+                            {predictionLoading === c.id ? <Loader2 size={14} className="spin" /> : <TrendingUp size={14} />}
+                            {predictionLoading === c.id ? t.predictingLabel : t.predictDenialBtn}
+                          </button>
+                        ) : (() => {
+                          const pred = denialPredictions[c.id];
+                          const confLabel = { none: t.predConfidenceNone, low: t.predConfidenceLow, moderate: t.predConfidenceModerate, high: t.predConfidenceHigh }[pred.confidence] || pred.confidence;
+                          const pct = pred.denial_probability != null ? Math.round(pred.denial_probability * 100) : null;
+                          const pctColor = pct == null ? C.txt3 : pct >= 60 ? C.red : pct >= 30 ? C.amber : C.teal;
+                          return (
+                            <div>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                                <span style={{ fontSize: 12, fontWeight: 500, color: C.txt2 }}>{t.predDenialProbability}</span>
+                                <span style={{ fontSize: 20, fontWeight: 700, color: pctColor, fontFamily: FONT_DISPLAY }}>{pct != null ? `${pct}%` : "—"}</span>
+                              </div>
+                              <div style={{ fontSize: 11, color: C.txt3, marginTop: 2 }}>{confLabel}</div>
+                              <div style={{ fontSize: 12, color: C.txt2, marginTop: 8, lineHeight: 1.5 }}>{pred.basis}</div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
                     {!A ? (
                       <button className="btnp" onClick={() => runAnalysis(c.id)} disabled={analyzing} style={{ ...btnP, width: "100%", justifyContent: "center", padding: 14, opacity: analyzing ? 0.7 : 1, fontSize: 14.5 }}>{analyzing ? <Loader2 size={17} className="spin" /> : <Brain size={17} />} {analyzing ? t.analyzing : t.runAnalysis}</button>
                     ) : (
