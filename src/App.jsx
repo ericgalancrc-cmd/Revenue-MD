@@ -79,6 +79,9 @@ const T = {
     riByProvider: "By provider", riByPayer: "By payer", riOfDenials: "of denials",
     riTrends: "Denial trend by payer", riTrendsEmpty: "Not enough dated claims yet to show a trend.",
     riDemoNote: "No VITE_API_URL set — Denial Root Causes requires a connected backend.",
+    riExportPdf: "Export PDF", riExportCsv: "Export CSV",
+    billingTrialActive: "day trial", billingTrialExpired: "Your trial has ended",
+    billingStartTrial: "Start free trial", billingActive: "Active",
     nav_denials: "Denials", nav_revenue: "Revenue", nav_payers: "Payers", nav_compliance: "Compliance",
     nav_settings: "Settings", logout: "Sign out", nav_business: "Business", nav_batch: "Batch queue",
     nav_learn: "Learning Center",
@@ -299,6 +302,9 @@ const T = {
     riByProvider: "Por proveedor", riByPayer: "Por pagador", riOfDenials: "de denegaciones",
     riTrends: "Tendencia de denegaciones por pagador", riTrendsEmpty: "Aún no hay suficientes reclamos con fecha para mostrar una tendencia.",
     riDemoNote: "Sin VITE_API_URL — Causas Raíz de Denegaciones requiere un backend conectado.",
+    riExportPdf: "Exportar PDF", riExportCsv: "Exportar CSV",
+    billingTrialActive: "días de prueba", billingTrialExpired: "Su prueba ha finalizado",
+    billingStartTrial: "Iniciar prueba gratis", billingActive: "Activo",
     nav_denials: "Denegaciones", nav_revenue: "Ingresos", nav_payers: "Pagadores", nav_compliance: "Cumplimiento",
     nav_settings: "Ajustes", logout: "Salir", nav_business: "Negocio", nav_batch: "Cola por lote",
     nav_learn: "Centro de aprendizaje",
@@ -1519,6 +1525,7 @@ export default function App({ auth0 = null }) {
   const batchFileRef = useRef(null);
   const [team, setTeam] = useState(null);              // null until loaded from API; falls back to demo list
   const [revIntel, setRevIntel] = useState(null);
+  const [billingStatus, setBillingStatus] = useState(null);
   const [revIntelLoading, setRevIntelLoading] = useState(false);
   const [revIntelError, setRevIntelError] = useState(null);
   const [teamLoaded, setTeamLoaded] = useState(false);
@@ -1685,6 +1692,22 @@ export default function App({ auth0 = null }) {
   }, [tab, API_URL, revIntel, revIntelLoading, lang]);
 
   useEffect(() => { setRevIntel(null); }, [lang]);
+
+  useEffect(() => {
+    if (!authed || !API_URL || billingStatus) return;
+    fetch(`${API_URL}/api/billing/status`, { headers: authHeaders() })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setBillingStatus(data); })
+      .catch(() => {});
+  }, [authed, API_URL, billingStatus]);
+
+  const startTrial = () => {
+    if (!API_URL) return;
+    fetch(`${API_URL}/api/billing/start-trial`, { method: "POST", headers: authHeaders() })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data) setBillingStatus(data); })
+      .catch(() => {});
+  };
 
   const runCdiReview = () => {
     const diagnoses = cdiDiagnosesInput.split(",").map((s) => s.trim()).filter(Boolean);
@@ -2723,6 +2746,21 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
                 {notifBadge > 0 && <div style={{ position: "absolute", top: -2, right: -2, width: 16, height: 16, borderRadius: "50%", background: acc.hex, color: "#fff", fontSize: 9, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>{notifBadge}</div>}
               </button>
             </div>
+            {billingStatus && !billingStatus.has_subscription && (
+              <button onClick={startTrial} style={{ display: "flex", alignItems: "center", gap: 6, background: acc.soft, color: acc.dk, border: `1px solid ${acc.hex}55`, borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 500, cursor: "pointer", fontFamily: FONT_SANS }}>
+                <Sparkles size={12} /> {t.billingStartTrial}
+              </button>
+            )}
+            {billingStatus && billingStatus.is_trial && billingStatus.is_active && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.tealSoft, color: C.tealDk, borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 500 }}>
+                <Clock size={12} /> {billingStatus.trial_days_remaining} {t.billingTrialActive}
+              </div>
+            )}
+            {billingStatus && billingStatus.is_trial && !billingStatus.is_active && (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, background: C.redSoft, color: C.red, borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 500 }}>
+                <AlertTriangle size={12} /> {t.billingTrialExpired}
+              </div>
+            )}
             <button onClick={() => setHelpOpen(true)} className="btnp" style={{ display: "flex", alignItems: "center", gap: 7, background: C.ink, color: "#fff", border: "none", borderRadius: 20, padding: "6px 14px 6px 10px", fontSize: 12.5, fontWeight: 500, cursor: "pointer", fontFamily: FONT_SANS, boxShadow: "0 4px 12px -4px rgba(16,36,92,.35)" }}>
               <div style={{ width: 18, height: 18, borderRadius: "50%", background: acc.hex, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700 }}>?</div>
               {!isMobile && t.helpBtn}
@@ -3359,7 +3397,21 @@ ${c.sEn?`<h2>${lang==="en"?"AI Summary":"Resumen IA"}</h2><div style="background
 
               {/* Denial Root Cause Engine */}
               <div className="rise" style={{ background: C.paper2, border: `1px solid ${C.line}`, borderRadius: 18, padding: 24, marginTop: 20 }}>
-                <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 6, fontFamily: FONT_DISPLAY }}>{t.riTitle}</div>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <div style={{ fontSize: 15, fontWeight: 500, fontFamily: FONT_DISPLAY }}>{t.riTitle}</div>
+                  {API_URL && revIntel && revIntel.total_denied_claims > 0 && (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <a href={`${API_URL}/api/reports/revenue-intelligence.pdf?lang=${lang}`} target="_blank" rel="noopener noreferrer"
+                         style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, border: `1px solid ${C.line}`, fontSize: 11.5, color: C.txt2, textDecoration: "none", fontFamily: FONT_SANS }}>
+                        <FileText size={12} /> {t.riExportPdf}
+                      </a>
+                      <a href={`${API_URL}/api/reports/revenue-intelligence.csv`} target="_blank" rel="noopener noreferrer"
+                         style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, border: `1px solid ${C.line}`, fontSize: 11.5, color: C.txt2, textDecoration: "none", fontFamily: FONT_SANS }}>
+                        <Download size={12} /> {t.riExportCsv}
+                      </a>
+                    </div>
+                  )}
+                </div>
 
                 {!API_URL && (
                   <div style={{ fontSize: 12.5, color: C.txt3, padding: "20px 0" }}>{t.riDemoNote}</div>
