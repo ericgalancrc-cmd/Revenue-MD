@@ -15,6 +15,12 @@ GET  /api/baa/status          Check if the org has accepted the BAA
 POST /api/baa/accept          Record BAA acceptance for the org
 GET  /api/audit               Last 100 audit log entries for the org
 GET  /api/analytics/revenue-intelligence   Denial root-cause breakdown + exec summary
+GET  /api/analytics/provider-scorecards    Per-provider denial rate + top causes + recovery
+GET  /api/reports/claims.csv               Export claims as CSV
+GET  /api/reports/revenue-intelligence.csv Export denial root-cause breakdown as CSV
+GET  /api/reports/revenue-intelligence.pdf Export a board-ready PDF denial report
+GET  /api/billing/status                   This org's subscription status (groundwork — not enforced)
+POST /api/billing/start-trial              Start a free trial for this org
 GET  /api/team                List this org's pending/active invites
 POST /api/team/invite         Record a new invite for this org (no email sent)
 POST /api/cdi/analyze         Scan diagnoses for CDI specificity opportunities → physician queries
@@ -38,7 +44,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
@@ -47,9 +53,12 @@ from sqlalchemy.orm import Session
 
 from auth import get_current_user
 from database import get_db, init_db
-from db_models import AuditLog, BAARecord, BatchRecord, CDIQuery, ClaimRecord, TeamInvite
+from db_models import AuditLog, BAARecord, BatchRecord, CDIQuery, ClaimRecord, Subscription, TeamInvite
+from billing.subscription import compute_status, new_trial_fields
 from cdi.specificity_map import find_opportunities
-from analytics.engine import compute_revenue_intelligence
+from analytics.engine import compute_revenue_intelligence, compute_provider_scorecards
+from reports.pdf_report import build_revenue_intelligence_pdf
+from reports.csv_export import claims_to_csv, revenue_intelligence_to_csv
 from models import (
     BatchResponse, CDIAnalyzeRequest, CDIStatusUpdate, ClaimUpdate, DocFinding,
     Issue, ParsedClaim, ScrubResult, ServiceLine, SmartEntryLine,
@@ -657,6 +666,95 @@ def revenue_intelligence(
     return payload
 
 
+@app.get("/api/analytics/provider-scorecards")
+@limiter.limit("20/minute")
+def provider_scorecards(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Per-provider scorecard: denial rate, top root causes, and recovery
+    performance — the view an RCM director brings to a 1-on-1 with a
+    specific provider."""
+    org_id, user_id = _identity(user)
+    rows = db.query(ClaimRecord).filter(ClaimRecord.org_id == org_id).all()
+    scorecards = compute_provider_scorecards(rows)
+    _audit(db, org_id, user_id, "provider_scorecards_viewed", ip=_client_ip(request))
+    db.commit()
+    return scorecards
+
+
+@app.get("/api/reports/claims.csv")
+@limiter.limit("20/minute")
+def export_claims_csv(
+    request: Request,
+    source: Optional[str] = None,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Export the org's claims as a CSV file — the raw-data alternative
+    to the PDF report, for anyone who wants to work with it in a
+    spreadsheet."""
+    org_id, user_id = _identity(user)
+    q = db.query(ClaimRecord).filter(ClaimRecord.org_id == org_id)
+    if source:
+        q = q.filter(ClaimRecord.source == source)
+    rows = q.order_by(ClaimRecord.row_id.desc()).limit(5000).all()
+    csv_text = claims_to_csv(rows)
+    _audit(db, org_id, user_id, "claims_csv_exported", ip=_client_ip(request))
+    db.commit()
+    return Response(
+        content=csv_text,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=revenuemd_claims.csv"},
+    )
+
+
+@app.get("/api/reports/revenue-intelligence.csv")
+@limiter.limit("20/minute")
+def export_revenue_intelligence_csv(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Export the Denial Root Cause Engine breakdown as a CSV file."""
+    org_id, user_id = _identity(user)
+    rows = db.query(ClaimRecord).filter(ClaimRecord.org_id == org_id).all()
+    payload = compute_revenue_intelligence(rows)
+    csv_text = revenue_intelligence_to_csv(payload)
+    _audit(db, org_id, user_id, "revenue_intelligence_csv_exported", ip=_client_ip(request))
+    db.commit()
+    return Response(
+        content=csv_text,
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=revenuemd_denial_report.csv"},
+    )
+
+
+@app.get("/api/reports/revenue-intelligence.pdf")
+@limiter.limit("10/minute")
+def export_revenue_intelligence_pdf(
+    request: Request,
+    lang: str = "en",
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Export a board-ready PDF of the Denial Root Cause Engine dashboard —
+    the artifact an RCM director can hand directly to a CFO."""
+    org_id, user_id = _identity(user)
+    rows = db.query(ClaimRecord).filter(ClaimRecord.org_id == org_id).all()
+    payload = compute_revenue_intelligence(rows)
+    payload["executive_summary"] = ai.revenue_intelligence_summary(payload, lang)
+    pdf_bytes = build_revenue_intelligence_pdf(payload, org_label=org_id)
+    _audit(db, org_id, user_id, "revenue_intelligence_pdf_exported", ip=_client_ip(request))
+    db.commit()
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=revenuemd_denial_report.pdf"},
+    )
+
+
 # ── CDI (Clinical Documentation Improvement) endpoints ────────────────────────
 
 @app.post("/api/cdi/analyze")
@@ -846,6 +944,45 @@ def invite_team_member(
         "invited_at": invite.invited_at,
         "status":     invite.status,
     }
+
+
+# ── Billing / subscription endpoints ──────────────────────────────────────────
+#
+# NOTE: groundwork only — no payment processor is connected. These
+# endpoints report and initialize subscription status; they do not gate
+# access to anything else in the app yet. See billing/subscription.py.
+
+@app.get("/api/billing/status")
+def billing_status(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Return this org's subscription status."""
+    org_id, _ = _identity(user)
+    sub = db.query(Subscription).filter(Subscription.org_id == org_id).first()
+    return compute_status(sub)
+
+
+@app.post("/api/billing/start-trial")
+def start_trial(
+    request: Request,
+    db: Session = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    """Start a free trial for this org, if one hasn't already been started."""
+    org_id, user_id = _identity(user)
+    existing = db.query(Subscription).filter(Subscription.org_id == org_id).first()
+    if existing is not None:
+        raise HTTPException(409, "This org already has a subscription record.")
+
+    fields = new_trial_fields()
+    sub = Subscription(id=str(uuid.uuid4()), org_id=org_id, **fields)
+    db.add(sub)
+    _audit(db, org_id, user_id, "trial_started", "subscription", sub.id, _client_ip(request))
+    db.commit()
+    db.refresh(sub)
+    return compute_status(sub)
 
 
 # ── BAA endpoints ─────────────────────────────────────────────────────────────

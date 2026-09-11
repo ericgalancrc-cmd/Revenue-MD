@@ -1083,6 +1083,76 @@ class TestMDX001:
         assert not fired(r, "MDX-001")
 
 
+# ── HUMANA-001/002: Humana PR (unverified placeholder rules) ─────────────────
+
+class TestHumanaPR:
+    def test_fires_prior_auth_reminder_without_auth(self):
+        c = make_claim(payer="Humana PR", auth="")
+        r = scrub(c)
+        assert fired(r, "HUMANA-001")
+
+    def test_does_not_fire_prior_auth_reminder_with_auth(self):
+        c = make_claim(payer="Humana PR", auth="AUTH-123")
+        r = scrub(c)
+        assert not fired(r, "HUMANA-001")
+
+    def test_always_fires_timely_filing_reminder(self):
+        c = make_claim(payer="Humana PR")
+        r = scrub(c)
+        assert fired(r, "HUMANA-002")
+        assert sev(r, "HUMANA-002") == "info"
+
+    def test_does_not_fire_for_other_payers(self):
+        c = make_claim(payer="MCS", auth="")
+        r = scrub(c)
+        assert not fired(r, "HUMANA-001")
+        assert not fired(r, "HUMANA-002")
+
+    def test_payer_aliases_normalize_correctly(self):
+        for alias in ("Humana PR", "Humana Puerto Rico", "Humana Medicare Advantage", "Humana MA"):
+            c = make_claim(payer=alias)
+            r = scrub(c)
+            assert fired(r, "HUMANA-002"), f"alias '{alias}' should normalize to Humana PR"
+
+    def test_bare_humana_still_routes_to_military_not_pr(self):
+        # "humana" alone stays mapped to Humana Military (TRICARE) — a
+        # pre-existing mapping this change must not disturb.
+        c = make_claim(payer="Humana")
+        r = scrub(c)
+        assert not fired(r, "HUMANA-001")
+        assert not fired(r, "HUMANA-002")
+
+
+# ── MEN-001/002: Menonita (unverified placeholder rules) ─────────────────────
+
+class TestMenonita:
+    def test_fires_prior_auth_reminder_without_auth(self):
+        c = make_claim(payer="Menonita", auth="")
+        r = scrub(c)
+        assert fired(r, "MEN-001")
+
+    def test_does_not_fire_prior_auth_reminder_with_auth(self):
+        c = make_claim(payer="Menonita", auth="AUTH-123")
+        r = scrub(c)
+        assert not fired(r, "MEN-001")
+
+    def test_always_fires_timely_filing_reminder(self):
+        c = make_claim(payer="Menonita")
+        r = scrub(c)
+        assert fired(r, "MEN-002")
+
+    def test_payer_alias_normalizes(self):
+        c = make_claim(payer="Plan Menonita")
+        r = scrub(c)
+        assert fired(r, "MEN-002")
+
+    def test_does_not_fire_for_other_payers(self):
+        c = make_claim(payer="MMM", auth="")
+        r = scrub(c)
+        assert not fired(r, "MEN-001")
+        assert not fired(r, "MEN-002")
+
+
 # ── HCC-001: HCC-relevant diagnosis flag ──────────────────────────────────────
 
 class TestHCC001:

@@ -60,6 +60,57 @@ def compute_denial_trends(claim_rows: List[Any]) -> List[Dict[str, Any]]:
     return trends
 
 
+def compute_provider_scorecards(claim_rows: List[Any]) -> List[Dict[str, Any]]:
+    """
+    Per-provider scorecard: denial rate, root causes specific to that
+    provider, and recovery performance — the "here's what to bring up in
+    your 1-on-1 with Dr. X" view, versus the org-wide root-cause
+    breakdown compute_revenue_intelligence() already provides.
+    """
+    by_provider: Dict[str, List[Any]] = {}
+    for row in claim_rows:
+        prov = row.provider or getattr(row, "prov", None) or "Unknown"
+        by_provider.setdefault(prov, []).append(row)
+
+    scorecards = []
+    for provider, rows in by_provider.items():
+        total = len(rows)
+        denied = [r for r in rows if (r.status or "").lower() == "denied"]
+        denied_value = round(sum(r.billed or 0.0 for r in denied), 2)
+        recovered_value = round(sum(
+            (getattr(r, "recovered_amount", 0.0) or 0.0)
+            for r in denied if getattr(r, "outcome", "") == "resolved"
+        ), 2)
+        avg_risk = round(sum(getattr(r, "risk", 0) or 0 for r in rows) / total, 1) if total else 0.0
+
+        category_counts: Dict[str, int] = {}
+        for row in denied:
+            try:
+                issues = json.loads(row.issues_json or "[]")
+            except (TypeError, ValueError):
+                issues = []
+            seen = set()
+            for issue in issues:
+                label = categorize(issue.get("code", ""))
+                if label and label not in seen:
+                    category_counts[label] = category_counts.get(label, 0) + 1
+                    seen.add(label)
+        top_causes = sorted(category_counts.items(), key=lambda x: x[1], reverse=True)[:3]
+
+        scorecards.append({
+            "provider": provider,
+            "total_claims": total,
+            "denied_claims": len(denied),
+            "denial_rate_pct": round(100 * len(denied) / total, 1) if total else 0.0,
+            "denied_value": denied_value,
+            "recovered_value": recovered_value,
+            "avg_risk_score": avg_risk,
+            "top_causes": [{"category": c, "count": n} for c, n in top_causes],
+        })
+
+    return sorted(scorecards, key=lambda x: x["denied_value"], reverse=True)
+
+
 def compute_revenue_intelligence(claim_rows: List[Any]) -> Dict[str, Any]:
     """
     claim_rows: ClaimRecord ORM rows for the org (any status).

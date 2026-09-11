@@ -333,6 +333,89 @@ class TestOutcomeUpdateEndpoint:
         assert ri["outcome_counts"].get("resolved", 0) >= 1
 
 
+class TestProviderScorecards:
+    def test_computes_denial_rate_per_provider(self):
+        rows = [
+            _FakeRow("denied", 100.0, "MCS", "Dr. A", ["DOC-001"], dos="2026-01-01"),
+            _FakeRow("paid", 100.0, "MCS", "Dr. A", [], dos="2026-01-01"),
+        ]
+        from analytics.engine import compute_provider_scorecards
+        cards = compute_provider_scorecards(rows)
+        card = next(c for c in cards if c["provider"] == "Dr. A")
+        assert card["total_claims"] == 2
+        assert card["denied_claims"] == 1
+        assert card["denial_rate_pct"] == 50.0
+
+    def test_top_causes_reflect_that_providers_denials_only(self):
+        rows = [
+            _FakeRow("denied", 100.0, "MCS", "Dr. A", ["NCCI-002"], dos="2026-01-01"),
+            _FakeRow("denied", 100.0, "MCS", "Dr. B", ["DOC-001"], dos="2026-01-01"),
+        ]
+        from analytics.engine import compute_provider_scorecards
+        cards = compute_provider_scorecards(rows)
+        card_a = next(c for c in cards if c["provider"] == "Dr. A")
+        card_b = next(c for c in cards if c["provider"] == "Dr. B")
+        assert card_a["top_causes"][0]["category"] == "NCCI edits / bundling"
+        assert card_b["top_causes"][0]["category"] == "Documentation support"
+
+    def test_sorted_by_denied_value_descending(self):
+        rows = [
+            _FakeRow("denied", 100.0, "MCS", "Dr. Low", ["DOC-001"], dos="2026-01-01"),
+            _FakeRow("denied", 900.0, "MCS", "Dr. High", ["DOC-001"], dos="2026-01-01"),
+        ]
+        from analytics.engine import compute_provider_scorecards
+        cards = compute_provider_scorecards(rows)
+        assert cards[0]["provider"] == "Dr. High"
+
+    def test_recovered_value_reflects_resolved_outcomes(self):
+        row = _FakeRow("denied", 200.0, "MCS", "Dr. A", ["DOC-001"], dos="2026-01-01")
+        row.outcome, row.recovered_amount = "resolved", 150.0
+        from analytics.engine import compute_provider_scorecards
+        cards = compute_provider_scorecards([row])
+        assert cards[0]["recovered_value"] == 150.0
+
+    def test_endpoint_returns_scorecards(self, client):
+        client.post("/api/batch", data={"source": "historical_import"},
+                    files={"file": ("h.csv", "claim_id,payer,provider,codes,billed,status\nPS1,MCS,Dr. Scorecard,99213,400,denied\n", "text/csv")})
+        r = client.get("/api/analytics/provider-scorecards")
+        assert r.status_code == 200
+        data = r.json()
+        assert any(c["provider"] == "Dr. Scorecard" for c in data)
+
+
+class TestReportExports:
+    def test_claims_csv_export_has_header_and_rows(self, client):
+        _seed_claim(client)
+        r = client.get("/api/reports/claims.csv")
+        assert r.status_code == 200
+        assert r.headers["content-type"].startswith("text/csv")
+        assert "attachment" in r.headers["content-disposition"]
+        lines = r.text.strip().split("\n")
+        assert lines[0].startswith("claim_id,patient,payer")
+        assert len(lines) >= 2  # header + at least one claim
+
+    def test_revenue_intelligence_csv_export(self, client):
+        client.post("/api/batch", data={"source": "historical_import"},
+                    files={"file": ("h.csv", "claim_id,payer,codes,billed,status\nRX1,MCS,99213,300,denied\n", "text/csv")})
+        r = client.get("/api/reports/revenue-intelligence.csv")
+        assert r.status_code == 200
+        assert "category,claim_count" in r.text
+
+    def test_revenue_intelligence_pdf_export(self, client):
+        client.post("/api/batch", data={"source": "historical_import"},
+                    files={"file": ("h.csv", "claim_id,payer,codes,billed,status\nRX2,MCS,99213,300,denied\n", "text/csv")})
+        r = client.get("/api/reports/revenue-intelligence.pdf")
+        assert r.status_code == 200
+        assert r.headers["content-type"] == "application/pdf"
+        assert r.content[:4] == b"%PDF"  # real PDF magic bytes, not an error page
+
+    def test_pdf_export_works_with_zero_data(self, client):
+        # Should not crash on an empty org — just produce a report saying so
+        r = client.get("/api/reports/revenue-intelligence.pdf")
+        assert r.status_code == 200
+        assert r.content[:4] == b"%PDF"
+
+
 class TestRevenueIntelligenceEndpoint:
     def test_empty_org_returns_zero_state(self, client):
         r = client.get("/api/analytics/revenue-intelligence")

@@ -163,6 +163,28 @@ class ClaimRecord(Base):
         )
 
 
+class Subscription(Base):
+    """
+    One row per org. Groundwork for real billing — schema and status
+    logic only. Deliberately does NOT gate/block any other endpoint yet:
+    there's no real payment processor connected, so enforcing this would
+    lock people out of their own trial with no way to pay. Wire in
+    enforcement once Stripe (or equivalent) is actually connected.
+    """
+    __tablename__ = "subscriptions"
+
+    id                     = Column(String, primary_key=True)
+    org_id                 = Column(String, nullable=False, unique=True, index=True)
+    plan                   = Column(String, default="trial")     # "trial" | "starter" | "growth" | "professional" | "enterprise"
+    status                 = Column(String, default="trialing")  # "trialing" | "active" | "past_due" | "canceled"
+    trial_ends_at          = Column(String, nullable=True)
+    current_period_end     = Column(String, nullable=True)
+    stripe_customer_id     = Column(String, nullable=True)
+    stripe_subscription_id = Column(String, nullable=True)
+    created_at             = Column(String, nullable=False)
+    updated_at             = Column(String, nullable=True)
+
+
 class BAARecord(Base):
     """Records each org's acceptance of the HIPAA Business Associate Agreement."""
     __tablename__ = "baa_records"
